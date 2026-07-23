@@ -44,13 +44,23 @@ export interface DictMeta {
 	shards: Record<string, string>;
 }
 
-/** 查詢結果:詞條 + 是怎麼找到的 */
+/**
+ * 查詢結果。
+ *
+ * 為什麼要分 entry 與 surfaceEntry:變化形常常有自己的詞條，但釋義是冷僻義項。
+ * 例如 `unnerving` 在 ECDICT 裡的釋義是「[醫] 除神經法」，真正要看的是
+ * `unnerve` 的「使失去勇氣, 使膽怯」。所以原形的詞條當主體，變化形自己的
+ * 釋義若真的不同才附在後面。
+ */
 export interface Lookup {
+	/** 主要顯示的詞條(是變化形時為原形的詞條) */
 	entry: DictEntry;
 	/** 使用者滑過的原字(可能是變化形) */
 	surface: string;
 	/** 若經過詞形還原，記下是哪一種變化 */
 	inflection?: InflectionKind;
+	/** 變化形自己的詞條，且釋義與原形不同時才有 */
+	surfaceEntry?: DictEntry;
 }
 
 /** ECDICT exchange 欄的變化類型 */

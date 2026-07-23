@@ -7,7 +7,9 @@
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"build:dict": "node tools/build-dict.mjs",
-		"deploy": "npm run build && node tools/deploy.mjs"
+		"deploy": "npm run build && node tools/deploy.mjs",
+		"fetch:sources": "node tools/fetch-sources.mjs",
+		"test": "tsx test/dict-check.ts"
 	},
 	"keywords": [
 		"obsidian",
@@ -24,6 +26,7 @@
 		"obsidian": "latest",
 		"opencc-js": "^1.4.1",
 		"tslib": "^2.6.2",
+		"tsx": "^4.23.1",
 		"typescript": "^5.4.5"
 	},
 	"dependencies": {
