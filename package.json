@@ -1,0 +1,32 @@
+{
+	"name": "wordfolio-obsidian",
+	"version": "0.1.0",
+	"description": "Offline English–Traditional Chinese dictionary for Obsidian, with hover tooltips and FSRS spaced repetition.",
+	"main": "main.js",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"build:dict": "node tools/build-dict.mjs",
+		"deploy": "npm run build && node tools/deploy.mjs"
+	},
+	"keywords": [
+		"obsidian",
+		"dictionary",
+		"english",
+		"vocabulary",
+		"spaced-repetition"
+	],
+	"author": "Doug (fire-university)",
+	"license": "MIT",
+	"devDependencies": {
+		"@types/node": "^20.11.0",
+		"esbuild": "^0.20.2",
+		"obsidian": "latest",
+		"opencc-js": "^1.4.1",
+		"tslib": "^2.6.2",
+		"typescript": "^5.4.5"
+	},
+	"dependencies": {
+		"ts-fsrs": "^4.7.1"
+	}
+}

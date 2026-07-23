@@ -1,0 +1,15 @@
+# 相依套件
+node_modules/
+
+# 建置產物(release 時才由 build 產生)
+main.js
+*.js.map
+
+# 系統雜檔
+.DS_Store
+
+# 詞庫原始檔與產物:太大,不進版控。
+# ecdict.csv 與 ipa-dict 由 tools/build-dict.mjs 下載到 vendor/,
+# 產出的 shard 走 GitHub Release 發佈,不放 repo。
+vendor/
+dict/
