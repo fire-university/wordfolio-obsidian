@@ -34,4 +34,18 @@ for (const f of files) {
 	console.log(`→ ${path.join(dest, f)}`);
 }
 
+// 詞庫:正式版由外掛從 GitHub Release 下載,開發時直接複製本地建置好的。
+if (fs.existsSync("dict")) {
+	const dictDest = path.join(dest, "dict");
+	fs.mkdirSync(dictDest, { recursive: true });
+	let bytes = 0;
+	for (const f of fs.readdirSync("dict")) {
+		fs.copyFileSync(path.join("dict", f), path.join(dictDest, f));
+		bytes += fs.statSync(path.join("dict", f)).size;
+	}
+	console.log(`→ ${dictDest}/  (${(bytes / 1024 / 1024).toFixed(1)} MB)`);
+} else {
+	console.log("… dict/ not built — run `npm run build:dict` to enable lookups.");
+}
+
 console.log("\nReload Obsidian (or toggle the plugin off/on) to pick up the change.");

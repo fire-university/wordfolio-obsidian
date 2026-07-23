@@ -1,0 +1,180 @@
+/* WordFolio hover 浮窗。
+   全部用 Obsidian 的 CSS 變數,跟著使用者的佈景與明暗主題走。 */
+
+.wordfolio-tooltip {
+	position: fixed;
+	z-index: var(--layer-tooltip, 60);
+	max-width: 26em;
+	min-width: 14em;
+	padding: 0.7em 0.85em;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background: var(--background-secondary);
+	box-shadow: var(--shadow-s);
+	font-size: var(--font-ui-small);
+	line-height: 1.5;
+	color: var(--text-normal);
+	/* 浮窗本身不吃滑鼠事件會讓喇叭點不到,所以維持可互動;
+	   hover.ts 有判斷游標在浮窗上時不關閉。 */
+}
+
+/* --- 標題列 --- */
+.wordfolio-head {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5em;
+	margin-bottom: 0.35em;
+}
+
+.wordfolio-word {
+	font-size: 1.15em;
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+.wordfolio-inflection {
+	font-size: 0.85em;
+	color: var(--text-muted);
+}
+
+.wordfolio-add {
+	margin-left: auto;
+	padding: 0 0.5em;
+	height: 1.6em;
+	border: none;
+	border-radius: var(--radius-s);
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	cursor: pointer;
+	font-size: 0.95em;
+	line-height: 1;
+}
+
+.wordfolio-add:hover {
+	background: var(--interactive-accent-hover);
+}
+
+.wordfolio-add.is-saved {
+	background: var(--background-modifier-border);
+	color: var(--text-muted);
+	cursor: default;
+}
+
+/* --- 音標與發音 --- */
+.wordfolio-phonetics {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.9em;
+	margin-bottom: 0.45em;
+}
+
+.wordfolio-accent {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3em;
+}
+
+.wordfolio-accent-label {
+	padding: 0 0.35em;
+	border-radius: var(--radius-s);
+	background: var(--background-modifier-hover);
+	color: var(--text-muted);
+	font-size: 0.75em;
+	letter-spacing: 0.02em;
+}
+
+.wordfolio-ipa {
+	color: var(--text-accent);
+	font-family: var(--font-monospace);
+	font-size: 0.9em;
+}
+
+.wordfolio-speak {
+	padding: 0;
+	width: 1.4em;
+	height: 1.4em;
+	border: none;
+	border-radius: 50%;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	font-size: 0.75em;
+	line-height: 1;
+}
+
+.wordfolio-speak:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-accent);
+}
+
+/* --- 釋義 --- */
+.wordfolio-translation > div {
+	margin: 0.1em 0;
+}
+
+.wordfolio-surface-sense {
+	margin-top: 0.45em;
+	padding-top: 0.4em;
+	border-top: 1px dashed var(--background-modifier-border);
+	color: var(--text-muted);
+}
+
+.wordfolio-surface-word {
+	display: block;
+	font-weight: 600;
+	font-size: 0.85em;
+	color: var(--text-faint);
+}
+
+.wordfolio-definition {
+	margin-top: 0.4em;
+	color: var(--text-muted);
+	font-size: 0.9em;
+	font-style: italic;
+}
+
+/* --- 詞頻／變化形 --- */
+.wordfolio-meta,
+.wordfolio-forms {
+	margin-top: 0.45em;
+	color: var(--text-faint);
+	font-size: 0.82em;
+}
+
+/* --- Claude --- */
+.wordfolio-ask {
+	margin-top: 0.6em;
+	padding: 0.3em 0.6em;
+	width: 100%;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	font-size: 0.85em;
+	text-align: left;
+}
+
+.wordfolio-ask:hover:not(:disabled) {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.wordfolio-ask:disabled {
+	cursor: default;
+	opacity: 0.6;
+}
+
+.wordfolio-claude {
+	margin-top: 0.6em;
+	padding: 0.5em 0.6em;
+	border-left: 2px solid var(--interactive-accent);
+	background: var(--background-primary-alt);
+	border-radius: 0 var(--radius-s) var(--radius-s) 0;
+}
+
+.wordfolio-error {
+	margin-top: 0.5em;
+	color: var(--text-error);
+	font-size: 0.85em;
+}

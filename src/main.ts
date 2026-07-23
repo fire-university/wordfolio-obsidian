@@ -10,24 +10,105 @@ import {
 	ClaudeModel,
 } from "./settings";
 import { t, setLang, LangSetting } from "./i18n";
+import { Dictionary } from "./dict";
+import { WordTooltip, hitTest } from "./tooltip";
+import { HoverController } from "./hover";
+import { Audio } from "./audio";
+import type { Lookup } from "./types";
 
 export default class WordFolioPlugin extends Plugin {
 	settings: WordFolioSettings = { ...DEFAULT_SETTINGS };
+	private dict!: Dictionary;
+	private tooltip!: WordTooltip;
+	private hover!: HoverController;
+	private audio!: Audio;
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
 		this.applyLang();
 
+		const base = this.manifest.dir ?? "";
+		this.dict = new Dictionary(async (name) => {
+			const p = `${base}/dict/${name}`;
+			if (!(await this.app.vault.adapter.exists(p))) return null;
+			return this.app.vault.adapter.read(p);
+		});
+
+		this.audio = new Audio(
+			this.app.vault,
+			`${base}/audio`,
+			() => this.settings.audioSource === "online_first"
+		);
+
+		this.tooltip = new WordTooltip({
+			onSpeak: (word, accent) => void this.audio.speak(word, accent),
+			onAdd: (lookup, sentence) => this.addToVocab(lookup, sentence),
+			isSaved: () => false, // Phase 4 接生詞本
+		});
+
+		this.hover = new HoverController({
+			delay: this.settings.hoverDelay,
+			enabled: () => this.settings.hoverEnabled && this.dict.installed,
+			lookup: (word) => this.dict.lookup(word),
+			tooltip: this.tooltip,
+			showEnglish: () => this.settings.showEnglishDefinition,
+		});
+		this.hover.attach();
+
 		this.addSettingTab(new WordFolioSettingTab(this.app, this));
 
 		this.addCommand({
-			id: "lookup-selection",
+			id: "lookup-word",
 			name: t("command_lookup"),
-			editorCallback: () => {
-				// Phase 1/2 接上 dict.ts 與 tooltip.ts。
-				new Notice(t("notice_dict_missing"));
-			},
+			callback: () => void this.lookupAtCursor(),
 		});
+
+		// 詞庫載入放到 layout ready 之後,不要拖慢 Obsidian 啟動。
+		this.app.workspace.onLayoutReady(() => void this.loadDictionary());
+	}
+
+	onunload(): void {
+		this.hover?.detach();
+		this.tooltip?.destroy();
+		this.audio?.dispose();
+	}
+
+	private async loadDictionary(): Promise<void> {
+		const ok = await this.dict.load();
+		if (!ok) {
+			new Notice(t("notice_dict_missing"), 8000);
+			return;
+		}
+		this.settings.dictVersion = this.dict.version;
+		await this.saveSettings();
+	}
+
+	/** 命令面板／快捷鍵的入口:對選取的字(沒選取就用游標位置)查詢。 */
+	private async lookupAtCursor(): Promise<void> {
+		if (!this.dict.installed) {
+			new Notice(t("notice_dict_missing"), 8000);
+			return;
+		}
+
+		const sel = window.getSelection();
+		const word = sel?.toString().trim() ?? "";
+		if (!word) {
+			new Notice(t("notice_not_found", { word: "" }));
+			return;
+		}
+
+		const range = sel!.getRangeAt(0);
+		const shown = await this.hover.showFor({
+			word,
+			sentence: range.startContainer.nodeValue ?? word,
+			rect: range.getBoundingClientRect(),
+		});
+		if (!shown) new Notice(t("notice_not_found", { word }));
+	}
+
+	private addToVocab(lookup: Lookup, _sentence: string): void {
+		// Phase 4 實作:寫成 vocabFolder/{word}.md
+		new Notice(t("notice_vocab_added", { word: lookup.entry.w }));
 	}
 
 	applyLang(): void {
