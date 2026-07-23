@@ -9,11 +9,15 @@ import {
 	AudioSource,
 	ClaudeModel,
 } from "./settings";
-import { t, setLang, LangSetting } from "./i18n";
+import { t, setLang, LangSetting, currentLang } from "./i18n";
 import { Dictionary } from "./dict";
-import { WordTooltip, hitTest } from "./tooltip";
+import { WordTooltip } from "./tooltip";
 import { HoverController } from "./hover";
 import { Audio } from "./audio";
+import { VocabStore } from "./vocab";
+import { ReviewModal } from "./review";
+import { dueCards } from "./schedule";
+import { ClaudeExplainer } from "./claude";
 import type { Lookup } from "./types";
 
 export default class WordFolioPlugin extends Plugin {
@@ -22,6 +26,9 @@ export default class WordFolioPlugin extends Plugin {
 	private tooltip!: WordTooltip;
 	private hover!: HoverController;
 	private audio!: Audio;
+	private vocab!: VocabStore;
+	private claude!: ClaudeExplainer;
+	private ribbon: HTMLElement | null = null;
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -40,10 +47,19 @@ export default class WordFolioPlugin extends Plugin {
 			() => this.settings.audioSource === "online_first"
 		);
 
+		this.vocab = new VocabStore(this.app, () => this.settings.vocabFolder);
+
+		this.claude = new ClaudeExplainer(() => ({
+			apiKey: this.settings.claudeApiKey,
+			model: this.settings.claudeModel,
+			traditional: currentLang() === "zh-TW",
+		}));
+
 		this.tooltip = new WordTooltip({
 			onSpeak: (word, accent) => void this.audio.speak(word, accent),
-			onAdd: (lookup, sentence) => this.addToVocab(lookup, sentence),
-			isSaved: () => false, // Phase 4 接生詞本
+			onAdd: (lookup, sentence) => void this.addToVocab(lookup, sentence),
+			onAsk: (lookup, sentence) => this.claude.explain(lookup, sentence),
+			isSaved: (word) => this.vocab.has(word),
 		});
 
 		this.hover = new HoverController({
@@ -63,8 +79,30 @@ export default class WordFolioPlugin extends Plugin {
 			callback: () => void this.lookupAtCursor(),
 		});
 
+		this.addCommand({
+			id: "review-vocabulary",
+			name: t("command_review"),
+			callback: () => void this.startReview(),
+		});
+
+		this.ribbon = this.addRibbonIcon("book-open-check", t("ribbon_tooltip_empty"), () =>
+			void this.startReview()
+		);
+
+		// 生詞本被改動(手動編輯、複習寫回)時更新徽章。
+		this.registerEvent(
+			this.app.metadataCache.on("changed", (file) => {
+				if (file.path.startsWith(this.settings.vocabFolder + "/")) {
+					void this.refreshBadge();
+				}
+			})
+		);
+
 		// 詞庫載入放到 layout ready 之後,不要拖慢 Obsidian 啟動。
-		this.app.workspace.onLayoutReady(() => void this.loadDictionary());
+		this.app.workspace.onLayoutReady(() => {
+			void this.loadDictionary();
+			void this.vocab.refresh().then(() => this.refreshBadge());
+		});
 	}
 
 	onunload(): void {
@@ -81,6 +119,27 @@ export default class WordFolioPlugin extends Plugin {
 		}
 		this.settings.dictVersion = this.dict.version;
 		await this.saveSettings();
+	}
+
+	/** ribbon 圖示顯示今天有幾個字要複習。 */
+	private async refreshBadge(): Promise<void> {
+		if (!this.ribbon) return;
+		const due = dueCards(await this.vocab.allCards()).length;
+		this.ribbon.setAttribute(
+			"aria-label",
+			due ? t("ribbon_tooltip", { due }) : t("ribbon_tooltip_empty")
+		);
+		this.ribbon.toggleClass("wordfolio-has-due", due > 0);
+		this.ribbon.dataset.count = due ? String(due) : "";
+	}
+
+	private async startReview(): Promise<void> {
+		const due = dueCards(await this.vocab.allCards());
+		if (!due.length) {
+			new Notice(t("review_nothing_due"));
+			return;
+		}
+		new ReviewModal(this.app, this.vocab, due).open();
 	}
 
 	/** 命令面板／快捷鍵的入口:對選取的字(沒選取就用游標位置)查詢。 */
@@ -106,9 +165,28 @@ export default class WordFolioPlugin extends Plugin {
 		if (!shown) new Notice(t("notice_not_found", { word }));
 	}
 
-	private addToVocab(lookup: Lookup, _sentence: string): void {
-		// Phase 4 實作:寫成 vocabFolder/{word}.md
-		new Notice(t("notice_vocab_added", { word: lookup.entry.w }));
+	private async addToVocab(lookup: Lookup, sentence: string): Promise<void> {
+		try {
+			const created = await this.vocab.add(
+				lookup,
+				sentence,
+				this.settings.captureSentence
+			);
+			new Notice(
+				t(created ? "notice_vocab_added" : "notice_vocab_exists", {
+					word: lookup.entry.w,
+				})
+			);
+			await this.refreshBadge();
+		} catch (e) {
+			new Notice(e instanceof Error ? e.message : String(e));
+		}
+	}
+
+	/** 改了生詞本資料夾之後重建索引與徽章。 */
+	async reindexVocab(): Promise<void> {
+		await this.vocab.refresh();
+		await this.refreshBadge();
 	}
 
 	applyLang(): void {
@@ -211,6 +289,7 @@ class WordFolioSettingTab extends PluginSettingTab {
 				txt.setValue(s.vocabFolder).onChange(async (v) => {
 					s.vocabFolder = v.trim() || DEFAULT_SETTINGS.vocabFolder;
 					await this.plugin.saveSettings();
+					await this.plugin.reindexVocab();
 				})
 			);
 
