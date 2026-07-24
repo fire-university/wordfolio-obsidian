@@ -142,6 +142,24 @@ export class WordTooltip {
 		return target instanceof Node && this.el.contains(target);
 	}
 
+	/**
+	 * 游標是不是在浮窗附近(含 margin)。
+	 *
+	 * 浮窗跟單字之間隔著幾 px 的間隙,游標經過那段空白時 elementFromPoint
+	 * 抓到的是底下的筆記而不是浮窗——如果那時就關掉,使用者永遠滑不進來。
+	 * 把浮窗周圍一圈也算成「在浮窗上」,那段路就走得過去了。
+	 */
+	isNear(x: number, y: number, margin: number): boolean {
+		if (!this.visible) return false;
+		const r = this.el.getBoundingClientRect();
+		return (
+			x >= r.left - margin &&
+			x <= r.right + margin &&
+			y >= r.top - margin &&
+			y <= r.bottom + margin
+		);
+	}
+
 	hide(): void {
 		if (!this.visible) return;
 		this.visible = false;

@@ -12,7 +12,7 @@ import {
 import { t, setLang, LangSetting, currentLang } from "./i18n";
 import { Dictionary } from "./dict";
 import { WordTooltip } from "./tooltip";
-import { HoverController } from "./hover";
+import { HoverController, type DismissMode } from "./hover";
 import { Audio } from "./audio";
 import { VocabStore } from "./vocab";
 import { ReviewModal } from "./review";
@@ -63,7 +63,9 @@ export default class WordFolioPlugin extends Plugin {
 		});
 
 		this.hover = new HoverController({
-			delay: this.settings.hoverDelay,
+			delay: () => this.settings.hoverDelay,
+			closeDelay: () => this.settings.closeDelay,
+			dismissMode: () => this.settings.dismissMode,
 			enabled: () => this.settings.hoverEnabled && this.dict.installed,
 			lookup: (word) => this.dict.lookup(word),
 			tooltip: this.tooltip,
@@ -261,6 +263,38 @@ class WordFolioSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					})
 			);
+
+		new Setting(containerEl)
+			.setName(t("set_dismiss_name"))
+			.setDesc(t("set_dismiss_desc"))
+			.addDropdown((d) =>
+				d
+					.addOption("delay", t("dismiss_delay"))
+					.addOption("click_outside", t("dismiss_click_outside"))
+					.setValue(s.dismissMode)
+					.onChange(async (v) => {
+						s.dismissMode = v as DismissMode;
+						await this.plugin.saveSettings();
+						// 寬限期滑桿只在「移開就關」時有意義。
+						this.display();
+					})
+			);
+
+		if (s.dismissMode === "delay") {
+			new Setting(containerEl)
+				.setName(t("set_close_delay_name"))
+				.setDesc(t("set_close_delay_desc"))
+				.addSlider((sl) =>
+					sl
+						.setLimits(100, 2000, 100)
+						.setValue(s.closeDelay)
+						.setDynamicTooltip()
+						.onChange(async (v) => {
+							s.closeDelay = v;
+							await this.plugin.saveSettings();
+						})
+				);
+		}
 
 		// --- 發音 ---
 		new Setting(containerEl).setName(t("heading_audio")).setHeading();

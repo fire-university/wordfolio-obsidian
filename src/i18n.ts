@@ -88,6 +88,14 @@ const EN: Dict = {
 		"Show the tooltip when the pointer rests on an English word. Turn this off to use the hotkey only.",
 	set_hover_delay_name: "Hover delay",
 	set_hover_delay_desc: "Milliseconds to wait before the tooltip appears.",
+	set_dismiss_name: "Closing the tooltip",
+	set_dismiss_desc:
+		"With \"move away\", the tooltip waits a moment before closing and stays open if you move back onto it, so you can always reach the buttons. Choose \"click outside\" if you would rather it never close on its own.",
+	dismiss_delay: "Close when I move away",
+	dismiss_click_outside: "Close only when I click elsewhere",
+	set_close_delay_name: "Grace period",
+	set_close_delay_desc:
+		"How long the tooltip waits after the pointer leaves. Moving back onto it cancels the close. Longer is more forgiving.",
 	heading_audio: "Pronunciation",
 	set_audio_source_name: "Audio source",
 	set_audio_source_desc:
@@ -154,6 +162,14 @@ const ZH: Dict = {
 	set_hover_desc: "游標停在英文字上就跳浮窗。關掉的話只能用快捷鍵查。",
 	set_hover_delay_name: "浮窗延遲",
 	set_hover_delay_desc: "游標停留幾毫秒後才跳浮窗。",
+	set_dismiss_name: "浮窗怎麼關",
+	set_dismiss_desc:
+		"選「移開就關」時,浮窗會等一下才關,而且滑回浮窗上就不關了,所以按鈕一定點得到。如果希望它完全不要自己消失,選「點外面才關」。",
+	dismiss_delay: "移開就關",
+	dismiss_click_outside: "點浮窗外面才關",
+	set_close_delay_name: "寬限期",
+	set_close_delay_desc:
+		"游標離開後等多久才真的關掉。期間滑回浮窗就會取消關閉。設長一點比較不會手滑關掉。",
 	heading_audio: "發音",
 	set_audio_source_name: "發音來源",
 	set_audio_source_desc:

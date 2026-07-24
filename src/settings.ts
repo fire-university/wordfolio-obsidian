@@ -1,6 +1,7 @@
 // 外掛設定。分四區:查詢(hover)、發音、生詞本、Claude。
 
 import type { LangSetting } from "./i18n";
+import type { DismissMode } from "./hover";
 
 export type AudioSource = "online_first" | "system_only";
 export type ClaudeModel = "claude-haiku-4-5-20251001" | "claude-sonnet-5";
@@ -14,6 +15,11 @@ export interface WordFolioSettings {
 	hoverEnabled: boolean;
 	// 停留多久才跳(ms)。太短會滑過去一路閃,太長會覺得慢。
 	hoverDelay: number;
+	// 浮窗怎麼關:移開就關(有寬限期) / 點浮窗外面才關。
+	dismissMode: DismissMode;
+	// 離開浮窗多久才真的關(ms,僅 delay 模式)。
+	// 這是寬限期不是「顯示時間」——期間滑回浮窗就會取消關閉。
+	closeDelay: number;
 	// 浮窗要不要一併顯示英英釋義(ECDICT definition 欄)。
 	showEnglishDefinition: boolean;
 
@@ -40,6 +46,9 @@ export const DEFAULT_SETTINGS: WordFolioSettings = {
 	language: "auto",
 	hoverEnabled: true,
 	hoverDelay: 300,
+	dismissMode: "delay",
+	// 400ms 加上浮窗周圍的安全區,一般速度的滑鼠移動都來得及滑進去。
+	closeDelay: 400,
 	showEnglishDefinition: false,
 	audioSource: "online_first",
 	vocabFolder: "英文生詞本",
