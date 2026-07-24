@@ -2,6 +2,7 @@
 
 import type { LangSetting } from "./i18n";
 import type { DismissMode } from "./hover";
+import { ALL_SECTIONS, DEFAULT_ENABLED, type SectionId } from "./sections";
 
 export type AudioSource = "online_first" | "system_only";
 export type ClaudeModel = "claude-haiku-4-5-20251001" | "claude-sonnet-5";
@@ -20,8 +21,11 @@ export interface WordFolioSettings {
 	// 離開浮窗多久才真的關(ms,僅 delay 模式)。
 	// 這是寬限期不是「顯示時間」——期間滑回浮窗就會取消關閉。
 	closeDelay: number;
-	// 浮窗要不要一併顯示英英釋義(ECDICT definition 欄)。
-	showEnglishDefinition: boolean;
+	// --- 浮窗顯示什麼(沙拉查詞那套:每種內容一個區塊,可勾選可排序) ---
+	// 存字串陣列而不是 SectionId[],因為使用者的 data.json 可能是舊版本寫的,
+	// 讀進來一律經過 normalizeOrder 正規化。
+	sectionOrder: string[];
+	sectionsEnabled: Partial<Record<SectionId, boolean>>;
 
 	// --- 發音 ---
 	audioSource: AudioSource;
@@ -49,7 +53,8 @@ export const DEFAULT_SETTINGS: WordFolioSettings = {
 	dismissMode: "delay",
 	// 400ms 加上浮窗周圍的安全區,一般速度的滑鼠移動都來得及滑進去。
 	closeDelay: 400,
-	showEnglishDefinition: false,
+	sectionOrder: [...ALL_SECTIONS],
+	sectionsEnabled: { ...DEFAULT_ENABLED },
 	audioSource: "online_first",
 	vocabFolder: "英文生詞本",
 	captureSentence: true,

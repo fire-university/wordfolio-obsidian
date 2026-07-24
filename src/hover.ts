@@ -17,7 +17,7 @@
 // 另外提供「點外面才關」模式:要點喇叭、加生詞本、等 Claude 回覆時,
 // 不該有個計時器在跟使用者賽跑。
 
-import { hitTest, HoverHit, WordTooltip } from "./tooltip";
+import { hitTest, HoverHit, WordTooltip, type ViewConfig } from "./tooltip";
 import type { Lookup } from "./types";
 
 /** 浮窗怎麼關:移開就關(有寬限期) / 點浮窗外面才關 */
@@ -35,7 +35,7 @@ export interface HoverOptions {
 	enabled: () => boolean;
 	lookup: (word: string) => Promise<Lookup | null>;
 	tooltip: WordTooltip;
-	showEnglish: () => boolean;
+	view: () => ViewConfig;
 }
 
 export class HoverController {
@@ -140,7 +140,7 @@ export class HoverController {
 		if (!result) return false;
 		this.clearCloseTimer();
 		this.currentWord = hit.word;
-		this.opts.tooltip.show(result, hit, this.opts.showEnglish());
+		this.opts.tooltip.show(result, hit, this.opts.view());
 		return true;
 	}
 
@@ -157,7 +157,7 @@ export class HoverController {
 		}
 
 		this.currentWord = hit.word;
-		this.opts.tooltip.show(result, hit, this.opts.showEnglish());
+		this.opts.tooltip.show(result, hit, this.opts.view());
 	}
 
 	/** 排一個延後關閉。期間滑回浮窗或安全區就會被取消。 */

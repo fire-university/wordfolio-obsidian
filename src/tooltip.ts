@@ -7,6 +7,7 @@
 
 import { formsFor } from "./lemma";
 import { t } from "./i18n";
+import type { SectionId } from "./sections";
 import type { Lookup, InflectionKind } from "./types";
 
 /** 從畫面座標找出游標底下的英文字,連同所在句子。 */
@@ -150,6 +151,12 @@ export function hitTest(x: number, y: number): HoverHit | null {
 	};
 }
 
+/** 浮窗要畫哪些區塊、照什麼順序。 */
+export interface ViewConfig {
+	order: SectionId[];
+	enabled: Record<SectionId, boolean>;
+}
+
 export interface TooltipCallbacks {
 	/** 點喇叭 */
 	onSpeak: (word: string, accent: "uk" | "us") => void;
@@ -210,9 +217,9 @@ export class WordTooltip {
 		this.el.empty();
 	}
 
-	show(lookup: Lookup, hit: HoverHit, showEnglish: boolean): void {
+	show(lookup: Lookup, hit: HoverHit, view: ViewConfig): void {
 		this.el.empty();
-		this.render(lookup, hit, showEnglish);
+		this.render(lookup, hit, view);
 		this.el.style.display = "";
 		this.visible = true;
 		this.position(hit.rect);
@@ -220,10 +227,20 @@ export class WordTooltip {
 
 	// ---------------------------------------------------------- 內容
 
-	private render(lookup: Lookup, hit: HoverHit, showEnglish: boolean): void {
-		const { entry } = lookup;
+	private render(lookup: Lookup, hit: HoverHit, view: ViewConfig): void {
+		this.renderHead(lookup, hit);
 
-		// 標題列:單字 + 加入生詞本
+		// 依使用者設定的順序逐一產出。每個區塊沒資料就自己不畫,
+		// 所以這裡不需要判斷「這個字有沒有音標／有沒有變化形」。
+		for (const id of view.order) {
+			if (!view.enabled[id]) continue;
+			this.renderSection(id, lookup, hit);
+		}
+	}
+
+	/** 標題列不列入可排序的區塊:單字本身跟「加入生詞本」永遠要在最上面。 */
+	private renderHead(lookup: Lookup, hit: HoverHit): void {
+		const { entry } = lookup;
 		const head = this.el.createDiv({ cls: "wordfolio-head" });
 		head.createSpan({ cls: "wordfolio-word", text: entry.w });
 
@@ -251,77 +268,102 @@ export class WordTooltip {
 			addBtn.addClass("is-saved");
 			addBtn.disabled = true;
 		};
+	}
 
-		// 音標列
-		const phonetics = this.el.createDiv({ cls: "wordfolio-phonetics" });
-		this.accent(phonetics, "uk", entry.uk ?? entry.ph, entry.w);
-		this.accent(phonetics, "us", entry.us, entry.w);
+	private renderSection(id: SectionId, lookup: Lookup, hit: HoverHit): void {
+		const { entry } = lookup;
 
-		// 釋義
-		const tr = this.el.createDiv({ cls: "wordfolio-translation" });
-		for (const line of entry.tr.split("\\n")) {
-			if (line.trim()) tr.createDiv({ text: line.trim() });
-		}
-
-		// 變化形自己另有釋義時附在後面(例:running 當名詞的「賽跑」)
-		if (lookup.surfaceEntry) {
-			const extra = this.el.createDiv({ cls: "wordfolio-surface-sense" });
-			extra.createSpan({ cls: "wordfolio-surface-word", text: hit.word });
-			for (const line of lookup.surfaceEntry.tr.split("\\n")) {
-				if (line.trim()) extra.createDiv({ text: line.trim() });
+		switch (id) {
+			case "phonetics": {
+				const uk = entry.uk ?? entry.ph;
+				if (!uk && !entry.us) return;
+				const row = this.el.createDiv({ cls: "wordfolio-phonetics" });
+				this.accent(row, "uk", uk, entry.w);
+				this.accent(row, "us", entry.us, entry.w);
+				return;
 			}
-		}
 
-		if (showEnglish && entry.def) {
-			const def = this.el.createDiv({ cls: "wordfolio-definition" });
-			for (const line of entry.def.split("\\n")) {
-				if (line.trim()) def.createDiv({ text: line.trim() });
-			}
-		}
-
-		// 詞頻／分級／考試標籤
-		const meta: string[] = [];
-		if (entry.collins) meta.push("★".repeat(entry.collins));
-		if (entry.oxford) meta.push("Oxford 3000");
-		if (entry.bnc) meta.push(`BNC ${entry.bnc.toLocaleString()}`);
-		if (entry.frq) meta.push(`COCA ${entry.frq.toLocaleString()}`);
-		if (entry.tag?.length) meta.push(entry.tag.join(" · "));
-		if (meta.length) {
-			this.el.createDiv({ cls: "wordfolio-meta", text: meta.join("　·　") });
-		}
-
-		// 變化形
-		const forms = formsFor(entry.exch);
-		if (forms.length) {
-			this.el.createDiv({
-				cls: "wordfolio-forms",
-				text: `${t("tooltip_forms")}: ${forms.join(" / ")}`,
-			});
-		}
-
-		// 問 Claude:一定要按才會呼叫,hover 自動觸發會滑一排字燒一排 token。
-		if (this.cb.onAsk) {
-			const ask = this.el.createEl("button", {
-				cls: "wordfolio-ask",
-				text: `✦ ${t("tooltip_ask_claude")}`,
-			});
-			ask.onclick = async () => {
-				ask.disabled = true;
-				ask.textContent = t("tooltip_asking");
-				try {
-					const answer = await this.cb.onAsk!(lookup, hit.sentence);
-					ask.remove();
-					this.el.createDiv({ cls: "wordfolio-claude", text: answer });
-					this.position(hit.rect);
-				} catch (e) {
-					ask.disabled = false;
-					ask.textContent = `✦ ${t("tooltip_ask_claude")}`;
-					this.el.createDiv({
-						cls: "wordfolio-error",
-						text: e instanceof Error ? e.message : String(e),
-					});
+			case "translation": {
+				const box = this.el.createDiv({ cls: "wordfolio-translation" });
+				for (const line of entry.tr.split("\\n")) {
+					if (line.trim()) box.createDiv({ text: line.trim() });
 				}
-			};
+				return;
+			}
+
+			case "english": {
+				if (!entry.def) return;
+				const box = this.el.createDiv({ cls: "wordfolio-definition" });
+				for (const line of entry.def.split("\\n")) {
+					if (line.trim()) box.createDiv({ text: line.trim() });
+				}
+				return;
+			}
+
+			// 變化形自己另有釋義時才顯示(例:running 當名詞的「賽跑」)
+			case "surface": {
+				if (!lookup.surfaceEntry) return;
+				const box = this.el.createDiv({ cls: "wordfolio-surface-sense" });
+				box.createSpan({ cls: "wordfolio-surface-word", text: hit.word });
+				for (const line of lookup.surfaceEntry.tr.split("\\n")) {
+					if (line.trim()) box.createDiv({ text: line.trim() });
+				}
+				return;
+			}
+
+			case "frequency": {
+				const parts: string[] = [];
+				if (entry.collins) parts.push("★".repeat(entry.collins));
+				if (entry.oxford) parts.push("Oxford 3000");
+				if (entry.bnc) parts.push(`BNC ${entry.bnc.toLocaleString()}`);
+				if (entry.frq) parts.push(`COCA ${entry.frq.toLocaleString()}`);
+				if (!parts.length) return;
+				this.el.createDiv({ cls: "wordfolio-meta", text: parts.join("　·　") });
+				return;
+			}
+
+			case "exams": {
+				if (!entry.tag?.length) return;
+				this.el.createDiv({ cls: "wordfolio-meta", text: entry.tag.join(" · ") });
+				return;
+			}
+
+			case "forms": {
+				const forms = formsFor(entry.exch);
+				if (!forms.length) return;
+				this.el.createDiv({
+					cls: "wordfolio-forms",
+					text: `${t("tooltip_forms")}: ${forms.join(" / ")}`,
+				});
+				return;
+			}
+
+			// 一定要按才會呼叫 Claude,hover 自動觸發會滑一排字燒一排 token。
+			case "claude": {
+				if (!this.cb.onAsk) return;
+				const ask = this.el.createEl("button", {
+					cls: "wordfolio-ask",
+					text: `✦ ${t("tooltip_ask_claude")}`,
+				});
+				ask.onclick = async () => {
+					ask.disabled = true;
+					ask.textContent = t("tooltip_asking");
+					try {
+						const answer = await this.cb.onAsk!(lookup, hit.sentence);
+						ask.remove();
+						this.el.createDiv({ cls: "wordfolio-claude", text: answer });
+						this.position(hit.rect);
+					} catch (e) {
+						ask.disabled = false;
+						ask.textContent = `✦ ${t("tooltip_ask_claude")}`;
+						this.el.createDiv({
+							cls: "wordfolio-error",
+							text: e instanceof Error ? e.message : String(e),
+						});
+					}
+				};
+				return;
+			}
 		}
 	}
 

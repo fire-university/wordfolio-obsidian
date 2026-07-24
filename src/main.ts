@@ -18,6 +18,13 @@ import { VocabStore } from "./vocab";
 import { ReviewModal } from "./review";
 import { dueCards } from "./schedule";
 import { ClaudeExplainer } from "./claude";
+import {
+	normalizeOrder,
+	normalizeEnabled,
+	move,
+	sectionLabelKey,
+	sectionDescKey,
+} from "./sections";
 import type { Lookup } from "./types";
 
 export default class WordFolioPlugin extends Plugin {
@@ -69,7 +76,10 @@ export default class WordFolioPlugin extends Plugin {
 			enabled: () => this.settings.hoverEnabled && this.dict.installed,
 			lookup: (word) => this.dict.lookup(word),
 			tooltip: this.tooltip,
-			showEnglish: () => this.settings.showEnglishDefinition,
+			view: () => ({
+				order: normalizeOrder(this.settings.sectionOrder),
+				enabled: normalizeEnabled(this.settings.sectionsEnabled),
+			}),
 		});
 		this.hover.attach();
 
@@ -295,6 +305,50 @@ class WordFolioSettingTab extends PluginSettingTab {
 						})
 				);
 		}
+
+		// --- 浮窗顯示什麼 ---
+		new Setting(containerEl)
+			.setName(t("heading_sections"))
+			.setDesc(t("sections_desc"))
+			.setHeading();
+
+		const order = normalizeOrder(s.sectionOrder);
+		const enabled = normalizeEnabled(s.sectionsEnabled);
+
+		order.forEach((id, i) => {
+			const row = new Setting(containerEl)
+				.setName(t(sectionLabelKey(id)))
+				.setDesc(t(sectionDescKey(id)));
+
+			row.addExtraButton((b) =>
+				b
+					.setIcon("chevron-up")
+					.setTooltip(t("section_move_up"))
+					.setDisabled(i === 0)
+					.onClick(async () => {
+						s.sectionOrder = move(order, id, -1);
+						await this.plugin.saveSettings();
+						this.display();
+					})
+			);
+			row.addExtraButton((b) =>
+				b
+					.setIcon("chevron-down")
+					.setTooltip(t("section_move_down"))
+					.setDisabled(i === order.length - 1)
+					.onClick(async () => {
+						s.sectionOrder = move(order, id, 1);
+						await this.plugin.saveSettings();
+						this.display();
+					})
+			);
+			row.addToggle((tg) =>
+				tg.setValue(enabled[id]).onChange(async (v) => {
+					s.sectionsEnabled = { ...enabled, [id]: v };
+					await this.plugin.saveSettings();
+				})
+			);
+		});
 
 		// --- 發音 ---
 		new Setting(containerEl).setName(t("heading_audio")).setHeading();

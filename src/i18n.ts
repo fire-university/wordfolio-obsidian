@@ -96,6 +96,30 @@ const EN: Dict = {
 	set_close_delay_name: "Grace period",
 	set_close_delay_desc:
 		"How long the tooltip waits after the pointer leaves. Moving back onto it cancels the close. Longer is more forgiving.",
+	heading_sections: "What the tooltip shows",
+	sections_desc:
+		"Turn parts on or off and reorder them. A part that has no data for a word simply doesn't appear.",
+	section_phonetics: "Phonetics and pronunciation",
+	section_phonetics_desc: "UK and US IPA with playable audio.",
+	section_translation: "Chinese definition",
+	section_translation_desc: "Traditional Chinese, from the offline dictionary.",
+	section_english: "English definition",
+	section_english_desc:
+		"WordNet glosses. Available for about 80% of entries and often more detailed than the Chinese line.",
+	section_surface: "Sense of the inflected form",
+	section_surface_desc:
+		"Shown only when the form you hovered means something different from its base word.",
+	section_frequency: "Frequency and grading",
+	section_frequency_desc: "Collins stars, Oxford 3000, BNC and COCA ranks.",
+	section_exams: "Exam tags",
+	section_exams_desc: "CET, TOEFL, GRE and so on. Useful when studying for a test, noise otherwise.",
+	section_forms: "Inflected forms",
+	section_forms_desc: "Plural, past tense, -ing form and the rest.",
+	section_claude: "Ask Claude",
+	section_claude_desc: "The button that explains the word in the sentence you are reading.",
+	section_move_up: "Move up",
+	section_move_down: "Move down",
+
 	heading_audio: "Pronunciation",
 	set_audio_source_name: "Audio source",
 	set_audio_source_desc:
@@ -170,6 +194,28 @@ const ZH: Dict = {
 	set_close_delay_name: "寬限期",
 	set_close_delay_desc:
 		"游標離開後等多久才真的關掉。期間滑回浮窗就會取消關閉。設長一點比較不會手滑關掉。",
+	heading_sections: "浮窗顯示什麼",
+	sections_desc: "勾選要顯示的內容並調整順序。某個字沒有那項資料時,該區塊自己不會出現。",
+	section_phonetics: "音標與發音",
+	section_phonetics_desc: "英式與美式 IPA,可點喇叭發音。",
+	section_translation: "中文釋義",
+	section_translation_desc: "繁體中文,來自離線詞庫。",
+	section_english: "英英釋義",
+	section_english_desc:
+		"WordNet 的英文解釋。約八成詞條有,而且常常比中文那一行細——leverage 的中文只有「槓桿作用」,英英分了槓桿原理／策略優勢／融資操作三個義項。",
+	section_surface: "變化形的獨立語意",
+	section_surface_desc: "只有在你滑到的變化形跟原形意思不同時才出現(例:running 當名詞的「賽跑」)。",
+	section_frequency: "詞頻與分級",
+	section_frequency_desc: "柯林斯星級、Oxford 3000、BNC 與 COCA 排名。",
+	section_exams: "考試標籤",
+	section_exams_desc: "CET、TOEFL、GRE 之類。準備考試時有用,一般閱讀是雜訊。",
+	section_forms: "變化形",
+	section_forms_desc: "複數、過去式、現在分詞等。",
+	section_claude: "問 Claude",
+	section_claude_desc: "那顆「在這句話裡是什麼意思」的按鈕。",
+	section_move_up: "往上移",
+	section_move_down: "往下移",
+
 	heading_audio: "發音",
 	set_audio_source_name: "發音來源",
 	set_audio_source_desc:
