@@ -80,9 +80,14 @@ export class ReviewModal extends Modal {
 		// 這樣使用者自己補在筆記裡的註解也會一起出現在複習畫面上。
 		const text = await this.app.vault.read(entry.file);
 		const body = text
-			.replace(/^---[\s\S]*?\n---\n/, "")
-			.replace(/^#\s+.*$/m, "")
+			.replace(/^---[\s\S]*?\n---\n/, "") // frontmatter
+			.replace(/^#\s+.*$/m, "") // 標題(就是那個字,正面已經看過了)
 			.split("## 我遇到它的地方")[0]
+			// 答案面是純文字渲染,markdown 標記會原樣顯示,所以先去掉:
+			// ## 標題 → 標題,**粗體** → 粗體。
+			.replace(/^#{2,}\s+/gm, "")
+			.replace(/\*\*/g, "")
+			.replace(/\n{3,}/g, "\n\n")
 			.trim();
 
 		contentEl.createDiv({ cls: "wordfolio-review-answer", text: body });

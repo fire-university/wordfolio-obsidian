@@ -13,6 +13,7 @@ import { formsFor } from "./lemma";
 import type { DictEntry, Lookup, VocabCard } from "./types";
 
 const SENTENCE_HEADING = "## 我遇到它的地方";
+const USAGE_HEADING = "## 例句與用法";
 
 /** 檔名安全化。英文字本來就安全,但 ' 與 - 在某些檔案系統上要留意。 */
 function fileNameFor(word: string): string {
@@ -54,7 +55,12 @@ export class VocabStore {
 	 * 加入生詞本。已存在就只追加原句,不動正文。
 	 * 回傳 true 代表新建、false 代表這個字本來就有。
 	 */
-	async add(lookup: Lookup, sentence: string, captureSentence: boolean): Promise<boolean> {
+	async add(
+		lookup: Lookup,
+		sentence: string,
+		captureSentence: boolean,
+		usage?: string
+	): Promise<boolean> {
 		const { entry } = lookup;
 		const path = this.pathFor(entry.w);
 		const existing = this.app.vault.getAbstractFileByPath(path);
@@ -67,7 +73,7 @@ export class VocabStore {
 		await this.ensureFolder();
 		await this.app.vault.create(
 			path,
-			this.renderNote(entry, captureSentence ? sentence : "")
+			this.renderNote(entry, captureSentence ? sentence : "", usage)
 		);
 		this.index.add(fileNameFor(entry.w));
 		return true;
@@ -99,7 +105,7 @@ export class VocabStore {
 
 	// ------------------------------------------------------------ 內容
 
-	private renderNote(entry: DictEntry, sentence: string): string {
+	private renderNote(entry: DictEntry, sentence: string, usage?: string): string {
 		const today = new Date().toISOString().slice(0, 10);
 		const fm: string[] = [
 			"---",
@@ -135,8 +141,19 @@ export class VocabStore {
 			if (line.trim()) body.push(line.trim(), "");
 		}
 
+		if (entry.def) {
+			body.push("## 英英釋義", "");
+			for (const line of entry.def.split("\\n")) {
+				if (line.trim()) body.push(`- ${line.trim()}`);
+			}
+			body.push("");
+		}
+
 		const forms = formsFor(entry.exch);
 		if (forms.length) body.push(`**變化**：${forms.join(" / ")}`, "");
+
+		// Claude 生成過的例句與用法。花過的 token 就留著,複習時直接看得到。
+		if (usage) body.push(USAGE_HEADING, "", usage.trim(), "");
 
 		body.push(SENTENCE_HEADING, "");
 		if (sentence) body.push(`> ${sentence.replace(/\n/g, " ")}`, "");

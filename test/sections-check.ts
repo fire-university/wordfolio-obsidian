@@ -60,6 +60,12 @@ check(
 );
 check("英英釋義預設開啟", DEFAULT_ENABLED.english === true, "79.7% 的詞條有這份資料，關掉是浪費");
 check("考試標籤預設關閉", DEFAULT_ENABLED.exams === false, "一般閱讀是雜訊");
+check("例句與用法預設關閉", DEFAULT_ENABLED.usage === false, "每個字要花 token，讓使用者自己決定");
+check(
+	"舊使用者升級後會拿到 usage 區塊",
+	normalizeOrder(["phonetics", "translation"]).includes("usage"),
+	"這是 normalizeOrder 存在的理由"
+);
 
 console.log("\n搬移");
 const base: SectionId[] = ["phonetics", "translation", "english"];

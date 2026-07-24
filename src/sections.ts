@@ -11,7 +11,8 @@ export type SectionId =
 	| "frequency" // 詞頻與分級(柯林斯星級、Oxford 3000、BNC、COCA)
 	| "exams" // 考試標籤(cet4、toefl、gre…)
 	| "forms" // 變化形清單
-	| "claude"; // 問 Claude:在這句話裡是什麼意思
+	| "claude" // 問 Claude:在這句話裡是什麼意思
+	| "usage"; // 例句、常見搭配、近義詞辨析(Claude 生成)
 
 /** 全部區塊,照預設順序。設定裡的排序以這個為起點。 */
 export const ALL_SECTIONS: SectionId[] = [
@@ -23,6 +24,7 @@ export const ALL_SECTIONS: SectionId[] = [
 	"exams",
 	"forms",
 	"claude",
+	"usage",
 ];
 
 /**
@@ -43,6 +45,8 @@ export const DEFAULT_ENABLED: Record<SectionId, boolean> = {
 	exams: false,
 	forms: true,
 	claude: true,
+	// usage 預設關:每個字要花 token,先讓使用者自己決定要不要開。
+	usage: false,
 };
 
 /** i18n 的 key,設定頁與說明共用。 */

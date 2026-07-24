@@ -164,6 +164,8 @@ export interface TooltipCallbacks {
 	onAdd: (lookup: Lookup, sentence: string) => void;
 	/** 點「在這句話裡是什麼意思」;回傳解釋文字 */
 	onAsk?: (lookup: Lookup, sentence: string) => Promise<string>;
+	/** 點「例句與用法」;回傳例句、搭配、辨析 */
+	onUsage?: (lookup: Lookup) => Promise<string>;
 	/** 這個字是不是已經在生詞本裡了 */
 	isSaved: (word: string) => boolean;
 }
@@ -341,30 +343,51 @@ export class WordTooltip {
 			// 一定要按才會呼叫 Claude,hover 自動觸發會滑一排字燒一排 token。
 			case "claude": {
 				if (!this.cb.onAsk) return;
-				const ask = this.el.createEl("button", {
-					cls: "wordfolio-ask",
-					text: `✦ ${t("tooltip_ask_claude")}`,
-				});
-				ask.onclick = async () => {
-					ask.disabled = true;
-					ask.textContent = t("tooltip_asking");
-					try {
-						const answer = await this.cb.onAsk!(lookup, hit.sentence);
-						ask.remove();
-						this.el.createDiv({ cls: "wordfolio-claude", text: answer });
-						this.position(hit.rect);
-					} catch (e) {
-						ask.disabled = false;
-						ask.textContent = `✦ ${t("tooltip_ask_claude")}`;
-						this.el.createDiv({
-							cls: "wordfolio-error",
-							text: e instanceof Error ? e.message : String(e),
-						});
-					}
-				};
+				this.claudeButton(
+					t("tooltip_ask_claude"),
+					() => this.cb.onAsk!(lookup, hit.sentence),
+					hit
+				);
+				return;
+			}
+
+			case "usage": {
+				if (!this.cb.onUsage) return;
+				this.claudeButton(t("tooltip_usage"), () => this.cb.onUsage!(lookup), hit);
 				return;
 			}
 		}
+	}
+
+	/** 兩顆 Claude 按鈕的共用行為:按下去 → 顯示進行中 → 換成結果或錯誤。 */
+	private claudeButton(
+		label: string,
+		run: () => Promise<string>,
+		hit: HoverHit
+	): void {
+		const btn = this.el.createEl("button", {
+			cls: "wordfolio-ask",
+			text: `✦ ${label}`,
+		});
+		btn.onclick = async () => {
+			btn.disabled = true;
+			btn.textContent = t("tooltip_asking");
+			try {
+				const answer = await run();
+				btn.remove();
+				this.el.createDiv({ cls: "wordfolio-claude", text: answer });
+				// 內容變高了,重新定位免得掉出視窗外。
+				this.position(hit.rect);
+			} catch (e) {
+				btn.disabled = false;
+				btn.textContent = `✦ ${label}`;
+				this.el.createDiv({
+					cls: "wordfolio-error",
+					text: e instanceof Error ? e.message : String(e),
+				});
+				this.position(hit.rect);
+			}
+		};
 	}
 
 	private accent(
