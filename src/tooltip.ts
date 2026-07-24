@@ -40,17 +40,35 @@ const INFLECTION_LABEL_ZH: Record<InflectionKind, string> = {
 	lemma: "變化形",
 };
 
-// 這些容器裡不查:程式碼、frontmatter、屬性面板、以及浮窗自己。
+// 第一道關卡:白名單。只在「筆記內容」裡查。
+//
+// 一開始是用黑名單(想到一種不該觸發的地方就加一條排除),結果一直漏——
+// 程式碼區塊漏了,Obsidian 自己的 vault 切換選單也漏了。問題出在思路:
+// **Obsidian 的 UI 是無界的**(選單、側邊欄、狀態列、分頁標題、檔案總管、
+// 搜尋結果、設定畫面…),列不完。
+//
+// 反過來就有界了:筆記內容只會出現在這幾個容器裡,其餘一律不是內文。
+//   .cm-content            編輯／即時預覽(CodeMirror 6 的可編輯區)
+//   .markdown-preview-view 閱讀模式
+//   .markdown-rendered     hover 預覽、Canvas 卡片等渲染出來的 Markdown
+const CONTENT_SELECTOR = ".cm-content, .markdown-preview-view, .markdown-rendered";
+
+// 第二道關卡:內容裡面仍要跳過的東西——程式碼、frontmatter、屬性面板。
 //
 // 為什麼不是一行 CSS selector:`code` / `pre` 只存在於**閱讀模式**的 DOM。
 // 在編輯／即時預覽模式下 CodeMirror 根本不產生那兩個標籤,而是給行加 class
-// (`HyperMD-codeblock` 之類),所以只比對標籤會整個漏掉——這正是 2026-07-23
+// (`HyperMD-codeblock` 之類),所以只比對標籤會整個漏掉——這正是 2026-07-24
 // 回報「程式碼區塊裡還是會跳浮窗」的成因。
 //
 // 改成往上走祖先鏈,同時看標籤與 class **字串內容**:任何 class 含 "code" 的
 // 元素都當成程式碼。這樣不依賴記住 Obsidian 目前叫什麼名字,它改版換名也不會壞。
 const SKIP_TAGS = new Set(["CODE", "PRE", "KBD", "SAMP", "TEXTAREA", "INPUT"]);
 const SKIP_CLASS_PARTS = ["code", "frontmatter", "metadata", "wordfolio-tooltip"];
+
+/** 這個元素是不是在筆記內容裡(而不是 Obsidian 的介面)。 */
+export function inNoteContent(el: Element | null): boolean {
+	return !!el?.closest?.(CONTENT_SELECTOR);
+}
 
 export function inSkippedContext(start: Element | null): boolean {
 	for (let n: Element | null = start; n; n = n.parentElement) {
@@ -85,7 +103,7 @@ function sentenceAround(text: string, offset: number): string {
 /** 用畫面座標找出底下的英文字。找不到(空白、非英文、被排除的容器)回 null。 */
 export function hitTest(x: number, y: number): HoverHit | null {
 	const el = document.elementFromPoint(x, y);
-	if (!el || inSkippedContext(el)) return null;
+	if (!el || !inNoteContent(el) || inSkippedContext(el)) return null;
 
 	// Electron 是 Chromium,用 WebKit 系的 caretRangeFromPoint。
 	const caret = (document as Document & {
@@ -97,8 +115,9 @@ export function hitTest(x: number, y: number): HoverHit | null {
 	if (node.nodeType !== Node.TEXT_NODE) return null;
 
 	// caretRangeFromPoint 落到的文字節點未必在 elementFromPoint 那個元素底下
-	// (游標壓在邊界時會差一個元素),所以實際咬到的位置要再驗一次。
-	if (inSkippedContext(node.parentElement)) return null;
+	// (游標壓在邊界時會差一個元素),所以實際咬到的位置兩道關卡都要再驗一次。
+	const parent = node.parentElement;
+	if (!inNoteContent(parent) || inSkippedContext(parent)) return null;
 
 	const text = node.nodeValue ?? "";
 	const offset = caret.startOffset;
