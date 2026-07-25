@@ -110,6 +110,33 @@ export class Dictionary {
 		return out;
 	}
 
+	/**
+	 * 查片語(使用者選取多個字時走這條)。
+	 *
+	 * 片語存在獨立的 p{letter}.json,只有這裡會載入——單字 hover 不碰,
+	 * 所以高頻的單字查詢不受片語資料量拖累。
+	 *
+	 * 只做正規化後的精確比對:多個空白併一個、大小寫忽略、去頭尾標點。
+	 * 不做詞形還原(片語的變化形太發散,ECDICT 本來就分開收「give up / gave up」)。
+	 */
+	async lookupPhrase(text: string): Promise<DictEntry | null> {
+		if (!this.ready) return null;
+
+		const phrase = text
+			.toLowerCase()
+			.replace(/[^a-z'\s-]/g, " ")
+			.replace(/\s+/g, " ")
+			.trim();
+		if (!phrase.includes(" ")) return null; // 單字走 lookup(),不走這裡
+
+		const first = phrase[0];
+		if (first < "a" || first > "z") return null;
+
+		// 用同一套 shard 快取。片語 key 是 "pa"/"pb"…,不會跟單字的 "a"/"b" 撞。
+		const shard = await this.shard(`p${first}`);
+		return shard?.[phrase] ?? null;
+	}
+
 	/** 測試與除錯用:清掉已載入的 shard。 */
 	unloadShards(): void {
 		this.shards.clear();

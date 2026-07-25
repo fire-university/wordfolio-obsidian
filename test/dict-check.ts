@@ -121,6 +121,27 @@ async function main() {
 	check("unnerve 列出變化形", forms.length >= 3, forms.join(" / "));
 	check("變化形不含 0:/1: 的反向資訊", !forms.some((f) => f.length <= 1), forms.join(" / "));
 
+	// --- 片語 ---
+	console.log("\n片語查詢");
+	const phrases: [string, string][] = [
+		["give up", "放棄"],
+		["make sense", "意義"],
+		["look forward to", "期"],
+	];
+	for (const [phrase, expect] of phrases) {
+		const e = await dict.lookupPhrase(phrase);
+		check(`${phrase} 查得到`, !!e && e.tr.includes(expect), e ? e.tr.split("\\n")[0] : "查無");
+	}
+	// 大小寫、多重空白、頭尾標點都要正規化到同一個 key
+	check("大小寫不敏感", !!(await dict.lookupPhrase("Give Up")), "Give Up");
+	check("多重空白併一個", !!(await dict.lookupPhrase("give   up")), "give   up");
+	check("去頭尾標點", !!(await dict.lookupPhrase("give up.")), "give up.");
+	// 單字不該走片語查詢(交給 lookup 做詞形還原)
+	check("單字不從片語庫查", (await dict.lookupPhrase("give")) === null, "give 應回 null");
+	// 冷僻搭配不該被收進來(組成字雖常見,但整體是隨機組合的長尾)
+	const junk = await dict.lookupPhrase("give window");
+	check("隨機組合查無", junk === null, junk ? junk.tr : "null");
+
 	// --- 從句子裡抓字 ---
 	console.log("\n游標抓字");
 	const sentence = "It was an unnerving, well-timed question.";

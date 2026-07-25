@@ -181,7 +181,10 @@ function main() {
 	console.log(`  en_UK ${ukIpa.size.toLocaleString()} · en_US ${usIpa.size.toLocaleString()}`);
 
 	const shards = new Map(); // shardKey → { word: entry }
+	const phraseShards = new Map(); // p{letter} → { phrase: entry };單字與片語分開存
 	const inflect = new Map(); // 變化形 → [原形, 類型]
+	const keptWords = new Set(); // 通過篩選的單字(小寫),片語篩選要用
+	const phraseCandidates = []; // 含空格的詞條,單字全掃完才知道哪些留
 
 	let total = 0;
 	let kept = 0;
@@ -242,9 +245,23 @@ function main() {
 			}
 		}
 
-		// 釋義篩選:沒有中文釋義的一律不要;剩下的用詞頻/分級/考試標籤過濾掉
-		// 只有 ECDICT 自動抓來、沒人用得到的長尾。
+		// 釋義篩選:沒有中文釋義的一律不要。
 		if (!translation.trim()) continue;
+
+		// 片語(含空格)另外處理:它們幾乎都沒有詞頻資料,套單字那套篩選會被全砍。
+		// 但「give up / make sense / on the other hand」正是使用者選取時最想查的。
+		// 先收下來,等單字全掃完、知道哪些是常用字,再決定哪些片語留(見下方)。
+		if (w.includes(" ")) {
+			phraseCandidates.push({
+				w,
+				lower,
+				tr: translation.trim(),
+				def: definition.trim(),
+			});
+			continue;
+		}
+
+		// 單字:用詞頻/分級/考試標籤過濾掉只有 ECDICT 自動抓來、沒人用得到的長尾。
 		if (!(frq > 0 || bnc > 0 || tag.length || collins >= 1 || oxford)) continue;
 
 		const uk = ukIpa.get(lower);
@@ -268,10 +285,43 @@ function main() {
 		const key = shardKey(w);
 		if (!shards.has(key)) shards.set(key, {});
 		shards.get(key)[lower] = entry;
+		keptWords.add(lower);
 		kept++;
 
 		if (kept % 20000 === 0) process.stdout.write(`\r  kept ${kept.toLocaleString()} …`);
 	}
+
+	// 片語:2–4 個字,且每個字母組成的字都是「留下來的常用單字」。
+	// 這樣 give up(give+up 都常用)留,冷僻搭配自然被擋掉,不必靠詞頻。
+	// of/the/up 這類功能詞本來就過了單字篩選,所以在 keptWords 裡,不用特例。
+	//
+	// 存進獨立的 phraseShards——片語只在使用者「選取」時才查(低頻、刻意),
+	// 跟單字的 hover(高頻)存取頻率完全不同。混在一起會讓 s.json 之類的單字
+	// shard 從 1.7MB 漲到 3.6MB,拖慢每一次 hover。分開存,單字那條路不受影響。
+	console.log("\nFiltering phrases …");
+	// ECDICT 的詞典式佔位符,使用者選取時不可能框到這些,收了只是雜訊。
+	const PLACEHOLDERS = new Set(["sb", "sth", "one's", "oneself", "sb's", "sth's"]);
+	let keptPhrase = 0;
+	for (const p of phraseCandidates) {
+		const tokens = p.lower.split(/\s+/).filter(Boolean);
+		if (tokens.length < 2 || tokens.length > 4) continue;
+		if (tokens.some((tok) => PLACEHOLDERS.has(tok))) continue;
+		const allCommon = tokens.every((tok) => {
+			// 非純字母的片段(…、數字)不參與判斷,直接放行。
+			if (!/^[a-z]+$/.test(tok)) return true;
+			return keptWords.has(tok);
+		});
+		if (!allCommon) continue;
+
+		const entry = { w: p.w, tr: toTraditional(p.tr) };
+		if (p.def) entry.def = p.def;
+
+		const key = `p${shardKey(p.w)}`;
+		if (!phraseShards.has(key)) phraseShards.set(key, {});
+		phraseShards.get(key)[p.lower] = entry;
+		keptPhrase++;
+	}
+	console.log(`  kept ${keptPhrase.toLocaleString()} of ${phraseCandidates.length.toLocaleString()} phrases`);
 
 	// lemma.en.txt 補不規則變化(be → is/was/are/were …),ECDICT 的 exchange 欄漏掉的。
 	console.log("\nMerging lemma.en.txt …");
@@ -306,20 +356,25 @@ function main() {
 	const meta = {
 		version: new Date().toISOString().slice(0, 10),
 		entries: kept,
+		phrases: keptPhrase,
 		inflections: inflect.size,
 		shards: {},
 	};
 
-	console.log("\nWriting shards …");
-	const keys = [...shards.keys()].sort();
-	for (const key of keys) {
+	const writeShard = (map, key) => {
 		const file = `${key}.json`;
-		const json = JSON.stringify(shards.get(key));
+		const json = JSON.stringify(map.get(key));
 		fs.writeFileSync(path.join(OUT, file), json);
 		meta.shards[file] = crypto.createHash("sha256").update(json).digest("hex");
 		const kb = (Buffer.byteLength(json) / 1024).toFixed(0);
-		console.log(`  ${file.padEnd(11)} ${Object.keys(shards.get(key)).length.toString().padStart(7)} entries  ${kb.padStart(6)} KB`);
-	}
+		console.log(`  ${file.padEnd(11)} ${Object.keys(map.get(key)).length.toString().padStart(7)} entries  ${kb.padStart(6)} KB`);
+	};
+
+	console.log("\nWriting word shards …");
+	for (const key of [...shards.keys()].sort()) writeShard(shards, key);
+
+	console.log("Writing phrase shards …");
+	for (const key of [...phraseShards.keys()].sort()) writeShard(phraseShards, key);
 
 	const inflectJson = JSON.stringify(Object.fromEntries(inflect));
 	fs.writeFileSync(path.join(OUT, "inflect.json"), inflectJson);

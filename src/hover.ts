@@ -17,16 +17,21 @@
 // 另外提供「點外面才關」模式:要點喇叭、加生詞本、等 Claude 回覆時,
 // 不該有個計時器在跟使用者賽跑。
 
-import { hitTest, HoverHit, WordTooltip, type ViewConfig } from "./tooltip";
+import { hitTest, HoverHit, WordTooltip, inNoteContent, type ViewConfig } from "./tooltip";
 import type { Lookup } from "./types";
 
 /** 浮窗怎麼關:移開就關(有寬限期) / 點浮窗外面才關 */
 export type DismissMode = "delay" | "click_outside";
 
+/** 怎麼觸發:滑過去 / 選取放開 / 兩者 */
+export type TriggerMode = "hover" | "select" | "both";
+
 /** 安全區的寬度。浮窗定位時跟單字之間留 6px,這裡給足餘裕。 */
 const SAFE_MARGIN = 24;
 
 export interface HoverOptions {
+	/** 觸發方式:hover / select / both */
+	triggerMode: () => TriggerMode;
 	/** 停在單字上多久才跳浮窗 */
 	delay: () => number;
 	/** 離開之後多久才關(僅 delay 模式) */
@@ -34,6 +39,8 @@ export interface HoverOptions {
 	dismissMode: () => DismissMode;
 	enabled: () => boolean;
 	lookup: (word: string) => Promise<Lookup | null>;
+	/** 查選取的文字(單字或片語);回傳可直接餵給浮窗的結果 */
+	lookupSelection: (text: string) => Promise<Lookup | null>;
 	tooltip: WordTooltip;
 	view: () => ViewConfig;
 }
@@ -49,8 +56,18 @@ export class HoverController {
 
 	// ------------------------------------------------------------ 事件
 
+	private hoverOn(): boolean {
+		const m = this.opts.triggerMode();
+		return m === "hover" || m === "both";
+	}
+
+	private selectOn(): boolean {
+		const m = this.opts.triggerMode();
+		return m === "select" || m === "both";
+	}
+
 	private onMouseMove = (e: MouseEvent) => {
-		if (!this.opts.enabled()) return;
+		if (!this.opts.enabled() || !this.hoverOn()) return;
 
 		const sticky = this.opts.dismissMode() === "click_outside";
 
@@ -99,6 +116,35 @@ export class HoverController {
 		this.close();
 	};
 
+	/** select 模式:框一段文字放開滑鼠 → 查那段(單字或片語)。 */
+	private onMouseUp = (e: MouseEvent) => {
+		if (!this.opts.enabled() || !this.selectOn()) return;
+		if (this.opts.tooltip.contains(e.target)) return; // 在浮窗裡選字不算
+
+		// mouseup 後 selection 才穩定,延一個 tick 再讀。
+		window.setTimeout(() => {
+			const sel = window.getSelection();
+			if (!sel || sel.isCollapsed) return;
+
+			const text = sel.toString().trim();
+			// 太長的多半是整段誤選,不是要查詞;放行 1–6 個字。
+			if (!text || text.length > 80) return;
+			if (text.split(/\s+/).length > 6) return;
+			if (!/[A-Za-z]/.test(text)) return;
+
+			// 選取範圍要落在筆記內容裡,不是介面。
+			const anchor = sel.anchorNode;
+			const el =
+				anchor?.nodeType === Node.ELEMENT_NODE
+					? (anchor as Element)
+					: anchor?.parentElement ?? null;
+			if (!inNoteContent(el)) return;
+
+			const rect = sel.getRangeAt(0).getBoundingClientRect();
+			void this.triggerSelection(text, rect);
+		}, 0);
+	};
+
 	private onScroll = () => this.close();
 
 	private onKeyDown = (e: KeyboardEvent) => {
@@ -115,6 +161,7 @@ export class HoverController {
 	attach(): void {
 		document.addEventListener("mousemove", this.onMouseMove, { passive: true });
 		document.addEventListener("mousedown", this.onPointerDown, { capture: true });
+		document.addEventListener("mouseup", this.onMouseUp);
 		document.addEventListener("scroll", this.onScroll, { passive: true, capture: true });
 		document.addEventListener("keydown", this.onKeyDown);
 		window.addEventListener("blur", this.onBlur);
@@ -125,6 +172,7 @@ export class HoverController {
 		this.clearCloseTimer();
 		document.removeEventListener("mousemove", this.onMouseMove);
 		document.removeEventListener("mousedown", this.onPointerDown, { capture: true });
+		document.removeEventListener("mouseup", this.onMouseUp);
 		document.removeEventListener("scroll", this.onScroll, { capture: true });
 		document.removeEventListener("keydown", this.onKeyDown);
 		window.removeEventListener("blur", this.onBlur);
@@ -142,6 +190,21 @@ export class HoverController {
 		this.currentWord = hit.word;
 		this.opts.tooltip.show(result, hit, this.opts.view());
 		return true;
+	}
+
+	/** 選取觸發:查整段選取(單字或片語),浮窗貼在選取範圍下方。 */
+	private async triggerSelection(text: string, rect: DOMRect): Promise<void> {
+		const gen = ++this.generation;
+		const result = await this.opts.lookupSelection(text);
+		if (gen !== this.generation) return;
+		if (!result) {
+			// 選了字卻查不到:安靜關掉。選取本身是明確動作,但查無就別硬跳。
+			this.close();
+			return;
+		}
+		this.clearCloseTimer();
+		this.currentWord = text;
+		this.opts.tooltip.show(result, { word: text, sentence: text, rect }, this.opts.view());
 	}
 
 	private async trigger(hit: HoverHit): Promise<void> {

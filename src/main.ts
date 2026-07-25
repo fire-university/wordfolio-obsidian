@@ -12,7 +12,7 @@ import {
 import { t, setLang, LangSetting, currentLang } from "./i18n";
 import { Dictionary } from "./dict";
 import { WordTooltip } from "./tooltip";
-import { HoverController, type DismissMode } from "./hover";
+import { HoverController, type DismissMode, type TriggerMode } from "./hover";
 import { Audio } from "./audio";
 import { VocabStore } from "./vocab";
 import { ReviewModal } from "./review";
@@ -72,11 +72,13 @@ export default class WordFolioPlugin extends Plugin {
 		});
 
 		this.hover = new HoverController({
+			triggerMode: () => this.settings.triggerMode,
 			delay: () => this.settings.hoverDelay,
 			closeDelay: () => this.settings.closeDelay,
 			dismissMode: () => this.settings.dismissMode,
-			enabled: () => this.settings.hoverEnabled && this.dict.installed,
+			enabled: () => this.dict.installed,
 			lookup: (word) => this.dict.lookup(word),
+			lookupSelection: (text) => this.lookupSelection(text),
 			tooltip: this.tooltip,
 			view: () => ({
 				order: normalizeOrder(this.settings.sectionOrder),
@@ -179,6 +181,27 @@ export default class WordFolioPlugin extends Plugin {
 		if (!shown) new Notice(t("notice_not_found", { word }));
 	}
 
+	/**
+	 * 查選取的文字。單字就走一般查詢(含詞形還原);多個字先查離線片語庫,
+	 * 查不到才用 Claude 翻譯整個片語——大部分常用片語 ECDICT 有,不必每次燒 token。
+	 */
+	private async lookupSelection(text: string): Promise<Lookup | null> {
+		const words = text.trim().split(/\s+/);
+		if (words.length === 1) return this.dict.lookup(words[0]);
+
+		const entry = await this.dict.lookupPhrase(text);
+		if (entry) return { entry, surface: text };
+
+		// 離線庫沒有:交給 Claude 生一個臨時詞條(有 key 才行)。
+		if (!this.claude.available) return null;
+		try {
+			const tr = await this.claude.translatePhrase(text);
+			return { entry: { w: text, tr }, surface: text };
+		} catch {
+			return null;
+		}
+	}
+
 	private async addToVocab(lookup: Lookup, sentence: string): Promise<void> {
 		try {
 			const created = await this.vocab.add(
@@ -214,6 +237,13 @@ export default class WordFolioPlugin extends Plugin {
 	async loadSettings(): Promise<void> {
 		const data = (await this.loadData()) as Partial<WordFolioSettings> | null;
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, data ?? {});
+
+		// 遷移:triggerMode 之前叫 hoverEnabled(布林)。舊使用者若關掉過 hover,
+		// 沿用其意圖;沒有 triggerMode 欄位又沒關過 hover 的,維持預設 hover。
+		if (data && data.triggerMode === undefined && data.hoverEnabled === false) {
+			this.settings.triggerMode = "select";
+			await this.saveSettings();
+		}
 	}
 
 	async saveSettings(): Promise<void> {
@@ -227,6 +257,34 @@ class WordFolioSettingTab extends PluginSettingTab {
 	constructor(app: App, plugin: WordFolioPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
+	}
+
+	/**
+	 * 帶單位的毫秒滑桿。Obsidian 的 setDynamicTooltip 只在拖動時顯示數值,
+	 * 放開就看不到——這裡把當前值直接寫進標題(「浮窗延遲 — 300 ms」),
+	 * 拖動時即時更新,不用整頁重繪。
+	 */
+	private msSlider(
+		container: HTMLElement,
+		name: string,
+		desc: string,
+		min: number,
+		max: number,
+		step: number,
+		get: () => number,
+		set: (v: number) => Promise<void>
+	): void {
+		const label = (v: number) => `${name} — ${v} ms`;
+		const setting = new Setting(container).setName(label(get())).setDesc(desc);
+		setting.addSlider((sl) =>
+			sl
+				.setLimits(min, max, step)
+				.setValue(get())
+				.onChange(async (v) => {
+					setting.setName(label(v)); // 只改標題文字,不重繪整頁
+					await set(v);
+				})
+		);
 	}
 
 	display(): void {
@@ -255,28 +313,38 @@ class WordFolioSettingTab extends PluginSettingTab {
 		new Setting(containerEl).setName(t("heading_lookup")).setHeading();
 
 		new Setting(containerEl)
-			.setName(t("set_hover_name"))
-			.setDesc(t("set_hover_desc"))
-			.addToggle((tg) =>
-				tg.setValue(s.hoverEnabled).onChange(async (v) => {
-					s.hoverEnabled = v;
-					await this.plugin.saveSettings();
-				})
-			);
-
-		new Setting(containerEl)
-			.setName(t("set_hover_delay_name"))
-			.setDesc(t("set_hover_delay_desc"))
-			.addSlider((sl) =>
-				sl
-					.setLimits(100, 1000, 50)
-					.setValue(s.hoverDelay)
-					.setDynamicTooltip()
+			.setName(t("set_trigger_name"))
+			.setDesc(t("set_trigger_desc"))
+			.addDropdown((d) =>
+				d
+					.addOption("hover", t("trigger_hover"))
+					.addOption("select", t("trigger_select"))
+					.addOption("both", t("trigger_both"))
+					.setValue(s.triggerMode)
 					.onChange(async (v) => {
-						s.hoverDelay = v;
+						s.triggerMode = v as TriggerMode;
 						await this.plugin.saveSettings();
+						// hover 延遲滑桿只在有 hover 的模式下才有意義。
+						this.display();
 					})
 			);
+
+		// hover 延遲只在會用到 hover 的模式顯示。
+		if (s.triggerMode !== "select") {
+			this.msSlider(
+				containerEl,
+				t("set_hover_delay_name"),
+				t("set_hover_delay_desc"),
+				100,
+				1000,
+				50,
+				() => s.hoverDelay,
+				async (v) => {
+					s.hoverDelay = v;
+					await this.plugin.saveSettings();
+				}
+			);
+		}
 
 		new Setting(containerEl)
 			.setName(t("set_dismiss_name"))
@@ -295,19 +363,19 @@ class WordFolioSettingTab extends PluginSettingTab {
 			);
 
 		if (s.dismissMode === "delay") {
-			new Setting(containerEl)
-				.setName(t("set_close_delay_name"))
-				.setDesc(t("set_close_delay_desc"))
-				.addSlider((sl) =>
-					sl
-						.setLimits(100, 2000, 100)
-						.setValue(s.closeDelay)
-						.setDynamicTooltip()
-						.onChange(async (v) => {
-							s.closeDelay = v;
-							await this.plugin.saveSettings();
-						})
-				);
+			this.msSlider(
+				containerEl,
+				t("set_close_delay_name"),
+				t("set_close_delay_desc"),
+				100,
+				2000,
+				100,
+				() => s.closeDelay,
+				async (v) => {
+					s.closeDelay = v;
+					await this.plugin.saveSettings();
+				}
+			);
 		}
 
 		// --- 浮窗顯示什麼 ---

@@ -5,6 +5,7 @@ import type { DismissMode } from "./hover";
 import { ALL_SECTIONS, DEFAULT_ENABLED, type SectionId } from "./sections";
 
 export type AudioSource = "online_first" | "system_only";
+export type TriggerMode = "hover" | "select" | "both";
 export type ClaudeModel = "claude-haiku-4-5-20251001" | "claude-sonnet-5";
 
 export interface WordFolioSettings {
@@ -12,7 +13,11 @@ export interface WordFolioSettings {
 	language: LangSetting;
 
 	// --- 查詢 ---
+	// 怎麼觸發查詢:hover(滑過去)/ select(選取放開)/ both。
+	// select 模式下,選取多個字會查片語。
+	triggerMode: TriggerMode;
 	// 游標停在英文字上就跳浮窗。關掉只剩快捷鍵/右鍵。
+	// (保留給舊 data.json 遷移用;現以 triggerMode 為準。)
 	hoverEnabled: boolean;
 	// 停留多久才跳(ms)。太短會滑過去一路閃,太長會覺得慢。
 	hoverDelay: number;
@@ -48,6 +53,7 @@ export interface WordFolioSettings {
 
 export const DEFAULT_SETTINGS: WordFolioSettings = {
 	language: "auto",
+	triggerMode: "hover",
 	hoverEnabled: true,
 	hoverDelay: 300,
 	dismissMode: "delay",
