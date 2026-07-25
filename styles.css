@@ -179,6 +179,15 @@
 	font-size: 0.85em;
 }
 
+/* --- 設定滑桿旁的數值讀數 --- */
+.wordfolio-slider-value {
+	min-width: 4.5em;
+	margin-right: 0.75em;
+	color: var(--text-accent);
+	font-variant-numeric: tabular-nums; /* 位數變動時寬度不跳 */
+	text-align: right;
+}
+
 /* --- ribbon 徽章:今天有幾個字要複習 --- */
 .side-dock-ribbon-action.wordfolio-has-due {
 	position: relative;

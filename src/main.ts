@@ -260,9 +260,9 @@ class WordFolioSettingTab extends PluginSettingTab {
 	}
 
 	/**
-	 * 帶單位的毫秒滑桿。Obsidian 的 setDynamicTooltip 只在拖動時顯示數值,
-	 * 放開就看不到——這裡把當前值直接寫進標題(「浮窗延遲 — 300 ms」),
-	 * 拖動時即時更新,不用整頁重繪。
+	 * 帶單位的毫秒滑桿。數值讀數就緊貼在滑桿旁邊(不是放在標題),拖動時即時
+	 * 跟著手把跳動——這樣視線不用在標題和滑桿之間來回,調整當下就看得到現值。
+	 * Obsidian 內建的 setDynamicTooltip 只在拖動當下冒個泡泡、放開就消失,不夠。
 	 */
 	private msSlider(
 		container: HTMLElement,
@@ -274,14 +274,19 @@ class WordFolioSettingTab extends PluginSettingTab {
 		get: () => number,
 		set: (v: number) => Promise<void>
 	): void {
-		const label = (v: number) => `${name} — ${v} ms`;
-		const setting = new Setting(container).setName(label(get())).setDesc(desc);
+		const setting = new Setting(container).setName(name).setDesc(desc);
+		// 讀數放在滑桿前面(靠標題那側),拖動時更新文字。
+		const readout = setting.controlEl.createSpan({ cls: "wordfolio-slider-value" });
+		const paint = (v: number) => {
+			readout.setText(`${v} ms`);
+		};
+		paint(get());
 		setting.addSlider((sl) =>
 			sl
 				.setLimits(min, max, step)
 				.setValue(get())
 				.onChange(async (v) => {
-					setting.setName(label(v)); // 只改標題文字,不重繪整頁
+					paint(v);
 					await set(v);
 				})
 		);
