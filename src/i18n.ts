@@ -86,20 +86,15 @@ const EN: Dict = {
 	heading_lookup: "Lookup",
 	set_trigger_name: "How to look up",
 	set_trigger_desc:
-		"Hover rests the pointer on a word. Select highlights a word or phrase and looks it up when you release — this is how you look up phrases like \"give up\".",
+		"Hover: rest the pointer on a word and the tooltip appears, then fades when you move away. Select: highlight a word or phrase and a small icon appears — click it to open the tooltip, which stays until you click elsewhere. Select is how you look up phrases like \"give up\".",
 	trigger_hover: "Hover over a word",
 	trigger_select: "Select a word or phrase",
 	trigger_both: "Both",
 	set_hover_delay_name: "Hover delay",
 	set_hover_delay_desc: "Milliseconds to wait before the tooltip appears.",
-	set_dismiss_name: "Closing the tooltip",
-	set_dismiss_desc:
-		"With \"move away\", the tooltip waits a moment before closing and stays open if you move back onto it, so you can always reach the buttons. Choose \"click outside\" if you would rather it never close on its own.",
-	dismiss_delay: "Close when I move away",
-	dismiss_click_outside: "Close only when I click elsewhere",
-	set_close_delay_name: "Grace period",
+	set_close_delay_name: "Grace period (hover)",
 	set_close_delay_desc:
-		"How long the tooltip waits after the pointer leaves. Moving back onto it cancels the close. Longer is more forgiving.",
+		"For hover tooltips: how long it waits after the pointer leaves before closing. Moving back onto it cancels the close. Tooltips opened from a selection ignore this — they stay until you click away.",
 	heading_sections: "What the tooltip shows",
 	sections_desc:
 		"Turn parts on or off and reorder them. A part that has no data for a word simply doesn't appear.",
@@ -192,20 +187,15 @@ const ZH: Dict = {
 	heading_lookup: "查詢",
 	set_trigger_name: "怎麼觸發查詢",
 	set_trigger_desc:
-		"「滑過去」是游標停在單字上就查。「選取」是把單字或片語框起來、放開滑鼠才查——查 give up 這種片語就是用這個。",
+		"「滑過去」:游標停在單字上就跳浮窗,移開就淡出。「選取」:把單字或片語框起來,旁邊會浮現一個小圖示,點它才開浮窗,而且會一直留著,直到你點框外才關。查 give up 這種片語就是用選取。",
 	trigger_hover: "滑過單字",
 	trigger_select: "選取單字或片語",
 	trigger_both: "兩者都要",
 	set_hover_delay_name: "浮窗延遲",
 	set_hover_delay_desc: "游標停留幾毫秒後才跳浮窗。",
-	set_dismiss_name: "浮窗怎麼關",
-	set_dismiss_desc:
-		"選「移開就關」時,浮窗會等一下才關,而且滑回浮窗上就不關了,所以按鈕一定點得到。如果希望它完全不要自己消失,選「點外面才關」。",
-	dismiss_delay: "移開就關",
-	dismiss_click_outside: "點浮窗外面才關",
-	set_close_delay_name: "寬限期",
+	set_close_delay_name: "寬限期（滑過去模式）",
 	set_close_delay_desc:
-		"游標離開後等多久才真的關掉。期間滑回浮窗就會取消關閉。設長一點比較不會手滑關掉。",
+		"只影響滑過去打開的浮窗:游標離開後等多久才關,期間滑回浮窗就取消。選取打開的浮窗不受這個影響——它會一直留著,直到你點框外。",
 	heading_sections: "浮窗顯示什麼",
 	sections_desc: "勾選要顯示的內容並調整順序。某個字沒有那項資料時,該區塊自己不會出現。",
 	section_phonetics: "音標與發音",

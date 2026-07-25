@@ -1,7 +1,6 @@
 // 外掛設定。分四區:查詢(hover)、發音、生詞本、Claude。
 
 import type { LangSetting } from "./i18n";
-import type { DismissMode } from "./hover";
 import { ALL_SECTIONS, DEFAULT_ENABLED, type SectionId } from "./sections";
 
 export type AudioSource = "online_first" | "system_only";
@@ -21,10 +20,8 @@ export interface WordFolioSettings {
 	hoverEnabled: boolean;
 	// 停留多久才跳(ms)。太短會滑過去一路閃,太長會覺得慢。
 	hoverDelay: number;
-	// 浮窗怎麼關:移開就關(有寬限期) / 點浮窗外面才關。
-	dismissMode: DismissMode;
-	// 離開浮窗多久才真的關(ms,僅 delay 模式)。
-	// 這是寬限期不是「顯示時間」——期間滑回浮窗就會取消關閉。
+	// hover 打開的浮窗,游標離開多久才關(ms)。這是寬限期不是「顯示時間」——
+	// 期間滑回浮窗就會取消關閉。選取打開的浮窗是 sticky,不受這個影響。
 	closeDelay: number;
 	// --- 浮窗顯示什麼(沙拉查詞那套:每種內容一個區塊,可勾選可排序) ---
 	// 存字串陣列而不是 SectionId[],因為使用者的 data.json 可能是舊版本寫的,
@@ -56,7 +53,6 @@ export const DEFAULT_SETTINGS: WordFolioSettings = {
 	triggerMode: "hover",
 	hoverEnabled: true,
 	hoverDelay: 300,
-	dismissMode: "delay",
 	// 400ms 加上浮窗周圍的安全區,一般速度的滑鼠移動都來得及滑進去。
 	closeDelay: 400,
 	sectionOrder: [...ALL_SECTIONS],

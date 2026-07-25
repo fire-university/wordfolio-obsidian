@@ -12,7 +12,7 @@ import {
 import { t, setLang, LangSetting, currentLang } from "./i18n";
 import { Dictionary } from "./dict";
 import { WordTooltip } from "./tooltip";
-import { HoverController, type DismissMode, type TriggerMode } from "./hover";
+import { HoverController, type TriggerMode } from "./hover";
 import { Audio } from "./audio";
 import { VocabStore } from "./vocab";
 import { ReviewModal } from "./review";
@@ -75,7 +75,6 @@ export default class WordFolioPlugin extends Plugin {
 			triggerMode: () => this.settings.triggerMode,
 			delay: () => this.settings.hoverDelay,
 			closeDelay: () => this.settings.closeDelay,
-			dismissMode: () => this.settings.dismissMode,
 			enabled: () => this.dict.installed,
 			lookup: (word) => this.dict.lookup(word),
 			lookupSelection: (text) => this.lookupSelection(text),
@@ -351,23 +350,8 @@ class WordFolioSettingTab extends PluginSettingTab {
 			);
 		}
 
-		new Setting(containerEl)
-			.setName(t("set_dismiss_name"))
-			.setDesc(t("set_dismiss_desc"))
-			.addDropdown((d) =>
-				d
-					.addOption("delay", t("dismiss_delay"))
-					.addOption("click_outside", t("dismiss_click_outside"))
-					.setValue(s.dismissMode)
-					.onChange(async (v) => {
-						s.dismissMode = v as DismissMode;
-						await this.plugin.saveSettings();
-						// 寬限期滑桿只在「移開就關」時有意義。
-						this.display();
-					})
-			);
-
-		if (s.dismissMode === "delay") {
+		// 寬限期只跟 hover 有關(選取打開的浮窗是 sticky,點框外才關)。
+		if (s.triggerMode !== "select") {
 			this.msSlider(
 				containerEl,
 				t("set_close_delay_name"),

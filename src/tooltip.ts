@@ -157,6 +157,67 @@ export interface ViewConfig {
 	enabled: Record<SectionId, boolean>;
 }
 
+/**
+ * 選取後浮現的小 Logo(沙拉查詞式)。選字不會馬上跳浮窗——先出現這個,
+ * 點了才查。這樣選字做別的事(複製、標記)時不會被浮窗打擾。
+ */
+export class SelectionIcon {
+	private el: HTMLButtonElement;
+	private visible = false;
+
+	constructor(onClick: () => void) {
+		this.el = document.createElement("button");
+		this.el.className = "wordfolio-select-icon";
+		this.el.setAttribute("aria-label", "WordFolio");
+		// 一本翻開的書,跟外掛的 ribbon 圖示同一個意象。
+		this.el.innerHTML =
+			'<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>';
+		// mousedown 一定要擋掉,不然點 Logo 會先清掉選取,查詢就拿不到字了。
+		this.el.addEventListener("mousedown", (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+		});
+		this.el.addEventListener("click", (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			onClick();
+		});
+		this.el.style.display = "none";
+		document.body.appendChild(this.el);
+	}
+
+	get isOpen(): boolean {
+		return this.visible;
+	}
+
+	contains(target: EventTarget | null): boolean {
+		return target instanceof Node && this.el.contains(target);
+	}
+
+	show(anchor: DOMRect): void {
+		this.el.style.display = "";
+		this.visible = true;
+		const gap = 4;
+		const b = this.el.getBoundingClientRect();
+		let left = anchor.right + gap;
+		let top = anchor.bottom + gap;
+		if (left + b.width > window.innerWidth - gap) left = window.innerWidth - b.width - gap;
+		if (top + b.height > window.innerHeight - gap) top = anchor.top - b.height - gap;
+		this.el.style.left = `${Math.round(left)}px`;
+		this.el.style.top = `${Math.round(top)}px`;
+	}
+
+	hide(): void {
+		if (!this.visible) return;
+		this.visible = false;
+		this.el.style.display = "none";
+	}
+
+	destroy(): void {
+		this.el.remove();
+	}
+}
+
 export interface TooltipCallbacks {
 	/** 點喇叭 */
 	onSpeak: (word: string, accent: "uk" | "us") => void;

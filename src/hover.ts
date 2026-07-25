@@ -1,45 +1,43 @@
-// Hover 的生命週期:什麼時候開、什麼時候關、什麼時候不要理。
+// 浮窗的生命週期。
 //
-// 手感重點(hover 是高頻操作,這幾條決定會不會覺得煩):
-//   - 滑到「同一個字」不重跳,不然滑鼠一抖浮窗就重畫
-//   - 滑到別的字要重新計時,不能沿用上一個字的倒數
-//   - 游標移到浮窗上不能關,不然點不到喇叭
-//   - **離開單字之後要有寬限期**,不然使用者滑不進浮窗(見下方)
-//   - 有選取文字時不跳,那時使用者在做別的事
-//   - 捲動、打字、切換視窗一律關掉
+// 一條原則貫穿全部:**消失邏輯跟著「怎麼打開的」走,不是另一個要調的設定。**
+//   - hover 打開的  → 隨手一瞥,移開就(寬限期後)消失(transient)
+//   - 選取＋點 Logo → 刻意動作,賴著不走,只有點框外或 Esc 才關(sticky)
 //
-// 「滑不進浮窗」是這裡最容易做錯的一件事:浮窗跟單字之間隔著幾 px 的間隙,
-// 游標經過那段空白時既不在單字上、也不在浮窗上。若那一刻就關掉,使用者
-// 必須瞬間跨過去才進得了浮窗——實際上幾乎不可能。兩道防線一起解:
-//   1. 安全區:浮窗周圍一圈 margin 內都算「還在浮窗上」
-//   2. 寬限期:離開之後延遲一段時間才真的關,期間滑回來就取消
+// 鍵盤只有 Esc 會關浮窗。其他任何鍵一律不理——不然截圖的 Cmd+Shift+4
+// 一按下去浮窗就沒了。
 //
-// 另外提供「點外面才關」模式:要點喇叭、加生詞本、等 Claude 回覆時,
-// 不該有個計時器在跟使用者賽跑。
+// hover 手感(高頻操作,這幾條決定會不會覺得煩):
+//   - 滑到同一個字不重跳、滑到別的字重新計時
+//   - 游標在浮窗上(或周圍安全區)不關,不然滑不進去、點不到按鈕
+//   - 離開後留一段寬限期,期間滑回來就取消關閉
+//
+// 選取(沙拉查詞式):選字先浮現小 Logo,點了才開浮窗,不會選個字就被打擾。
 
-import { hitTest, HoverHit, WordTooltip, inNoteContent, type ViewConfig } from "./tooltip";
+import {
+	hitTest,
+	HoverHit,
+	WordTooltip,
+	SelectionIcon,
+	inNoteContent,
+	type ViewConfig,
+} from "./tooltip";
 import type { Lookup } from "./types";
 
-/** 浮窗怎麼關:移開就關(有寬限期) / 點浮窗外面才關 */
-export type DismissMode = "delay" | "click_outside";
-
-/** 怎麼觸發:滑過去 / 選取放開 / 兩者 */
+/** 怎麼觸發:滑過去 / 選取 / 兩者 */
 export type TriggerMode = "hover" | "select" | "both";
 
 /** 安全區的寬度。浮窗定位時跟單字之間留 6px,這裡給足餘裕。 */
 const SAFE_MARGIN = 24;
 
 export interface HoverOptions {
-	/** 觸發方式:hover / select / both */
 	triggerMode: () => TriggerMode;
-	/** 停在單字上多久才跳浮窗 */
+	/** 停在單字上多久才跳浮窗(hover) */
 	delay: () => number;
-	/** 離開之後多久才關(僅 delay 模式) */
+	/** 離開之後多久才關(hover 的寬限期) */
 	closeDelay: () => number;
-	dismissMode: () => DismissMode;
 	enabled: () => boolean;
 	lookup: (word: string) => Promise<Lookup | null>;
-	/** 查選取的文字(單字或片語);回傳可直接餵給浮窗的結果 */
 	lookupSelection: (text: string) => Promise<Lookup | null>;
 	tooltip: WordTooltip;
 	view: () => ViewConfig;
@@ -51,10 +49,15 @@ export class HoverController {
 	private currentWord = "";
 	/** 每次觸發帶一個序號,非同步查詢回來時比對,晚到的結果直接丟掉。 */
 	private generation = 0;
+	/** 目前這個浮窗是不是 sticky(選取/命令打開的)。hover 打開的為 false。 */
+	private sticky = false;
+	/** 選取後暫存,等點 Logo 才真的查。 */
+	private pending: { text: string; rect: DOMRect } | null = null;
+	private icon: SelectionIcon;
 
-	constructor(private opts: HoverOptions) {}
-
-	// ------------------------------------------------------------ 事件
+	constructor(private opts: HoverOptions) {
+		this.icon = new SelectionIcon(() => this.onIconClick());
+	}
 
 	private hoverOn(): boolean {
 		const m = this.opts.triggerMode();
@@ -66,10 +69,12 @@ export class HoverController {
 		return m === "select" || m === "both";
 	}
 
+	// ------------------------------------------------------------ 事件
+
 	private onMouseMove = (e: MouseEvent) => {
 		if (!this.opts.enabled() || !this.hoverOn()) return;
-
-		const sticky = this.opts.dismissMode() === "click_outside";
+		// sticky 浮窗開著時,hover 完全不插手——那是使用者刻意留住的。
+		if (this.sticky) return;
 
 		// 游標在浮窗上(或安全區內):維持現狀,讓使用者滑得進來、點得到按鈕。
 		if (
@@ -81,17 +86,16 @@ export class HoverController {
 			return;
 		}
 
-		// 使用者正在選字,那是別的意圖。
+		// 使用者正在選字,那是別的意圖(交給 select 那條路)。
 		const sel = window.getSelection();
 		if (sel && !sel.isCollapsed) {
-			if (!sticky) this.close();
+			this.close();
 			return;
 		}
 
 		const hit = hitTest(e.clientX, e.clientY);
 		if (!hit) {
-			// 已經離開浮窗與安全區了。sticky 模式維持開著,等使用者點外面。
-			if (!sticky) this.scheduleClose();
+			this.scheduleClose();
 			return;
 		}
 
@@ -108,18 +112,22 @@ export class HoverController {
 		this.openTimer = window.setTimeout(() => this.trigger(hit), this.opts.delay());
 	};
 
-	/** sticky 模式:點浮窗外面才關。 */
+	/** 收 Logo 與 sticky 浮窗的「點外面就關」。不分模式,永遠生效。 */
 	private onPointerDown = (e: MouseEvent) => {
-		if (this.opts.dismissMode() !== "click_outside") return;
-		if (!this.opts.tooltip.isOpen) return;
-		if (this.opts.tooltip.contains(e.target)) return;
-		this.close();
+		// 點 Logo 本身交給它自己的 click,這裡別動。
+		if (this.icon.contains(e.target)) return;
+		// 點在 Logo 以外 → 收掉 Logo。
+		this.icon.hide();
+		// sticky 浮窗:點浮窗以外就關。
+		if (this.sticky && this.opts.tooltip.isOpen && !this.opts.tooltip.contains(e.target)) {
+			this.close();
+		}
 	};
 
-	/** select 模式:框一段文字放開滑鼠 → 查那段(單字或片語)。 */
+	/** select:框一段文字放開滑鼠 → 浮現小 Logo(還不查)。 */
 	private onMouseUp = (e: MouseEvent) => {
 		if (!this.opts.enabled() || !this.selectOn()) return;
-		if (this.opts.tooltip.contains(e.target)) return; // 在浮窗裡選字不算
+		if (this.opts.tooltip.contains(e.target) || this.icon.contains(e.target)) return;
 
 		// mouseup 後 selection 才穩定,延一個 tick 再讀。
 		window.setTimeout(() => {
@@ -132,7 +140,6 @@ export class HoverController {
 			if (text.split(/\s+/).length > 6) return;
 			if (!/[A-Za-z]/.test(text)) return;
 
-			// 選取範圍要落在筆記內容裡,不是介面。
 			const anchor = sel.anchorNode;
 			const el =
 				anchor?.nodeType === Node.ELEMENT_NODE
@@ -140,23 +147,34 @@ export class HoverController {
 					: anchor?.parentElement ?? null;
 			if (!inNoteContent(el)) return;
 
-			const rect = sel.getRangeAt(0).getBoundingClientRect();
-			void this.triggerSelection(text, rect);
+			this.pending = { text, rect: sel.getRangeAt(0).getBoundingClientRect() };
+			this.icon.show(this.pending.rect);
 		}, 0);
 	};
 
-	private onScroll = () => this.close();
+	private onIconClick(): void {
+		const p = this.pending;
+		this.icon.hide();
+		if (p) void this.triggerSelection(p.text, p.rect);
+	}
 
-	private onKeyDown = (e: KeyboardEvent) => {
-		// sticky 模式只認 Esc——不然在浮窗裡等 Claude 回覆時隨手按個鍵就關了。
-		if (this.opts.dismissMode() === "click_outside") {
-			if (e.key === "Escape") this.close();
-			return;
-		}
+	private onScroll = () => {
+		this.icon.hide();
 		this.close();
 	};
 
-	private onBlur = () => this.close();
+	// 鍵盤:只有 Esc 關。其他鍵一律不理,不然截圖組合鍵一按浮窗就沒了。
+	private onKeyDown = (e: KeyboardEvent) => {
+		if (e.key === "Escape") {
+			this.icon.hide();
+			this.close();
+		}
+	};
+
+	private onBlur = () => {
+		this.icon.hide();
+		this.close();
+	};
 
 	attach(): void {
 		document.addEventListener("mousemove", this.onMouseMove, { passive: true });
@@ -170,6 +188,7 @@ export class HoverController {
 	detach(): void {
 		this.clearOpenTimer();
 		this.clearCloseTimer();
+		this.icon.destroy();
 		document.removeEventListener("mousemove", this.onMouseMove);
 		document.removeEventListener("mousedown", this.onPointerDown, { capture: true });
 		document.removeEventListener("mouseup", this.onMouseUp);
@@ -180,37 +199,38 @@ export class HoverController {
 
 	// ------------------------------------------------------------ 開關
 
-	/** 快捷鍵/右鍵走這條:略過延遲,直接對指定的字開浮窗。 */
+	/** 快捷鍵/命令走這條:略過延遲,直接對指定的字開浮窗,且是 sticky。 */
 	async showFor(hit: HoverHit): Promise<boolean> {
 		const gen = ++this.generation;
 		const result = await this.opts.lookup(hit.word);
 		if (gen !== this.generation) return false;
 		if (!result) return false;
 		this.clearCloseTimer();
+		this.sticky = true;
 		this.currentWord = hit.word;
 		this.opts.tooltip.show(result, hit, this.opts.view());
 		return true;
 	}
 
-	/** 選取觸發:查整段選取(單字或片語),浮窗貼在選取範圍下方。 */
+	/** 選取觸發:sticky,點框外或 Esc 才關。 */
 	private async triggerSelection(text: string, rect: DOMRect): Promise<void> {
 		const gen = ++this.generation;
 		const result = await this.opts.lookupSelection(text);
 		if (gen !== this.generation) return;
 		if (!result) {
-			// 選了字卻查不到:安靜關掉。選取本身是明確動作,但查無就別硬跳。
 			this.close();
 			return;
 		}
 		this.clearCloseTimer();
+		this.sticky = true;
 		this.currentWord = text;
 		this.opts.tooltip.show(result, { word: text, sentence: text, rect }, this.opts.view());
 	}
 
+	/** hover 觸發:transient,移開就(寬限期後)關。 */
 	private async trigger(hit: HoverHit): Promise<void> {
 		const gen = ++this.generation;
 		const result = await this.opts.lookup(hit.word);
-		// 查詢期間游標已經移到別處(或又觸發了一次):丟掉這個結果。
 		if (gen !== this.generation) return;
 
 		if (!result) {
@@ -219,11 +239,12 @@ export class HoverController {
 			return;
 		}
 
+		this.sticky = false;
 		this.currentWord = hit.word;
 		this.opts.tooltip.show(result, hit, this.opts.view());
 	}
 
-	/** 排一個延後關閉。期間滑回浮窗或安全區就會被取消。 */
+	/** 排一個延後關閉(只用於 hover transient)。滑回浮窗或安全區就取消。 */
 	private scheduleClose(): void {
 		this.clearOpenTimer();
 		if (!this.opts.tooltip.isOpen) return;
@@ -250,6 +271,7 @@ export class HoverController {
 		this.clearCloseTimer();
 		this.generation++;
 		this.currentWord = "";
+		this.sticky = false;
 		this.opts.tooltip.hide();
 	}
 }
