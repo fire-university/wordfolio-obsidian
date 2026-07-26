@@ -3,6 +3,8 @@
 import type { LangSetting } from "./i18n";
 import { ALL_SECTIONS, DEFAULT_ENABLED, type SectionId } from "./sections";
 
+import type { IconMode } from "./tooltip";
+
 export type AudioSource = "online_first" | "system_only";
 export type TriggerMode = "hover" | "select" | "both";
 export type ClaudeModel = "claude-haiku-4-5-20251001" | "claude-sonnet-5";
@@ -15,6 +17,10 @@ export interface WordFolioSettings {
 	// 怎麼觸發查詢:hover(滑過去)/ select(選取放開)/ both。
 	// select 模式下,選取多個字會查片語。
 	triggerMode: TriggerMode;
+	// 選取後那顆書本圖示怎麼展開浮窗:click(點一下)/ hover(停留)/ both。
+	iconMode: IconMode;
+	// 停留展開的秒數(ms)。
+	iconDwell: number;
 	// 游標停在英文字上就跳浮窗。關掉只剩快捷鍵/右鍵。
 	// (保留給舊 data.json 遷移用;現以 triggerMode 為準。)
 	hoverEnabled: boolean;
@@ -51,6 +57,8 @@ export interface WordFolioSettings {
 export const DEFAULT_SETTINGS: WordFolioSettings = {
 	language: "auto",
 	triggerMode: "hover",
+	iconMode: "both",
+	iconDwell: 1000,
 	hoverEnabled: true,
 	hoverDelay: 300,
 	// 400ms 加上浮窗周圍的安全區,一般速度的滑鼠移動都來得及滑進去。

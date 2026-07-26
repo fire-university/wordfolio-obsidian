@@ -21,6 +21,7 @@ import {
 	SelectionIcon,
 	inNoteContent,
 	type ViewConfig,
+	type IconMode,
 } from "./tooltip";
 import type { Lookup } from "./types";
 
@@ -39,6 +40,10 @@ export interface HoverOptions {
 	enabled: () => boolean;
 	lookup: (word: string) => Promise<Lookup | null>;
 	lookupSelection: (text: string) => Promise<Lookup | null>;
+	/** 選取圖示怎麼展開:點一下 / 停留 / 兩者 */
+	iconMode: () => IconMode;
+	/** 停留展開的秒數(ms) */
+	iconDwell: () => number;
 	tooltip: WordTooltip;
 	view: () => ViewConfig;
 }
@@ -56,7 +61,17 @@ export class HoverController {
 	private icon: SelectionIcon;
 
 	constructor(private opts: HoverOptions) {
-		this.icon = new SelectionIcon(() => this.onIconClick());
+		this.icon = new SelectionIcon(() => this.onIconOpen(), {
+			clickable: () => {
+				const m = this.opts.iconMode();
+				return m === "click" || m === "both";
+			},
+			hoverable: () => {
+				const m = this.opts.iconMode();
+				return m === "hover" || m === "both";
+			},
+			dwell: () => this.opts.iconDwell(),
+		});
 	}
 
 	private hoverOn(): boolean {
@@ -152,7 +167,8 @@ export class HoverController {
 		}, 0);
 	};
 
-	private onIconClick(): void {
+	// 點一下、或停留展開,都走這裡。
+	private onIconOpen(): void {
 		const p = this.pending;
 		this.icon.hide();
 		if (p) void this.triggerSelection(p.text, p.rect);

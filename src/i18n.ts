@@ -95,6 +95,14 @@ const EN: Dict = {
 	set_close_delay_name: "Grace period (hover)",
 	set_close_delay_desc:
 		"For hover tooltips: how long it waits after the pointer leaves before closing. Moving back onto it cancels the close. Tooltips opened from a selection ignore this — they stay until you click away.",
+	set_icon_mode_name: "Opening the selection icon",
+	set_icon_mode_desc:
+		"After you select text, a small book icon appears. Choose how it opens the tooltip: click it, rest on it, or either.",
+	icon_click: "Click the icon",
+	icon_hover: "Rest on the icon",
+	icon_both: "Either (click or rest)",
+	set_icon_dwell_name: "Rest delay (icon)",
+	set_icon_dwell_desc: "How long to rest on the book icon before the tooltip opens.",
 	heading_sections: "What the tooltip shows",
 	sections_desc:
 		"Turn parts on or off and reorder them. A part that has no data for a word simply doesn't appear.",
@@ -196,6 +204,14 @@ const ZH: Dict = {
 	set_close_delay_name: "寬限期（滑過去模式）",
 	set_close_delay_desc:
 		"只影響滑過去打開的浮窗:游標離開後等多久才關,期間滑回浮窗就取消。選取打開的浮窗不受這個影響——它會一直留著,直到你點框外。",
+	set_icon_mode_name: "選取圖示怎麼展開",
+	set_icon_mode_desc:
+		"選字之後會浮現一顆小書本圖示。選它怎麼展開浮窗:點一下、把滑鼠停在上面、或兩者都行。",
+	icon_click: "點一下圖示",
+	icon_hover: "滑鼠停在圖示上",
+	icon_both: "兩者都行（點或停留）",
+	set_icon_dwell_name: "停留秒數（圖示）",
+	set_icon_dwell_desc: "滑鼠停在書本圖示上多久,浮窗就自動展開。",
 	heading_sections: "浮窗顯示什麼",
 	sections_desc: "勾選要顯示的內容並調整順序。某個字沒有那項資料時,該區塊自己不會出現。",
 	section_phonetics: "音標與發音",

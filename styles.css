@@ -179,7 +179,7 @@
 	font-size: 0.85em;
 }
 
-/* --- 選取後浮現的小 Logo(沙拉查詞式) --- */
+/* --- 選取後浮現的小書本 Logo(沙拉查詞式) --- */
 .wordfolio-select-icon {
 	position: fixed;
 	z-index: var(--layer-tooltip, 60);
@@ -201,6 +201,57 @@
 .wordfolio-select-icon:hover {
 	background: var(--background-modifier-hover);
 	border-color: var(--interactive-accent);
+}
+
+/* 翻開的書:左頁靜止、右頁在 hover 時翻動。
+   perspective 讓 rotateY 有立體感,像一頁被掀起。 */
+.wf-book {
+	position: relative;
+	width: 15px;
+	height: 12px;
+	perspective: 60px;
+}
+
+.wf-page {
+	position: absolute;
+	top: 0;
+	width: 7px;
+	height: 12px;
+	box-sizing: border-box;
+	border: 1.4px solid currentColor;
+}
+
+.wf-page-left {
+	left: 0.5px;
+	border-right: none;
+	border-radius: 2px 0 0 2px;
+}
+
+.wf-page-right {
+	right: 0.5px;
+	border-left: none;
+	border-radius: 0 2px 2px 0;
+	/* 轉軸在書脊(左緣),整頁才會像繞著書脊翻。 */
+	transform-origin: left center;
+	backface-visibility: hidden;
+}
+
+/* 滑鼠移上去 → 右頁反覆翻動,直到移開。 */
+.wordfolio-select-icon:hover .wf-page-right {
+	animation: wf-page-flip 0.9s ease-in-out infinite;
+}
+
+@keyframes wf-page-flip {
+	0% { transform: rotateY(0deg); }
+	55% { transform: rotateY(-155deg); }
+	100% { transform: rotateY(0deg); }
+}
+
+/* 尊重「減少動態效果」的系統偏好。 */
+@media (prefers-reduced-motion: reduce) {
+	.wordfolio-select-icon:hover .wf-page-right {
+		animation: none;
+	}
 }
 
 /* --- 設定滑桿旁的數值讀數 --- */

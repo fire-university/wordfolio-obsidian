@@ -157,21 +157,39 @@ export interface ViewConfig {
 	enabled: Record<SectionId, boolean>;
 }
 
+/** 選取圖示怎麼展開浮窗:點一下 / 停留 / 兩者 */
+export type IconMode = "click" | "hover" | "both";
+
+export interface IconOptions {
+	/** 點一下能不能展開(click / both) */
+	clickable: () => boolean;
+	/** 停留能不能展開(hover / both) */
+	hoverable: () => boolean;
+	/** 停留多久展開(ms) */
+	dwell: () => number;
+}
+
 /**
- * 選取後浮現的小 Logo(沙拉查詞式)。選字不會馬上跳浮窗——先出現這個,
- * 點了才查。這樣選字做別的事(複製、標記)時不會被浮窗打擾。
+ * 選取後浮現的小書本 Logo(沙拉查詞式)。選字不會馬上跳浮窗——先出現這個,
+ * 點了(或停留)才查。這樣選字做別的事(複製、標記)時不會被浮窗打擾。
+ *
+ * 滑鼠移上去有翻頁動畫(純 CSS,`:hover` 觸發);若開了「停留展開」,停留超過
+ * dwell() 毫秒就自動展開,秒數可在設定調。
  */
 export class SelectionIcon {
 	private el: HTMLButtonElement;
 	private visible = false;
+	private dwellTimer: number | null = null;
 
-	constructor(onClick: () => void) {
+	constructor(onOpen: () => void, private opts: IconOptions) {
 		this.el = document.createElement("button");
 		this.el.className = "wordfolio-select-icon";
 		this.el.setAttribute("aria-label", "WordFolio");
-		// 一本翻開的書,跟外掛的 ribbon 圖示同一個意象。
+		// 一本翻開的書:靜止的左頁 + 會翻的右頁(右頁單獨一個元素才能做翻頁動畫)。
 		this.el.innerHTML =
-			'<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>';
+			'<span class="wf-book"><span class="wf-page wf-page-left"></span>' +
+			'<span class="wf-page wf-page-right"></span></span>';
+
 		// mousedown 一定要擋掉,不然點 Logo 會先清掉選取,查詢就拿不到字了。
 		this.el.addEventListener("mousedown", (e) => {
 			e.preventDefault();
@@ -180,8 +198,16 @@ export class SelectionIcon {
 		this.el.addEventListener("click", (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			onClick();
+			if (this.opts.clickable()) onOpen();
 		});
+		// 停留展開:移上去開始倒數,移開就取消。翻頁動畫走 CSS :hover,跟這無關。
+		this.el.addEventListener("mouseenter", () => {
+			if (!this.opts.hoverable()) return;
+			this.clearDwell();
+			this.dwellTimer = window.setTimeout(onOpen, this.opts.dwell());
+		});
+		this.el.addEventListener("mouseleave", () => this.clearDwell());
+
 		this.el.style.display = "none";
 		document.body.appendChild(this.el);
 	}
@@ -208,12 +234,21 @@ export class SelectionIcon {
 	}
 
 	hide(): void {
+		this.clearDwell();
 		if (!this.visible) return;
 		this.visible = false;
 		this.el.style.display = "none";
 	}
 
+	private clearDwell(): void {
+		if (this.dwellTimer !== null) {
+			window.clearTimeout(this.dwellTimer);
+			this.dwellTimer = null;
+		}
+	}
+
 	destroy(): void {
+		this.clearDwell();
 		this.el.remove();
 	}
 }

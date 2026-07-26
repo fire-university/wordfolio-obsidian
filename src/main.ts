@@ -13,6 +13,7 @@ import { t, setLang, LangSetting, currentLang } from "./i18n";
 import { Dictionary } from "./dict";
 import { WordTooltip } from "./tooltip";
 import { HoverController, type TriggerMode } from "./hover";
+import type { IconMode } from "./tooltip";
 import { Audio } from "./audio";
 import { VocabStore } from "./vocab";
 import { ReviewModal } from "./review";
@@ -78,6 +79,8 @@ export default class WordFolioPlugin extends Plugin {
 			enabled: () => this.dict.installed,
 			lookup: (word) => this.dict.lookup(word),
 			lookupSelection: (text) => this.lookupSelection(text),
+			iconMode: () => this.settings.iconMode,
+			iconDwell: () => this.settings.iconDwell,
 			tooltip: this.tooltip,
 			view: () => ({
 				order: normalizeOrder(this.settings.sectionOrder),
@@ -365,6 +368,42 @@ class WordFolioSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}
 			);
+		}
+
+		// 選取圖示怎麼展開——只在有選取的模式(select / both)下才有那顆圖示。
+		if (s.triggerMode !== "hover") {
+			new Setting(containerEl)
+				.setName(t("set_icon_mode_name"))
+				.setDesc(t("set_icon_mode_desc"))
+				.addDropdown((d) =>
+					d
+						.addOption("click", t("icon_click"))
+						.addOption("hover", t("icon_hover"))
+						.addOption("both", t("icon_both"))
+						.setValue(s.iconMode)
+						.onChange(async (v) => {
+							s.iconMode = v as IconMode;
+							await this.plugin.saveSettings();
+							// 停留秒數滑桿只在有停留的模式下才有意義。
+							this.display();
+						})
+				);
+
+			if (s.iconMode !== "click") {
+				this.msSlider(
+					containerEl,
+					t("set_icon_dwell_name"),
+					t("set_icon_dwell_desc"),
+					300,
+					3000,
+					100,
+					() => s.iconDwell,
+					async (v) => {
+						s.iconDwell = v;
+						await this.plugin.saveSettings();
+					}
+				);
+			}
 		}
 
 		// --- 浮窗顯示什麼 ---
