@@ -121,6 +121,23 @@ async function main() {
 	check("unnerve 列出變化形", forms.length >= 3, forms.join(" / "));
 	check("變化形不含 0:/1: 的反向資訊", !forms.some((f) => f.length <= 1), forms.join(" / "));
 
+	// --- 冷門領域標籤清理 ---
+	console.log("\n[計][醫] 噪音清理");
+	{
+		const { meaningfulLines } = await import("../src/lemma");
+		// be 底下的「[計] 後端, 匯流排允許」應被丟掉,留下正常釋義
+		const be = await dict.lookup("be");
+		const lines = be ? meaningfulLines(be.entry.tr) : [];
+		check("be 不再顯示 [計] 那行", !lines.some((l) => l.includes("匯流排")), lines.join(" / "));
+		check("be 仍保留正常釋義", lines.some((l) => l.includes("是")), lines.join(" / "));
+		// 只有領域標籤的冷僻詞:不能整個清空
+		check(
+			"純領域標籤詞不被清空",
+			meaningfulLines("[醫] 甚麼甚麼").length === 1,
+			"至少保留一行"
+		);
+	}
+
 	// --- 片語 ---
 	console.log("\n片語查詢");
 	const phrases: [string, string][] = [

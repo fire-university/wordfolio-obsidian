@@ -56,6 +56,24 @@ export function formsFor(exchange: string | undefined): string[] {
 	return out;
 }
 
+/**
+ * 把 ECDICT 釋義切成「有意義的行」,丟掉冷門領域標籤那種噪音。
+ *
+ * ECDICT 常夾帶 [計]（電腦）、[醫]、[法]、[網絡] 開頭的行,對常用字幾乎都是垃圾——
+ * be 底下的「[計] 後端, 匯流排允許」就是「bus enable」被硬翻的產物,毫無用處。
+ * 規則:只要有「不是領域標籤開頭」的正常行,就把領域標籤行全丟掉;若整個詞條只剩
+ * 領域標籤行(冷僻技術詞),那才保留——至少有東西可看。
+ */
+export function meaningfulLines(tr: string): string[] {
+	const lines = tr
+		.split("\\n")
+		.map((s) => s.trim())
+		.filter(Boolean);
+	const isDomainTag = (l: string) => /^\[[^\]]+\]/.test(l);
+	const plain = lines.filter((l) => !isDomainTag(l));
+	return plain.length ? plain : lines;
+}
+
 /** 從一段文字裡抓出 offset 位置所在的英文單字(含連字號與撇號)。 */
 export function wordAt(text: string, offset: number): { word: string; from: number; to: number } | null {
 	const isWordChar = (c: string) => /[A-Za-z'’-]/.test(c);

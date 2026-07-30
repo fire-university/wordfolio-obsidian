@@ -9,7 +9,7 @@
 // 追加到「我遇到它的地方」底下。
 
 import { App, TFile, normalizePath } from "obsidian";
-import { formsFor } from "./lemma";
+import { formsFor, meaningfulLines } from "./lemma";
 import type { DictEntry, Lookup, VocabCard } from "./types";
 
 const SENTENCE_HEADING = "## 我遇到它的地方";
@@ -137,8 +137,8 @@ export class VocabStore {
 		);
 
 		const body: string[] = [`# ${entry.w}`, ""];
-		for (const line of entry.tr.split("\\n")) {
-			if (line.trim()) body.push(line.trim(), "");
+		for (const line of meaningfulLines(entry.tr)) {
+			body.push(line, "");
 		}
 
 		if (entry.def) {

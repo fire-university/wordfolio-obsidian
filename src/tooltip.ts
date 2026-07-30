@@ -5,7 +5,7 @@
 // 不會有反應——而讀筆記多半是在閱讀模式。走 DOM 一套實作兩種模式都能用,
 // 代價是要自己處理定位與生命週期。
 
-import { formsFor } from "./lemma";
+import { formsFor, meaningfulLines } from "./lemma";
 import { t } from "./i18n";
 import type { SectionId } from "./sections";
 import type { Lookup, InflectionKind } from "./types";
@@ -383,8 +383,8 @@ export class WordTooltip {
 
 			case "translation": {
 				const box = this.el.createDiv({ cls: "wordfolio-translation" });
-				for (const line of entry.tr.split("\\n")) {
-					if (line.trim()) box.createDiv({ text: line.trim() });
+				for (const line of meaningfulLines(entry.tr)) {
+					box.createDiv({ text: line });
 				}
 				return;
 			}
@@ -403,8 +403,8 @@ export class WordTooltip {
 				if (!lookup.surfaceEntry) return;
 				const box = this.el.createDiv({ cls: "wordfolio-surface-sense" });
 				box.createSpan({ cls: "wordfolio-surface-word", text: hit.word });
-				for (const line of lookup.surfaceEntry.tr.split("\\n")) {
-					if (line.trim()) box.createDiv({ text: line.trim() });
+				for (const line of meaningfulLines(lookup.surfaceEntry.tr)) {
+					box.createDiv({ text: line });
 				}
 				return;
 			}
