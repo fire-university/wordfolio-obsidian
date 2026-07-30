@@ -69,6 +69,8 @@ export default class WordFolioPlugin extends Plugin {
 			onAsk: (lookup, sentence) => this.claude.explain(lookup, sentence),
 			onUsage: (lookup) =>
 				this.claude.usage(lookup.entry.w, lookup.entry.tr.split("\\n").join("; ")),
+			onDetail: (lookup) =>
+				this.claude.detail(lookup.entry.w, lookup.entry.tr.split("\\n").join("; ")),
 			isSaved: (word) => this.vocab.has(word),
 		});
 
@@ -210,8 +212,9 @@ export default class WordFolioPlugin extends Plugin {
 				lookup,
 				sentence,
 				this.settings.captureSentence,
-				// 已經花 token 生成過的例句與用法一併寫進筆記,不用再花第二次。
-				this.claude.usageFor(lookup.entry.w)
+				// 已經花 token 生成過的內容一併寫進筆記,不用再花第二次。
+				this.claude.usageFor(lookup.entry.w),
+				this.claude.detailFor(lookup.entry.w)
 			);
 			new Notice(
 				t(created ? "notice_vocab_added" : "notice_vocab_exists", {

@@ -14,6 +14,7 @@ import type { DictEntry, Lookup, VocabCard } from "./types";
 
 const SENTENCE_HEADING = "## 我遇到它的地方";
 const USAGE_HEADING = "## 例句與用法";
+const DETAIL_HEADING = "## 字詞詳解";
 
 /** 檔名安全化。英文字本來就安全,但 ' 與 - 在某些檔案系統上要留意。 */
 function fileNameFor(word: string): string {
@@ -59,7 +60,8 @@ export class VocabStore {
 		lookup: Lookup,
 		sentence: string,
 		captureSentence: boolean,
-		usage?: string
+		usage?: string,
+		detail?: string
 	): Promise<boolean> {
 		const { entry } = lookup;
 		const path = this.pathFor(entry.w);
@@ -73,7 +75,7 @@ export class VocabStore {
 		await this.ensureFolder();
 		await this.app.vault.create(
 			path,
-			this.renderNote(entry, captureSentence ? sentence : "", usage)
+			this.renderNote(entry, captureSentence ? sentence : "", usage, detail)
 		);
 		this.index.add(fileNameFor(entry.w));
 		return true;
@@ -105,7 +107,7 @@ export class VocabStore {
 
 	// ------------------------------------------------------------ 內容
 
-	private renderNote(entry: DictEntry, sentence: string, usage?: string): string {
+	private renderNote(entry: DictEntry, sentence: string, usage?: string, detail?: string): string {
 		const today = new Date().toISOString().slice(0, 10);
 		const fm: string[] = [
 			"---",
@@ -152,7 +154,8 @@ export class VocabStore {
 		const forms = formsFor(entry.exch);
 		if (forms.length) body.push(`**變化**：${forms.join(" / ")}`, "");
 
-		// Claude 生成過的例句與用法。花過的 token 就留著,複習時直接看得到。
+		// Claude 生成過的內容。花過的 token 就留著,複習時直接看得到。
+		if (detail) body.push(DETAIL_HEADING, "", detail.trim(), "");
 		if (usage) body.push(USAGE_HEADING, "", usage.trim(), "");
 
 		body.push(SENTENCE_HEADING, "");

@@ -262,6 +262,8 @@ export interface TooltipCallbacks {
 	onAsk?: (lookup: Lookup, sentence: string) => Promise<string>;
 	/** 點「例句與用法」;回傳例句、搭配、辨析 */
 	onUsage?: (lookup: Lookup) => Promise<string>;
+	/** 點「字詞詳解」;回傳字根字首與詞族 */
+	onDetail?: (lookup: Lookup) => Promise<string>;
 	/** 這個字是不是已經在生詞本裡了 */
 	isSaved: (word: string) => boolean;
 }
@@ -450,6 +452,12 @@ export class WordTooltip {
 			case "usage": {
 				if (!this.cb.onUsage) return;
 				this.claudeButton(t("tooltip_usage"), () => this.cb.onUsage!(lookup), hit);
+				return;
+			}
+
+			case "detail": {
+				if (!this.cb.onDetail) return;
+				this.claudeButton(t("tooltip_detail"), () => this.cb.onDetail!(lookup), hit);
 				return;
 			}
 		}

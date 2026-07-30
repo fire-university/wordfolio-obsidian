@@ -12,7 +12,10 @@ export type SectionId =
 	| "exams" // 考試標籤(cet4、toefl、gre…)
 	| "forms" // 變化形清單
 	| "claude" // 問 Claude:在這句話裡是什麼意思
-	| "usage"; // 例句、常見搭配、近義詞辨析(Claude 生成)
+	| "usage" // 例句、常見搭配、近義詞辨析(Claude 生成)
+	| "detail"; // 字根字首 + 詞族(Claude 生成)
+// 之後會加的離線區塊(資料建好才進來):synonyms(WordNet 同義詞/反義詞)、
+// examples(Tatoeba 繁中對照例句)。先不放進 enum,免得設定裡出現空的 toggle。
 
 /** 全部區塊,照預設順序。設定裡的排序以這個為起點。 */
 export const ALL_SECTIONS: SectionId[] = [
@@ -25,6 +28,7 @@ export const ALL_SECTIONS: SectionId[] = [
 	"forms",
 	"claude",
 	"usage",
+	"detail",
 ];
 
 /**
@@ -45,8 +49,9 @@ export const DEFAULT_ENABLED: Record<SectionId, boolean> = {
 	exams: false,
 	forms: true,
 	claude: true,
-	// usage 預設關:每個字要花 token,先讓使用者自己決定要不要開。
+	// usage / detail 預設關:每個字要花 token,先讓使用者自己決定要不要開。
 	usage: false,
+	detail: false,
 };
 
 /** i18n 的 key,設定頁與說明共用。 */

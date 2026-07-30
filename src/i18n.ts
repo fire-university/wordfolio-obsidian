@@ -60,6 +60,7 @@ const EN: Dict = {
 	tooltip_added: "In your vocabulary notebook",
 	tooltip_ask_claude: "What does it mean here?",
 	tooltip_usage: "Examples and usage",
+	tooltip_detail: "Roots and word family",
 	tooltip_asking: "Asking Claude…",
 	tooltip_inflection_of: "form of {lemma}",
 	tooltip_forms: "Forms",
@@ -127,6 +128,9 @@ const EN: Dict = {
 	section_usage: "Examples and usage (Claude)",
 	section_usage_desc:
 		"Example sentences, common collocations and near-synonym notes — the three things the offline dictionary does not have. Costs tokens per word, so it is off by default; whatever you generate is saved into the word's note.",
+	section_detail: "Roots & word family (Claude)",
+	section_detail_desc:
+		"Breaks the word into prefix/root/suffix with Latin/Greek origins, plus words from the same root. Costs tokens per word, off by default; saved into the word's note.",
 	section_move_up: "Move up",
 	section_move_down: "Move down",
 
@@ -169,6 +173,7 @@ const ZH: Dict = {
 	tooltip_added: "已在生詞本裡",
 	tooltip_ask_claude: "在這句話裡是什麼意思",
 	tooltip_usage: "例句與用法",
+	tooltip_detail: "字根字首與詞族",
 	tooltip_asking: "問 Claude 中…",
 	tooltip_inflection_of: "{lemma} 的變化形",
 	tooltip_forms: "變化",
@@ -234,6 +239,9 @@ const ZH: Dict = {
 	section_usage: "例句與用法（Claude）",
 	section_usage_desc:
 		"例句、常見搭配、近義詞辨析——離線詞庫沒有的三樣。每個字要花 token,所以預設關閉;生成過的內容加進生詞本時會一起寫進筆記,不用再花第二次。",
+	section_detail: "字根字首與詞族（Claude）",
+	section_detail_desc:
+		"把字拆成字首/字根/字尾,標出拉丁或希臘來源,再加同一字根的衍生字。每個字要花 token,預設關閉;生成過的內容會一起寫進生詞本。",
 	section_move_up: "往上移",
 	section_move_down: "往下移",
 
