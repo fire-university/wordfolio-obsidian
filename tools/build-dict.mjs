@@ -119,6 +119,97 @@ function toTraditional(s) {
 		.join("\\n");
 }
 
+// -------------------------------------------------------------- WordNet
+
+// 同義詞/反義詞:離線,來自 Princeton WordNet(免費授權)。
+// 一個 synset 裡的詞互為同義詞;`!` 指標指向反義詞的 synset。
+//
+// data.* 每行:offset lex_num ss_type w_cnt [word lex_id]... p_cnt [sym off pos src/tgt]... | gloss
+// w_cnt 是十六進位。指標的第 4 欄是 4 位十六進位:前 2 = 本 synset 的來源詞序號、
+// 後 2 = 目標 synset 的目標詞序號(0000 = 整個 synset)。
+function loadWordNet(dir) {
+	const synsets = new Map(); // `${pos}${offset}` → [words]
+	const antonymPtrs = []; // {srcKey, srcW, tgtKey, tgtW}
+	const files = ["data.noun", "data.verb", "data.adj", "data.adv"];
+
+	for (const file of files) {
+		const filePath = path.join(dir, file);
+		if (!fs.existsSync(filePath)) continue;
+		const text = fs.readFileSync(filePath, "utf8");
+		for (const line of text.split("\n")) {
+			if (!line || line.startsWith("  ")) continue; // 授權標頭
+			const bar = line.indexOf(" | ");
+			const head = (bar >= 0 ? line.slice(0, bar) : line).trim().split(/\s+/);
+			if (head.length < 4) continue;
+
+			const offset = head[0];
+			const pos = head[2];
+			const key = pos + offset;
+			const wCnt = parseInt(head[3], 16);
+			if (!Number.isFinite(wCnt)) continue;
+
+			const words = [];
+			let i = 4;
+			for (let w = 0; w < wCnt; w++) {
+				words.push(head[i].replace(/_/g, " ").toLowerCase());
+				i += 2; // 跳過 lex_id
+			}
+			synsets.set(key, words);
+
+			const pCnt = parseInt(head[i], 10) || 0;
+			i += 1;
+			for (let p = 0; p < pCnt; p++) {
+				const sym = head[i];
+				const tgtOff = head[i + 1];
+				const tgtPos = head[i + 2];
+				const srcTgt = head[i + 3];
+				i += 4;
+				if (sym === "!") {
+					antonymPtrs.push({
+						srcKey: key,
+						srcW: parseInt(srcTgt.slice(0, 2), 16),
+						tgtKey: tgtPos + tgtOff,
+						tgtW: parseInt(srcTgt.slice(2, 4), 16),
+					});
+				}
+			}
+		}
+	}
+
+	// word → { s: Set(同義詞), a: Set(反義詞) }
+	const map = new Map();
+	const ensure = (w) => {
+		let e = map.get(w);
+		if (!e) map.set(w, (e = { s: new Set(), a: new Set() }));
+		return e;
+	};
+
+	// 同義詞:synset 裡的詞兩兩互為同義。
+	for (const words of synsets.values()) {
+		if (words.length < 2) continue;
+		for (const w of words) {
+			const e = ensure(w);
+			for (const other of words) if (other !== w) e.s.add(other);
+		}
+	}
+
+	// 反義詞:解析 `!` 指標。src/tgt 為 0 代表整個 synset。
+	for (const { srcKey, srcW, tgtKey, tgtW } of antonymPtrs) {
+		const src = synsets.get(srcKey);
+		const tgt = synsets.get(tgtKey);
+		if (!src || !tgt) continue;
+		const srcWords = srcW === 0 ? src : [src[srcW - 1]];
+		const tgtWords = tgtW === 0 ? tgt : [tgt[tgtW - 1]];
+		for (const sw of srcWords) {
+			if (!sw) continue;
+			const e = ensure(sw);
+			for (const tw of tgtWords) if (tw) e.a.add(tw);
+		}
+	}
+
+	return map;
+}
+
 // -------------------------------------------------------------- ipa-dict
 
 // 格式:word\t/ipa/  或  word\t/ipa1/, /ipa2/
@@ -179,6 +270,11 @@ function main() {
 	const ukIpa = loadIpa("en_UK.txt");
 	const usIpa = loadIpa("en_US.txt");
 	console.log(`  en_UK ${ukIpa.size.toLocaleString()} · en_US ${usIpa.size.toLocaleString()}`);
+
+	console.log("Loading WordNet (synonyms / antonyms) …");
+	const wnDir = path.join(VENDOR, "wndict", "dict");
+	const wn = fs.existsSync(wnDir) ? loadWordNet(wnDir) : new Map();
+	console.log(`  WordNet ${wn.size.toLocaleString()} words`);
 
 	const shards = new Map(); // shardKey → { word: entry }
 	const phraseShards = new Map(); // p{letter} → { phrase: entry };單字與片語分開存
@@ -281,6 +377,17 @@ function main() {
 		if (bnc) entry.bnc = bnc;
 		if (frq) entry.frq = frq;
 		if (exchange.trim()) entry.exch = exchange.trim();
+
+		// WordNet 同義詞/反義詞。優先留單字(多字同義詞在小浮窗裡難讀),各設上限。
+		const wnEntry = wn.get(lower);
+		if (wnEntry) {
+			const pickSingle = (set, n) =>
+				[...set].filter((x) => !x.includes(" ") && x !== lower).slice(0, n);
+			const syn = pickSingle(wnEntry.s, 8);
+			const ant = pickSingle(wnEntry.a, 5);
+			if (syn.length) entry.syn = syn;
+			if (ant.length) entry.ant = ant;
+		}
 
 		const key = shardKey(w);
 		if (!shards.has(key)) shards.set(key, {});

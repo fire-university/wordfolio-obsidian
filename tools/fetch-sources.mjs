@@ -8,6 +8,7 @@
 
 import fs from "fs";
 import path from "path";
+import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -30,25 +31,40 @@ const SOURCES = [
 		file: "en_US.txt",
 		url: "https://raw.githubusercontent.com/open-dict-data/ipa-dict/master/data/en_US.txt",
 	},
+	{
+		file: "wn.tar.gz",
+		url: "https://wordnetcode.princeton.edu/wn3.1.dict.tar.gz",
+		// 同義詞/反義詞。下載後需解壓:tar xzf vendor/wn.tar.gz -C vendor/wndict
+		extractTo: "wndict",
+	},
 ];
 
 fs.mkdirSync(VENDOR, { recursive: true });
 
-for (const { file, url } of SOURCES) {
+for (const { file, url, extractTo } of SOURCES) {
 	const dest = path.join(VENDOR, file);
-	if (fs.existsSync(dest)) {
-		const mb = (fs.statSync(dest).size / 1024 / 1024).toFixed(1);
-		console.log(`= ${file} already present (${mb} MB)`);
-		continue;
+	if (!fs.existsSync(dest)) {
+		process.stdout.write(`↓ ${file} …`);
+		const res = await fetch(url);
+		if (!res.ok) {
+			console.error(`\n  failed: HTTP ${res.status} ${url}`);
+			process.exit(1);
+		}
+		fs.writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
+		console.log(` ${(fs.statSync(dest).size / 1024 / 1024).toFixed(1)} MB`);
+	} else {
+		console.log(`= ${file} already present`);
 	}
-	process.stdout.write(`↓ ${file} …`);
-	const res = await fetch(url);
-	if (!res.ok) {
-		console.error(`\n  failed: HTTP ${res.status} ${url}`);
-		process.exit(1);
+
+	// .tar.gz 要解壓(WordNet)。用系統 tar,跨平台夠用。
+	if (extractTo) {
+		const outDir = path.join(VENDOR, extractTo);
+		if (!fs.existsSync(outDir)) {
+			fs.mkdirSync(outDir, { recursive: true });
+			execSync(`tar xzf ${JSON.stringify(dest)} -C ${JSON.stringify(outDir)}`);
+			console.log(`  extracted → vendor/${extractTo}/`);
+		}
 	}
-	fs.writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
-	console.log(` ${(fs.statSync(dest).size / 1024 / 1024).toFixed(1)} MB`);
 }
 
 console.log("\nNow run `npm run build:dict`.");

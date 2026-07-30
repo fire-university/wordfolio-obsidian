@@ -438,6 +438,22 @@ export class WordTooltip {
 				return;
 			}
 
+			case "synonyms": {
+				if (!entry.syn?.length && !entry.ant?.length) return;
+				const box = this.el.createDiv({ cls: "wordfolio-synonyms" });
+				if (entry.syn?.length) {
+					const row = box.createDiv({ cls: "wordfolio-syn-row" });
+					row.createSpan({ cls: "wordfolio-syn-label", text: t("label_syn") });
+					row.createSpan({ text: entry.syn.join(", ") });
+				}
+				if (entry.ant?.length) {
+					const row = box.createDiv({ cls: "wordfolio-syn-row" });
+					row.createSpan({ cls: "wordfolio-syn-label", text: t("label_ant") });
+					row.createSpan({ text: entry.ant.join(", ") });
+				}
+				return;
+			}
+
 			// 一定要按才會呼叫 Claude,hover 自動觸發會滑一排字燒一排 token。
 			case "claude": {
 				if (!this.cb.onAsk) return;

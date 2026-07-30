@@ -141,6 +141,25 @@
 	font-size: 0.82em;
 }
 
+/* --- 同義詞／反義詞 --- */
+.wordfolio-synonyms {
+	margin-top: 0.45em;
+	font-size: 0.85em;
+}
+
+.wordfolio-syn-row {
+	margin: 0.1em 0;
+	color: var(--text-muted);
+}
+
+.wordfolio-syn-label {
+	display: inline-block;
+	min-width: 2.6em;
+	margin-right: 0.4em;
+	color: var(--text-faint);
+	font-size: 0.9em;
+}
+
 /* --- Claude --- */
 .wordfolio-ask {
 	margin-top: 0.6em;

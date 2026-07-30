@@ -29,6 +29,10 @@ export interface DictEntry {
 	frq?: number;
 	/** 詞形變化原字串，如 "p:ran/d:run/i:running/3:runs" */
 	exch?: string;
+	/** 同義詞(WordNet，離線) */
+	syn?: string[];
+	/** 反義詞(WordNet，離線) */
+	ant?: string[];
 }
 
 /** shard 檔的內容:單字 → 詞條 */

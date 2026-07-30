@@ -66,6 +66,8 @@ const EN: Dict = {
 	tooltip_forms: "Forms",
 	label_uk: "UK",
 	label_us: "US",
+	label_syn: "syn.",
+	label_ant: "ant.",
 
 	// 生詞本
 	notice_vocab_added: "WordFolio: \"{word}\" added to your notebook.",
@@ -119,6 +121,8 @@ const EN: Dict = {
 		"Shown only when the form you hovered means something different from its base word.",
 	section_frequency: "Frequency and grading",
 	section_frequency_desc: "Collins stars, Oxford 3000, BNC and COCA ranks.",
+	section_synonyms: "Synonyms and antonyms",
+	section_synonyms_desc: "From WordNet, offline. English words, no Chinese gloss.",
 	section_exams: "Exam tags",
 	section_exams_desc: "CET, TOEFL, GRE and so on. Useful when studying for a test, noise otherwise.",
 	section_forms: "Inflected forms",
@@ -179,6 +183,8 @@ const ZH: Dict = {
 	tooltip_forms: "變化",
 	label_uk: "英",
 	label_us: "美",
+	label_syn: "同義",
+	label_ant: "反義",
 
 	// 生詞本
 	notice_vocab_added: "WordFolio:「{word}」已加入生詞本。",
@@ -230,6 +236,8 @@ const ZH: Dict = {
 	section_surface_desc: "只有在你滑到的變化形跟原形意思不同時才出現(例:running 當名詞的「賽跑」)。",
 	section_frequency: "詞頻與分級",
 	section_frequency_desc: "柯林斯星級、Oxford 3000、BNC 與 COCA 排名。",
+	section_synonyms: "同義詞與反義詞",
+	section_synonyms_desc: "來自 WordNet,離線。英文單字,沒有中文對照。",
 	section_exams: "考試標籤",
 	section_exams_desc: "CET、TOEFL、GRE 之類。準備考試時有用,一般閱讀是雜訊。",
 	section_forms: "變化形",
