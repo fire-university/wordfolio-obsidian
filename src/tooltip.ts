@@ -438,6 +438,15 @@ export class WordTooltip {
 				return;
 			}
 
+			case "examples": {
+				if (!entry.ex?.length) return;
+				const box = this.el.createDiv({ cls: "wordfolio-examples" });
+				for (const ex of entry.ex) {
+					box.createDiv({ cls: "wordfolio-example", text: ex });
+				}
+				return;
+			}
+
 			case "synonyms": {
 				if (!entry.syn?.length && !entry.ant?.length) return;
 				const box = this.el.createDiv({ cls: "wordfolio-synonyms" });

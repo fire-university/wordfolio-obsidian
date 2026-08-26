@@ -128,7 +128,7 @@ function toTraditional(s) {
 // w_cnt 是十六進位。指標的第 4 欄是 4 位十六進位:前 2 = 本 synset 的來源詞序號、
 // 後 2 = 目標 synset 的目標詞序號(0000 = 整個 synset)。
 function loadWordNet(dir) {
-	const synsets = new Map(); // `${pos}${offset}` → [words]
+	const synsets = new Map(); // `${pos}${offset}` → { words, examples }
 	const antonymPtrs = []; // {srcKey, srcW, tgtKey, tgtW}
 	const files = ["data.noun", "data.verb", "data.adj", "data.adv"];
 
@@ -142,6 +142,12 @@ function loadWordNet(dir) {
 			const head = (bar >= 0 ? line.slice(0, bar) : line).trim().split(/\s+/);
 			if (head.length < 4) continue;
 
+			// gloss 在 | 之後。裡面「引號包住的句子」就是 WordNet 的例句。
+			const gloss = bar >= 0 ? line.slice(bar + 3).trim() : "";
+			const examples = [...gloss.matchAll(/"([^"]+)"/g)]
+				.map((m) => m[1].trim())
+				.filter((s) => /\s/.test(s)); // 至少兩個字才算句子
+
 			const offset = head[0];
 			const pos = head[2];
 			const key = pos + offset;
@@ -154,7 +160,7 @@ function loadWordNet(dir) {
 				words.push(head[i].replace(/_/g, " ").toLowerCase());
 				i += 2; // 跳過 lex_id
 			}
-			synsets.set(key, words);
+			synsets.set(key, { words, examples });
 
 			const pCnt = parseInt(head[i], 10) || 0;
 			i += 1;
@@ -176,20 +182,24 @@ function loadWordNet(dir) {
 		}
 	}
 
-	// word → { s: Set(同義詞), a: Set(反義詞) }
+	// word → { s: Set(同義詞), a: Set(反義詞), x: [例句] }
 	const map = new Map();
 	const ensure = (w) => {
 		let e = map.get(w);
-		if (!e) map.set(w, (e = { s: new Set(), a: new Set() }));
+		if (!e) map.set(w, (e = { s: new Set(), a: new Set(), x: [] }));
 		return e;
 	};
 
-	// 同義詞:synset 裡的詞兩兩互為同義。
-	for (const words of synsets.values()) {
-		if (words.length < 2) continue;
+	// 同義詞 + 例句:同一個 synset 的詞互為同義,synset 的例句歸給每個詞。
+	for (const { words, examples } of synsets.values()) {
 		for (const w of words) {
 			const e = ensure(w);
 			for (const other of words) if (other !== w) e.s.add(other);
+			// 例句優先留「真的含這個字」的,學用法才對得上。
+			for (const ex of examples) {
+				const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i");
+				if (re.test(ex)) e.x.push(ex);
+			}
 		}
 	}
 
@@ -198,8 +208,8 @@ function loadWordNet(dir) {
 		const src = synsets.get(srcKey);
 		const tgt = synsets.get(tgtKey);
 		if (!src || !tgt) continue;
-		const srcWords = srcW === 0 ? src : [src[srcW - 1]];
-		const tgtWords = tgtW === 0 ? tgt : [tgt[tgtW - 1]];
+		const srcWords = srcW === 0 ? src.words : [src.words[srcW - 1]];
+		const tgtWords = tgtW === 0 ? tgt.words : [tgt.words[tgtW - 1]];
 		for (const sw of srcWords) {
 			if (!sw) continue;
 			const e = ensure(sw);
@@ -387,6 +397,11 @@ function main() {
 			const ant = pickSingle(wnEntry.a, 5);
 			if (syn.length) entry.syn = syn;
 			if (ant.length) entry.ant = ant;
+			// 例句:去重、取最短的 3 句(短句好讀、好記)。
+			if (wnEntry.x.length) {
+				const ex = [...new Set(wnEntry.x)].sort((a, b) => a.length - b.length).slice(0, 3);
+				if (ex.length) entry.ex = ex;
+			}
 		}
 
 		const key = shardKey(w);

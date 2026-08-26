@@ -141,6 +141,20 @@
 	font-size: 0.82em;
 }
 
+/* --- 例句 --- */
+.wordfolio-examples {
+	margin-top: 0.45em;
+	padding-left: 0.7em;
+	border-left: 2px solid var(--background-modifier-border);
+}
+
+.wordfolio-example {
+	margin: 0.15em 0;
+	color: var(--text-muted);
+	font-style: italic;
+	line-height: 1.45;
+}
+
 /* --- 同義詞／反義詞 --- */
 .wordfolio-synonyms {
 	margin-top: 0.45em;

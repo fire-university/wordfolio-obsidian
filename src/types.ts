@@ -33,6 +33,8 @@ export interface DictEntry {
 	syn?: string[];
 	/** 反義詞(WordNet，離線) */
 	ant?: string[];
+	/** 例句(WordNet gloss 裡的引號句子，離線，英文) */
+	ex?: string[];
 }
 
 /** shard 檔的內容:單字 → 詞條 */

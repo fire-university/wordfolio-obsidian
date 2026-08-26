@@ -11,12 +11,11 @@ export type SectionId =
 	| "frequency" // 詞頻與分級(柯林斯星級、Oxford 3000、BNC、COCA)
 	| "exams" // 考試標籤(cet4、toefl、gre…)
 	| "forms" // 變化形清單
+	| "examples" // 離線例句(WordNet，英文)
 	| "synonyms" // 同義詞/反義詞(WordNet，離線)
 	| "claude" // 問 Claude:在這句話裡是什麼意思
-	| "usage" // 例句、常見搭配、近義詞辨析(Claude 生成)
-	| "detail"; // 字根字首 + 詞族(Claude 生成)
-// 之後會加的離線區塊:examples(Tatoeba 繁中對照例句)。資料建好才進 enum,
-// 免得設定裡出現空的 toggle。
+	| "usage" // 例句、常見搭配、近義詞辨析(本地 AI 生成)
+	| "detail"; // 字根字首 + 詞族(本地 AI 生成)
 
 /** 全部區塊,照預設順序。設定裡的排序以這個為起點。 */
 export const ALL_SECTIONS: SectionId[] = [
@@ -27,6 +26,7 @@ export const ALL_SECTIONS: SectionId[] = [
 	"frequency",
 	"exams",
 	"forms",
+	"examples",
 	"synonyms",
 	"claude",
 	"usage",
@@ -50,7 +50,8 @@ export const DEFAULT_ENABLED: Record<SectionId, boolean> = {
 	frequency: true,
 	exams: false,
 	forms: true,
-	// 同義詞是離線的、不花 token,預設開。
+	// 例句、同義詞都是離線的、免費,預設開。
+	examples: true,
 	synonyms: true,
 	claude: true,
 	// usage / detail 預設關:每個字要花 token,先讓使用者自己決定要不要開。
