@@ -68,7 +68,10 @@ export const DEFAULT_SETTINGS: WordFolioSettings = {
 	vocabFolder: "英文生詞本",
 	captureSentence: true,
 	llmEndpoint: "http://localhost:11434/v1",
-	llmModel: "qwen2.5:7b",
+	// 預設用 3b 而不是 7b:實測暖機後 3b 約 2 秒、7b 明顯更久。
+	// 這幾個任務(挑義項、拆字根、造例句)不需要大模型,速度比較重要。
+	// 想要更好的中文可以在設定的下拉選單改 7b。
+	llmModel: "qwen2.5:3b",
 	dictVersion: "",
 };
 

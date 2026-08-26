@@ -159,7 +159,7 @@ export class LocalLLM {
 					"In one sentence, say which of these senses applies here. No preamble, no full translation.",
 			  ].join("\n");
 
-		const text = await this.enqueue(() => this.chat(prompt, 200));
+		const text = await this.enqueue(() => this.chat(prompt, 160));
 		this.cache.set(key, text);
 		return text;
 	}
@@ -182,13 +182,11 @@ export class LocalLLM {
 					"   <繁中翻譯>",
 					"2. <英文例句>",
 					"   <繁中翻譯>",
-					"3. <英文例句>",
-					"   <繁中翻譯>",
 					"",
 					"搭配：<3-5 個常見搭配，用 / 分隔>",
 					"辨析：<跟哪個近義詞容易混淆、差在哪，一到兩句。沒有明顯易混淆的就整行省略>",
 					"",
-					"例句要自然、日常，涵蓋不同義項；不要用字典式的造句。",
+					"例句要自然、日常；整體控制在六行以內，不要長篇大論。",
 			  ].join("\n")
 			: [
 					`Word: ${word}`,
@@ -206,7 +204,7 @@ export class LocalLLM {
 					"Sentences should be natural and everyday, covering different senses.",
 			  ].join("\n");
 
-		const text = await this.enqueue(() => this.chat(prompt, 700));
+		const text = await this.enqueue(() => this.chat(prompt, 450));
 		this.usageCache.set(key, text);
 		return text;
 	}
@@ -229,7 +227,7 @@ export class LocalLLM {
 					"把字拆成字首/字根/字尾，每個部件標出來源（拉丁或希臘）與意思，說明怎麼合成這個字的意義。若這個字無法有意義地拆解（例如常見的本族短詞），就寫「這個字沒有明顯的字根結構」，不要硬拆。",
 					"",
 					"詞族：",
-					"列出同一個字根衍生出的常見字，每個附一句極短的中文意思，用換行分隔。沒有明顯詞族就寫「無明顯同根詞」。",
+					"列出同一個字根衍生出的常見字，最多四個，每個附一句極短的中文意思，用換行分隔。沒有明顯詞族就寫「無明顯同根詞」。",
 			  ].join("\n")
 			: [
 					`Word: ${word}`,
@@ -244,7 +242,7 @@ export class LocalLLM {
 					"Common words from the same root, each with a very short gloss, one per line. Say 'none' if there isn't a clear family.",
 			  ].join("\n");
 
-		const text = await this.enqueue(() => this.chat(prompt, 600));
+		const text = await this.enqueue(() => this.chat(prompt, 350));
 		this.usageCache.set(key, text);
 		return text;
 	}
