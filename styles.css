@@ -141,6 +141,36 @@
 	font-size: 0.82em;
 }
 
+/* --- 返回鍵(浮窗內導覽) --- */
+.wordfolio-back {
+	margin-right: 0.1em;
+	padding: 0 0.35em;
+	height: 1.5em;
+	border: none;
+	border-radius: var(--radius-s);
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	font-size: 1.1em;
+	line-height: 1;
+}
+
+.wordfolio-back:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+/* --- 可點的字(同義詞等) --- */
+.wordfolio-word-link {
+	color: var(--text-accent);
+	cursor: pointer;
+	text-decoration: none;
+}
+
+.wordfolio-word-link:hover {
+	text-decoration: underline;
+}
+
 /* --- 例句 --- */
 .wordfolio-examples {
 	margin-top: 0.45em;

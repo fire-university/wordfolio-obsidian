@@ -71,6 +71,10 @@ export default class WordFolioPlugin extends Plugin {
 			onDetail: (lookup) =>
 				this.llm.detail(lookup.entry.w, lookup.entry.tr.split("\\n").join("; ")),
 			isSaved: (word) => this.vocab.has(word),
+			// 浮窗內導覽:點同義詞跳過去,可以返回上一個字。
+			onNavigate: (word) => void this.hover.navigateTo(word),
+			onBack: () => this.hover.goBack(),
+			canGoBack: () => this.hover.canGoBack(),
 		});
 
 		this.hover = new HoverController({

@@ -266,6 +266,12 @@ export interface TooltipCallbacks {
 	onDetail?: (lookup: Lookup) => Promise<string>;
 	/** 這個字是不是已經在生詞本裡了 */
 	isSaved: (word: string) => boolean;
+	/** 點了同義詞/詞形等可點的字:跳去查那個字(浮窗內導覽) */
+	onNavigate?: (word: string) => void;
+	/** 按返回:回上一個查過的字 */
+	onBack?: () => void;
+	/** 還有沒有上一頁可回 */
+	canGoBack?: () => boolean;
 }
 
 export class WordTooltip {
@@ -342,6 +348,21 @@ export class WordTooltip {
 	private renderHead(lookup: Lookup, hit: HoverHit): void {
 		const { entry } = lookup;
 		const head = this.el.createDiv({ cls: "wordfolio-head" });
+
+		// 從同義詞點進來的話,左邊給一顆返回鍵(像瀏覽器的上一頁)。
+		if (this.cb.canGoBack?.()) {
+			const back = head.createEl("button", {
+				cls: "wordfolio-back",
+				text: "‹",
+				attr: { "aria-label": t("tooltip_back") },
+			});
+			back.onclick = (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				this.cb.onBack?.();
+			};
+		}
+
 		head.createSpan({ cls: "wordfolio-word", text: entry.w });
 
 		if (lookup.inflection) {
@@ -450,16 +471,17 @@ export class WordTooltip {
 			case "synonyms": {
 				if (!entry.syn?.length && !entry.ant?.length) return;
 				const box = this.el.createDiv({ cls: "wordfolio-synonyms" });
-				if (entry.syn?.length) {
-					const row = box.createDiv({ cls: "wordfolio-syn-row" });
-					row.createSpan({ cls: "wordfolio-syn-label", text: t("label_syn") });
-					row.createSpan({ text: entry.syn.join(", ") });
-				}
-				if (entry.ant?.length) {
-					const row = box.createDiv({ cls: "wordfolio-syn-row" });
-					row.createSpan({ cls: "wordfolio-syn-label", text: t("label_ant") });
-					row.createSpan({ text: entry.ant.join(", ") });
-				}
+				const row = (labelKey: string, words: string[]) => {
+					const r = box.createDiv({ cls: "wordfolio-syn-row" });
+					r.createSpan({ cls: "wordfolio-syn-label", text: t(labelKey) });
+					// 每個字做成可點的:點了就在浮窗裡跳去查那個字,可以再返回。
+					words.forEach((w, i) => {
+						if (i) r.createSpan({ text: ", " });
+						this.wordLink(r, w);
+					});
+				};
+				if (entry.syn?.length) row("label_syn", entry.syn);
+				if (entry.ant?.length) row("label_ant", entry.ant);
 				return;
 			}
 
@@ -488,7 +510,29 @@ export class WordTooltip {
 		}
 	}
 
-	/** 兩顆 Claude 按鈕的共用行為:按下去 → 顯示進行中 → 換成結果或錯誤。 */
+	/**
+	 * 可點的單字(同義詞、反義詞…)。點了在浮窗內跳去查那個字。
+	 * 沒有 onNavigate 就退回純文字,不給假的可點外觀。
+	 */
+	private wordLink(parent: HTMLElement, word: string): void {
+		if (!this.cb.onNavigate) {
+			parent.createSpan({ text: word });
+			return;
+		}
+		const a = parent.createEl("a", { cls: "wordfolio-word-link", text: word });
+		// mousedown 擋掉,不然點下去會清掉頁面上的選取。
+		a.onmousedown = (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+		};
+		a.onclick = (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			this.cb.onNavigate!(word);
+		};
+	}
+
+	/** 兩顆 AI 按鈕的共用行為:按下去 → 顯示進行中 → 換成結果或錯誤。 */
 	private claudeButton(
 		label: string,
 		run: () => Promise<string>,

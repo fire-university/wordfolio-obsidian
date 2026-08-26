@@ -59,6 +59,14 @@ export class HoverController {
 	/** 選取後暫存,等點 Logo 才真的查。 */
 	private pending: { text: string; rect: DOMRect } | null = null;
 	private icon: SelectionIcon;
+	/**
+	 * 浮窗內導覽的歷史(點同義詞跳過去、可以返回)。
+	 * 存的是「查什麼字 + 浮窗釘在哪」——返回時要回到同一個位置,
+	 * 不然浮窗會在畫面上亂跳。
+	 */
+	private history: { lookup: Lookup; hit: HoverHit }[] = [];
+	/** 目前浮窗顯示的是什麼(導覽時要把它推進歷史)。 */
+	private shown: { lookup: Lookup; hit: HoverHit } | null = null;
 
 	constructor(private opts: HoverOptions) {
 		this.icon = new SelectionIcon(() => this.onIconOpen(), {
@@ -224,6 +232,7 @@ export class HoverController {
 		this.clearCloseTimer();
 		this.sticky = true;
 		this.currentWord = hit.word;
+		this.shown = { lookup: result, hit };
 		this.opts.tooltip.show(result, hit, this.opts.view());
 		return true;
 	}
@@ -240,7 +249,9 @@ export class HoverController {
 		this.clearCloseTimer();
 		this.sticky = true;
 		this.currentWord = text;
-		this.opts.tooltip.show(result, { word: text, sentence: text, rect }, this.opts.view());
+		const selHit = { word: text, sentence: text, rect };
+		this.shown = { lookup: result, hit: selHit };
+		this.opts.tooltip.show(result, selHit, this.opts.view());
 	}
 
 	/** hover 觸發:transient,移開就(寬限期後)關。 */
@@ -257,7 +268,42 @@ export class HoverController {
 
 		this.sticky = false;
 		this.currentWord = hit.word;
+		this.shown = { lookup: result, hit };
 		this.opts.tooltip.show(result, hit, this.opts.view());
+	}
+
+	// ---------------------------------------------------- 浮窗內導覽
+
+	/** 還有沒有上一頁可回。 */
+	canGoBack(): boolean {
+		return this.history.length > 0;
+	}
+
+	/**
+	 * 點同義詞:跳去查那個字。把目前這頁推進歷史,浮窗位置沿用——
+	 * 導覽時浮窗釘在原地不動,只有內容換,這樣視線不會被拉走。
+	 */
+	async navigateTo(word: string): Promise<void> {
+		const current = this.shown;
+		const result = await this.opts.lookup(word);
+		if (!result) return;
+		if (current) this.history.push(current);
+		// 導覽出來的浮窗一律 sticky:使用者正在深入看,不該被滑鼠移開就關掉。
+		this.sticky = true;
+		this.currentWord = word;
+		const hit = current?.hit ?? { word, sentence: word, rect: new DOMRect() };
+		this.shown = { lookup: result, hit };
+		this.opts.tooltip.show(result, hit, this.opts.view());
+	}
+
+	/** 返回上一個查過的字。 */
+	goBack(): void {
+		const prev = this.history.pop();
+		if (!prev) return;
+		this.sticky = true;
+		this.currentWord = prev.lookup.entry.w;
+		this.shown = prev;
+		this.opts.tooltip.show(prev.lookup, prev.hit, this.opts.view());
 	}
 
 	/** 排一個延後關閉(只用於 hover transient)。滑回浮窗或安全區就取消。 */
@@ -288,6 +334,9 @@ export class HoverController {
 		this.generation++;
 		this.currentWord = "";
 		this.sticky = false;
+		// 關掉浮窗就結束這一輪導覽,歷史不跨越兩次查詢。
+		this.history = [];
+		this.shown = null;
 		this.opts.tooltip.hide();
 	}
 }
