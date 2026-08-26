@@ -25,7 +25,27 @@ export class LocalLLM {
 	/** 例句用法、字詞詳解是「字」層級,單獨快取,加進生詞本時一起寫入。 */
 	private usageCache = new Map<string, string>();
 
+	/**
+	 * 一次只跑一個請求。本地模型是獨佔資源,平行送只會互相排隊還吃滿記憶體;
+	 * 排成序列,前一個做完才做下一個。
+	 */
+	private queue: Promise<unknown> = Promise.resolve();
+
 	constructor(private opts: () => LLMOptions) {}
+
+	private enqueue<T>(fn: () => Promise<T>): Promise<T> {
+		const run = this.queue.then(fn, fn);
+		this.queue = run.catch(() => undefined);
+		return run;
+	}
+
+	// -------------------------------------------- 同步讀快取(給浮窗用)
+	// 浮窗每次重畫都要問「這個算過了沒」——算過就直接畫,不再排隊、不閃 loading。
+
+	/** 句中語意算過了沒。 */
+	cachedExplain(surface: string, sentence: string): string | undefined {
+		return this.cache.get(`${surface} ${sentence}`);
+	}
 
 	/** 有沒有設定端點(預設 Ollama,通常都有)。 */
 	get available(): boolean {
@@ -38,6 +58,26 @@ export class LocalLLM {
 
 	detailFor(word: string): string | undefined {
 		return this.usageCache.get(`detail:${word.toLowerCase()}`);
+	}
+
+	/**
+	 * 列出本地已安裝的模型(給設定頁的下拉選單用)。
+	 * Ollama 的 OpenAI 相容端點有 /models。連不上就回空陣列——設定頁自己顯示提示,
+	 * 不要在這裡丟例外把設定頁弄壞。
+	 */
+	async listModels(): Promise<string[]> {
+		const base = this.opts().endpoint.trim().replace(/\/+$/, "");
+		if (!base) return [];
+		try {
+			const res = await requestUrl({ url: `${base}/models`, method: "GET", throw: false });
+			if (res.status !== 200) return [];
+			const ids = (res.json?.data ?? [])
+				.map((m: { id?: string }) => m.id)
+				.filter((x: unknown): x is string => typeof x === "string");
+			return ids.sort();
+		} catch {
+			return [];
+		}
 	}
 
 	// -------------------------------------------------------- 底層呼叫
@@ -119,7 +159,7 @@ export class LocalLLM {
 					"In one sentence, say which of these senses applies here. No preamble, no full translation.",
 			  ].join("\n");
 
-		const text = await this.chat(prompt, 200);
+		const text = await this.enqueue(() => this.chat(prompt, 200));
 		this.cache.set(key, text);
 		return text;
 	}
@@ -166,7 +206,7 @@ export class LocalLLM {
 					"Sentences should be natural and everyday, covering different senses.",
 			  ].join("\n");
 
-		const text = await this.chat(prompt, 700);
+		const text = await this.enqueue(() => this.chat(prompt, 700));
 		this.usageCache.set(key, text);
 		return text;
 	}
@@ -204,7 +244,7 @@ export class LocalLLM {
 					"Common words from the same root, each with a very short gloss, one per line. Say 'none' if there isn't a clear family.",
 			  ].join("\n");
 
-		const text = await this.chat(prompt, 600);
+		const text = await this.enqueue(() => this.chat(prompt, 600));
 		this.usageCache.set(key, text);
 		return text;
 	}
@@ -220,7 +260,7 @@ export class LocalLLM {
 			? `翻譯這個英文片語或詞組，用繁體中文、台灣用語，只給翻譯本身，不要造句、不要解釋：\n\n${phrase}`
 			: `Translate this English phrase. Give only the translation, no examples, no explanation:\n\n${phrase}`;
 
-		const text = await this.chat(prompt, 120);
+		const text = await this.enqueue(() => this.chat(prompt, 120));
 		this.cache.set(key, text);
 		return text;
 	}

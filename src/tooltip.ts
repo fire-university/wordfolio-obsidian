@@ -272,11 +272,26 @@ export interface TooltipCallbacks {
 	onBack?: () => void;
 	/** 還有沒有上一頁可回 */
 	canGoBack?: () => boolean;
+	/** 這幾樣算過了沒(算過就直接畫,不再等模型) */
+	cachedAsk?: (lookup: Lookup, sentence: string) => string | undefined;
+	cachedUsage?: (word: string) => string | undefined;
+	cachedDetail?: (word: string) => string | undefined;
 }
+
+/**
+ * 浮窗開著多久才開始跑本地 AI。
+ *
+ * 為什麼要這道閘門:AI 那幾樣現在是自動顯示的(字典就該直接給答案,不該叫人按按鈕),
+ * 但本地模型每次要跑幾秒。滑過一整段英文若每個字都觸發,等於排隊幾十次推理。
+ * 停留超過這個時間才開始跑——掃視不會觸發,真的停下來看才會。
+ */
+const AI_DWELL_MS = 700;
 
 export class WordTooltip {
 	private el: HTMLDivElement;
 	private visible = false;
+	/** 重畫世代,用來丟掉晚到的 AI 結果 */
+	private renderGen = 0;
 
 	constructor(private cb: TooltipCallbacks) {
 		this.el = document.createElement("div");
@@ -324,6 +339,8 @@ export class WordTooltip {
 	}
 
 	show(lookup: Lookup, hit: HoverHit, view: ViewConfig): void {
+		// 每次重畫換一個世代號:還在路上的 AI 結果回來時比對,不是這一輪的就丟掉。
+		this.renderGen++;
 		this.el.empty();
 		this.render(lookup, hit, view);
 		this.el.style.display = "";
@@ -488,8 +505,11 @@ export class WordTooltip {
 			// 一定要按才會呼叫 Claude,hover 自動觸發會滑一排字燒一排 token。
 			case "claude": {
 				if (!this.cb.onAsk) return;
-				this.claudeButton(
+				// 句子跟這個字一樣時沒有「在這句話裡」可言(選字查詢就是這種),跳過。
+				if (!hit.sentence || hit.sentence.trim() === hit.word.trim()) return;
+				this.aiSection(
 					t("tooltip_ask_claude"),
+					this.cb.cachedAsk?.(lookup, hit.sentence),
 					() => this.cb.onAsk!(lookup, hit.sentence),
 					hit
 				);
@@ -498,13 +518,23 @@ export class WordTooltip {
 
 			case "usage": {
 				if (!this.cb.onUsage) return;
-				this.claudeButton(t("tooltip_usage"), () => this.cb.onUsage!(lookup), hit);
+				this.aiSection(
+					t("tooltip_usage"),
+					this.cb.cachedUsage?.(entry.w),
+					() => this.cb.onUsage!(lookup),
+					hit
+				);
 				return;
 			}
 
 			case "detail": {
 				if (!this.cb.onDetail) return;
-				this.claudeButton(t("tooltip_detail"), () => this.cb.onDetail!(lookup), hit);
+				this.aiSection(
+					t("tooltip_detail"),
+					this.cb.cachedDetail?.(entry.w),
+					() => this.cb.onDetail!(lookup),
+					hit
+				);
 				return;
 			}
 		}
@@ -533,34 +563,46 @@ export class WordTooltip {
 	}
 
 	/** 兩顆 AI 按鈕的共用行為:按下去 → 顯示進行中 → 換成結果或錯誤。 */
-	private claudeButton(
+	/**
+	 * 自動生成的 AI 區塊。算過的直接畫;沒算過的先放一行「思考中」,
+	 * 等浮窗真的停留超過 AI_DWELL_MS 才開始跑,結果回來再填進去。
+	 * 期間浮窗若換了內容(世代號變了),晚到的結果一律丟掉。
+	 */
+	private aiSection(
 		label: string,
+		cached: string | undefined,
 		run: () => Promise<string>,
 		hit: HoverHit
 	): void {
-		const btn = this.el.createEl("button", {
-			cls: "wordfolio-ask",
-			text: `✦ ${label}`,
-		});
-		btn.onclick = async () => {
-			btn.disabled = true;
-			btn.textContent = t("tooltip_asking");
+		const box = this.el.createDiv({ cls: "wordfolio-ai" });
+		box.createDiv({ cls: "wordfolio-ai-label", text: label });
+		const body = box.createDiv({ cls: "wordfolio-ai-body" });
+
+		if (cached) {
+			body.setText(cached);
+			return;
+		}
+
+		body.addClass("is-loading");
+		body.setText(t("tooltip_asking"));
+
+		const gen = this.renderGen;
+		window.setTimeout(async () => {
+			if (gen !== this.renderGen) return; // 已經換字了,不用跑
 			try {
-				const answer = await run();
-				btn.remove();
-				this.el.createDiv({ cls: "wordfolio-claude", text: answer });
-				// 內容變高了,重新定位免得掉出視窗外。
-				this.position(hit.rect);
+				const text = await run();
+				if (gen !== this.renderGen) return;
+				body.removeClass("is-loading");
+				body.setText(text);
 			} catch (e) {
-				btn.disabled = false;
-				btn.textContent = `✦ ${label}`;
-				this.el.createDiv({
-					cls: "wordfolio-error",
-					text: e instanceof Error ? e.message : String(e),
-				});
-				this.position(hit.rect);
+				if (gen !== this.renderGen) return;
+				body.removeClass("is-loading");
+				body.addClass("wordfolio-error");
+				body.setText(e instanceof Error ? e.message : String(e));
 			}
-		};
+			// 內容變高了,重新定位免得掉出視窗外。
+			this.position(hit.rect);
+		}, AI_DWELL_MS);
 	}
 
 	private accent(

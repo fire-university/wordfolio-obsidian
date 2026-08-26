@@ -204,42 +204,46 @@
 	font-size: 0.9em;
 }
 
-/* --- Claude --- */
-.wordfolio-ask {
+/* --- AI 自動生成的區塊 --- */
+.wordfolio-ai {
 	margin-top: 0.6em;
-	padding: 0.3em 0.6em;
-	width: 100%;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-s);
-	background: transparent;
-	color: var(--text-muted);
-	cursor: pointer;
-	font-size: 0.85em;
-	text-align: left;
+	padding-top: 0.5em;
+	border-top: 1px solid var(--background-modifier-border);
 }
 
-.wordfolio-ask:hover:not(:disabled) {
-	background: var(--background-modifier-hover);
-	color: var(--text-normal);
+.wordfolio-ai-label {
+	margin-bottom: 0.2em;
+	color: var(--text-faint);
+	font-size: 0.78em;
+	letter-spacing: 0.03em;
 }
 
-.wordfolio-ask:disabled {
-	cursor: default;
-	opacity: 0.6;
+.wordfolio-ai-body {
+	white-space: pre-wrap;
+	line-height: 1.55;
 }
 
-.wordfolio-claude {
-	margin-top: 0.6em;
-	padding: 0.5em 0.6em;
-	border-left: 2px solid var(--interactive-accent);
-	background: var(--background-primary-alt);
-	border-radius: 0 var(--radius-s) var(--radius-s) 0;
+/* 等本地模型回覆時的狀態:淡一點 + 緩慢呼吸,讓人知道還在跑。 */
+.wordfolio-ai-body.is-loading {
+	color: var(--text-faint);
+	font-style: italic;
+	animation: wf-pulse 1.4s ease-in-out infinite;
 }
 
+@keyframes wf-pulse {
+	0%, 100% { opacity: 0.45; }
+	50% { opacity: 0.85; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.wordfolio-ai-body.is-loading { animation: none; }
+}
+
+/* --- 錯誤訊息(AI 連不上等) --- */
 .wordfolio-error {
-	margin-top: 0.5em;
 	color: var(--text-error);
 	font-size: 0.85em;
+	font-style: normal;
 }
 
 /* --- 選取後浮現的小書本 Logo(沙拉查詞式) --- */

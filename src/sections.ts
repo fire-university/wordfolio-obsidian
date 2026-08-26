@@ -21,16 +21,18 @@ export type SectionId =
 export const ALL_SECTIONS: SectionId[] = [
 	"phonetics",
 	"translation",
+	// 「在這句話裡是什麼意思」緊接在釋義後面:那是讀者當下最想要的答案,
+	// 不該埋在一堆補充資料底下。
+	"claude",
 	"english",
+	"examples",
 	"surface",
+	"detail",
+	"usage",
+	"synonyms",
+	"forms",
 	"frequency",
 	"exams",
-	"forms",
-	"examples",
-	"synonyms",
-	"claude",
-	"usage",
-	"detail",
 ];
 
 /**
@@ -53,10 +55,12 @@ export const DEFAULT_ENABLED: Record<SectionId, boolean> = {
 	// 例句、同義詞都是離線的、免費,預設開。
 	examples: true,
 	synonyms: true,
+	// AI 三樣預設全開:字典就該直接給答案,不該叫人按按鈕。
+	// 本地模型免費,唯一的成本是時間——那個用「停留才生成」的閘門處理
+	// (見 tooltip.ts 的 AI_DWELL_MS),不是丟給使用者自己去開關。
 	claude: true,
-	// usage / detail 預設關:每個字要花 token,先讓使用者自己決定要不要開。
-	usage: false,
-	detail: false,
+	usage: true,
+	detail: true,
 };
 
 /** i18n 的 key,設定頁與說明共用。 */
@@ -85,8 +89,25 @@ export function normalizeOrder(saved: readonly string[] | undefined): SectionId[
 			out.push(id as SectionId);
 		}
 	}
+
+	// 補上使用者設定裡沒有的區塊(外掛升級新增的)。
+	//
+	// 一律接到最後是錯的:新區塊會全部堆在浮窗底部,排在次要資料後面,
+	// 使用者還以為壞了。改成插在「正典順序裡它前一個鄰居」的後面——
+	// 這樣新區塊會落在該在的位置,而使用者自己調過的順序也不會被打亂。
 	for (const id of ALL_SECTIONS) {
-		if (!seen.has(id)) out.push(id);
+		if (seen.has(id)) continue;
+		const canonIdx = ALL_SECTIONS.indexOf(id);
+		let insertAt = 0;
+		for (let i = canonIdx - 1; i >= 0; i--) {
+			const at = out.indexOf(ALL_SECTIONS[i]);
+			if (at >= 0) {
+				insertAt = at + 1;
+				break;
+			}
+		}
+		out.splice(insertAt, 0, id);
+		seen.add(id);
 	}
 	return out;
 }

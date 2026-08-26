@@ -19,6 +19,7 @@ import { ReviewModal } from "./review";
 import { dueCards } from "./schedule";
 import { LocalLLM } from "./llm";
 import {
+	ALL_SECTIONS,
 	normalizeOrder,
 	normalizeEnabled,
 	move,
@@ -71,6 +72,9 @@ export default class WordFolioPlugin extends Plugin {
 			onDetail: (lookup) =>
 				this.llm.detail(lookup.entry.w, lookup.entry.tr.split("\\n").join("; ")),
 			isSaved: (word) => this.vocab.has(word),
+			cachedAsk: (lookup, sentence) => this.llm.cachedExplain(lookup.surface, sentence),
+			cachedUsage: (word) => this.llm.usageFor(word),
+			cachedDetail: (word) => this.llm.detailFor(word),
 			// 浮窗內導覽:點同義詞跳過去,可以返回上一個字。
 			onNavigate: (word) => void this.hover.navigateTo(word),
 			onBack: () => this.hover.goBack(),
@@ -228,6 +232,11 @@ export default class WordFolioPlugin extends Plugin {
 		} catch (e) {
 			new Notice(e instanceof Error ? e.message : String(e));
 		}
+	}
+
+	/** 設定頁用:列出本地已安裝的模型。 */
+	listLocalModels(): Promise<string[]> {
+		return this.llm.listModels();
 	}
 
 	/** 改了生詞本資料夾之後重建索引與徽章。 */
@@ -421,6 +430,19 @@ class WordFolioSettingTab extends PluginSettingTab {
 		const order = normalizeOrder(s.sectionOrder);
 		const enabled = normalizeEnabled(s.sectionsEnabled);
 
+		// 舊版存的順序可能跟現在的建議順序差很多(新區塊一直加進來)。
+		// 給一顆一鍵還原,比叫使用者一格一格搬上搬下實際。
+		new Setting(containerEl)
+			.setName(t("set_reset_order_name"))
+			.setDesc(t("set_reset_order_desc"))
+			.addButton((b) =>
+				b.setButtonText(t("set_reset_order_button")).onClick(async () => {
+					s.sectionOrder = [...ALL_SECTIONS];
+					await this.plugin.saveSettings();
+					this.display();
+				})
+			);
+
 		order.forEach((id, i) => {
 			const row = new Setting(containerEl)
 				.setName(t(sectionLabelKey(id)))
@@ -506,17 +528,32 @@ class WordFolioSettingTab extends PluginSettingTab {
 					})
 			);
 
-		new Setting(containerEl)
+		// 模型:列出 Ollama 裡真的裝了哪些,讓人用選的,不要叫人背模型名去打字。
+		// Obsidian 的 display() 是同步的,所以先畫出目前值,再非同步把清單補進去。
+		const modelSetting = new Setting(containerEl)
 			.setName(t("set_llm_model_name"))
-			.setDesc(t("set_llm_model_desc"))
-			.addText((txt) =>
-				txt
-					.setPlaceholder("qwen2.5:7b")
-					.setValue(s.llmModel)
-					.onChange(async (v) => {
-						s.llmModel = v.trim() || DEFAULT_SETTINGS.llmModel;
-						await this.plugin.saveSettings();
-					})
-			);
+			.setDesc(t("set_llm_model_desc"));
+		modelSetting.addDropdown((d) => {
+			d.addOption(s.llmModel, s.llmModel).setValue(s.llmModel);
+			d.onChange(async (v) => {
+				s.llmModel = v;
+				await this.plugin.saveSettings();
+			});
+			void this.plugin.listLocalModels().then((models) => {
+				if (!models.length) {
+					modelSetting.setDesc(t("llm_model_none"));
+					return;
+				}
+				d.selectEl.empty();
+				for (const m of models) d.addOption(m, m);
+				// 目前選的模型若已經被刪掉,就退到清單第一個。
+				const pick = models.includes(s.llmModel) ? s.llmModel : models[0];
+				d.setValue(pick);
+				if (pick !== s.llmModel) {
+					s.llmModel = pick;
+					void this.plugin.saveSettings();
+				}
+			});
+		});
 	}
 }
