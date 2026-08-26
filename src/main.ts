@@ -66,11 +66,11 @@ export default class WordFolioPlugin extends Plugin {
 		this.tooltip = new WordTooltip({
 			onSpeak: (word, accent) => void this.audio.speak(word, accent),
 			onAdd: (lookup, sentence) => void this.addToVocab(lookup, sentence),
-			onAsk: (lookup, sentence) => this.llm.explain(lookup, sentence),
-			onUsage: (lookup) =>
-				this.llm.usage(lookup.entry.w, lookup.entry.tr.split("\\n").join("; ")),
-			onDetail: (lookup) =>
-				this.llm.detail(lookup.entry.w, lookup.entry.tr.split("\\n").join("; ")),
+			onAsk: (lookup, sentence, gen) => this.llm.explain(lookup, sentence, gen),
+			onUsage: (lookup, gen) =>
+				this.llm.usage(lookup.entry.w, lookup.entry.tr.split("\\n").join("; "), gen),
+			onDetail: (lookup, gen) =>
+				this.llm.detail(lookup.entry.w, lookup.entry.tr.split("\\n").join("; "), gen),
 			isSaved: (word) => this.vocab.has(word),
 			cachedAsk: (lookup, sentence) => this.llm.cachedExplain(lookup.surface, sentence),
 			cachedUsage: (word) => this.llm.usageFor(word),

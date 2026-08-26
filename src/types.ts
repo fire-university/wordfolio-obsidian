@@ -91,3 +91,17 @@ export interface VocabCard {
 	state: "new" | "learning" | "review" | "relearning";
 	lastReview?: string;
 }
+
+/**
+ * 生成時的附加選項:邊生成邊回報、以及中途取消。
+ *
+ * 放在 types.ts 而不是 llm.ts,是因為 tooltip.ts 要用它,而 llm.ts 依賴
+ * `obsidian` 模組——node 測試載不進來。共用型別要放在「誰都能 import」的地方。
+ */
+export interface GenOpts {
+	onChunk?: (partial: string) => void;
+	signal?: AbortSignal;
+}
+
+/** 中途取消時丟這個,呼叫端看到就安靜跳過,不要當成錯誤顯示。 */
+export const ABORTED = "wordfolio:aborted";

@@ -6,6 +6,12 @@
 	z-index: var(--layer-tooltip, 60);
 	max-width: 26em;
 	min-width: 14em;
+	/* 內容長度不可控(AI 會生出多少字沒得保證),所以一定要能捲。
+	   實際的 max-height 由 position() 依「浮窗上緣到視窗邊緣還剩多少」動態設定,
+	   這裡只給一個保底值,免得還沒定位就撐破畫面。 */
+	max-height: 70vh;
+	overflow-y: auto;
+	overscroll-behavior: contain;
 	padding: 0.7em 0.85em;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-m);

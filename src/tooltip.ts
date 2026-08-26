@@ -8,7 +8,8 @@
 import { formsFor, meaningfulLines } from "./lemma";
 import { t } from "./i18n";
 import type { SectionId } from "./sections";
-import type { Lookup, InflectionKind } from "./types";
+import type { Lookup, InflectionKind, GenOpts } from "./types";
+import { ABORTED } from "./types";
 
 /** 從畫面座標找出游標底下的英文字,連同所在句子。 */
 export interface HoverHit {
@@ -259,11 +260,11 @@ export interface TooltipCallbacks {
 	/** 點「加入生詞本」 */
 	onAdd: (lookup: Lookup, sentence: string) => void;
 	/** 點「在這句話裡是什麼意思」;回傳解釋文字 */
-	onAsk?: (lookup: Lookup, sentence: string) => Promise<string>;
+	onAsk?: (lookup: Lookup, sentence: string, gen: GenOpts) => Promise<string>;
 	/** 點「例句與用法」;回傳例句、搭配、辨析 */
-	onUsage?: (lookup: Lookup) => Promise<string>;
+	onUsage?: (lookup: Lookup, gen: GenOpts) => Promise<string>;
 	/** 點「字詞詳解」;回傳字根字首與詞族 */
-	onDetail?: (lookup: Lookup) => Promise<string>;
+	onDetail?: (lookup: Lookup, gen: GenOpts) => Promise<string>;
 	/** 這個字是不是已經在生詞本裡了 */
 	isSaved: (word: string) => boolean;
 	/** 點了同義詞/詞形等可點的字:跳去查那個字(浮窗內導覽) */
@@ -292,6 +293,11 @@ export class WordTooltip {
 	private visible = false;
 	/** 重畫世代,用來丟掉晚到的 AI 結果 */
 	private renderGen = 0;
+	/**
+	 * 還在跑的 AI 請求。換字或關掉浮窗時要真的中止——只是「忽略結果」不夠,
+	 * 模型還是會在背景跑完,滑過一排字就等於排隊一排推理。
+	 */
+	private inflight: AbortController[] = [];
 
 	constructor(private cb: TooltipCallbacks) {
 		this.el = document.createElement("div");
@@ -332,6 +338,7 @@ export class WordTooltip {
 	}
 
 	hide(): void {
+		this.abortInflight();
 		if (!this.visible) return;
 		this.visible = false;
 		this.el.style.display = "none";
@@ -341,6 +348,7 @@ export class WordTooltip {
 	show(lookup: Lookup, hit: HoverHit, view: ViewConfig): void {
 		// 每次重畫換一個世代號:還在路上的 AI 結果回來時比對,不是這一輪的就丟掉。
 		this.renderGen++;
+		this.abortInflight();
 		this.el.empty();
 		this.render(lookup, hit, view);
 		this.el.style.display = "";
@@ -510,7 +518,7 @@ export class WordTooltip {
 				this.aiSection(
 					t("tooltip_ask_claude"),
 					this.cb.cachedAsk?.(lookup, hit.sentence),
-					() => this.cb.onAsk!(lookup, hit.sentence),
+					(gen) => this.cb.onAsk!(lookup, hit.sentence, gen),
 					hit
 				);
 				return;
@@ -521,7 +529,7 @@ export class WordTooltip {
 				this.aiSection(
 					t("tooltip_usage"),
 					this.cb.cachedUsage?.(entry.w),
-					() => this.cb.onUsage!(lookup),
+					(gen) => this.cb.onUsage!(lookup, gen),
 					hit
 				);
 				return;
@@ -532,7 +540,7 @@ export class WordTooltip {
 				this.aiSection(
 					t("tooltip_detail"),
 					this.cb.cachedDetail?.(entry.w),
-					() => this.cb.onDetail!(lookup),
+					(gen) => this.cb.onDetail!(lookup, gen),
 					hit
 				);
 				return;
@@ -563,15 +571,23 @@ export class WordTooltip {
 	}
 
 	/** 兩顆 AI 按鈕的共用行為:按下去 → 顯示進行中 → 換成結果或錯誤。 */
+	/** 中止所有還在跑的 AI 請求。 */
+	private abortInflight(): void {
+		for (const c of this.inflight) c.abort();
+		this.inflight = [];
+	}
+
 	/**
 	 * 自動生成的 AI 區塊。算過的直接畫;沒算過的先放一行「思考中」,
-	 * 等浮窗真的停留超過 AI_DWELL_MS 才開始跑,結果回來再填進去。
-	 * 期間浮窗若換了內容(世代號變了),晚到的結果一律丟掉。
+	 * 等浮窗真的停留超過 AI_DWELL_MS 才開始跑,然後**邊生成邊把字填進去**。
+	 *
+	 * 串流是關鍵:重點不是總共跑幾秒,是多久看到第一個字。浮窗高度由
+	 * position() 綁死在可用空間上,所以內容再長也只會在框內捲動。
 	 */
 	private aiSection(
 		label: string,
 		cached: string | undefined,
-		run: () => Promise<string>,
+		run: (gen: GenOpts) => Promise<string>,
 		hit: HoverHit
 	): void {
 		const box = this.el.createDiv({ cls: "wordfolio-ai" });
@@ -589,19 +605,33 @@ export class WordTooltip {
 		const gen = this.renderGen;
 		window.setTimeout(async () => {
 			if (gen !== this.renderGen) return; // 已經換字了,不用跑
+
+			const ctrl = new AbortController();
+			this.inflight.push(ctrl);
+			let started = false;
+
 			try {
-				const text = await run();
+				await run({
+					signal: ctrl.signal,
+					onChunk: (partial) => {
+						if (gen !== this.renderGen) return;
+						if (!started) {
+							started = true;
+							body.removeClass("is-loading");
+						}
+						body.setText(partial);
+					},
+				});
 				if (gen !== this.renderGen) return;
 				body.removeClass("is-loading");
-				body.setText(text);
 			} catch (e) {
 				if (gen !== this.renderGen) return;
+				// 中止是預期行為(使用者滑走了),不要顯示成錯誤。
+				if (e instanceof Error && e.message === ABORTED) return;
 				body.removeClass("is-loading");
 				body.addClass("wordfolio-error");
 				body.setText(e instanceof Error ? e.message : String(e));
 			}
-			// 內容變高了,重新定位免得掉出視窗外。
-			this.position(hit.rect);
 		}, AI_DWELL_MS);
 	}
 
@@ -634,20 +664,28 @@ export class WordTooltip {
 	 */
 	private position(anchor: DOMRect): void {
 		const gap = 6;
-		const box = this.el.getBoundingClientRect();
 		const vw = window.innerWidth;
 		const vh = window.innerHeight;
+
+		// 高度先解除限制才量得到真實內容高度。
+		this.el.style.maxHeight = "";
+		const box = this.el.getBoundingClientRect();
 
 		let left = anchor.left;
 		if (left + box.width > vw - gap) left = vw - box.width - gap;
 		if (left < gap) left = gap;
 
-		let top = anchor.bottom + gap;
-		if (top + box.height > vh - gap) {
-			const above = anchor.top - box.height - gap;
-			if (above > gap) top = above;
-			else top = Math.max(gap, vh - box.height - gap);
-		}
+		// 上下各剩多少空間。內容長度不可控(AI 邊生成邊變長),所以不是「挑一邊放得下」,
+		// 而是「挑空間大的一邊,再把 max-height 綁死在那一邊的可用高度」——
+		// 之後內容再長也只會在浮窗內捲動,不會撐出畫面外。
+		const below = vh - anchor.bottom - gap * 2;
+		const above = anchor.top - gap * 2;
+		const useBelow = below >= box.height || below >= above;
+		const avail = Math.max(120, useBelow ? below : above);
+
+		this.el.style.maxHeight = `${Math.floor(avail)}px`;
+		const height = Math.min(box.height, avail);
+		const top = useBelow ? anchor.bottom + gap : Math.max(gap, anchor.top - height - gap);
 
 		this.el.style.left = `${Math.round(left)}px`;
 		this.el.style.top = `${Math.round(top)}px`;
