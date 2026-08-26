@@ -7,7 +7,6 @@ import {
 	WordFolioSettings,
 	DEFAULT_SETTINGS,
 	AudioSource,
-	ClaudeModel,
 } from "./settings";
 import { t, setLang, LangSetting, currentLang } from "./i18n";
 import { Dictionary } from "./dict";
@@ -18,7 +17,7 @@ import { Audio } from "./audio";
 import { VocabStore } from "./vocab";
 import { ReviewModal } from "./review";
 import { dueCards } from "./schedule";
-import { ClaudeExplainer } from "./claude";
+import { LocalLLM } from "./llm";
 import {
 	normalizeOrder,
 	normalizeEnabled,
@@ -35,7 +34,7 @@ export default class WordFolioPlugin extends Plugin {
 	private hover!: HoverController;
 	private audio!: Audio;
 	private vocab!: VocabStore;
-	private claude!: ClaudeExplainer;
+	private llm!: LocalLLM;
 	private ribbon: HTMLElement | null = null;
 
 	async onload(): Promise<void> {
@@ -57,20 +56,20 @@ export default class WordFolioPlugin extends Plugin {
 
 		this.vocab = new VocabStore(this.app, () => this.settings.vocabFolder);
 
-		this.claude = new ClaudeExplainer(() => ({
-			apiKey: this.settings.claudeApiKey,
-			model: this.settings.claudeModel,
+		this.llm = new LocalLLM(() => ({
+			endpoint: this.settings.llmEndpoint,
+			model: this.settings.llmModel,
 			traditional: currentLang() === "zh-TW",
 		}));
 
 		this.tooltip = new WordTooltip({
 			onSpeak: (word, accent) => void this.audio.speak(word, accent),
 			onAdd: (lookup, sentence) => void this.addToVocab(lookup, sentence),
-			onAsk: (lookup, sentence) => this.claude.explain(lookup, sentence),
+			onAsk: (lookup, sentence) => this.llm.explain(lookup, sentence),
 			onUsage: (lookup) =>
-				this.claude.usage(lookup.entry.w, lookup.entry.tr.split("\\n").join("; ")),
+				this.llm.usage(lookup.entry.w, lookup.entry.tr.split("\\n").join("; ")),
 			onDetail: (lookup) =>
-				this.claude.detail(lookup.entry.w, lookup.entry.tr.split("\\n").join("; ")),
+				this.llm.detail(lookup.entry.w, lookup.entry.tr.split("\\n").join("; ")),
 			isSaved: (word) => this.vocab.has(word),
 		});
 
@@ -197,9 +196,9 @@ export default class WordFolioPlugin extends Plugin {
 		if (entry) return { entry, surface: text };
 
 		// 離線庫沒有:交給 Claude 生一個臨時詞條(有 key 才行)。
-		if (!this.claude.available) return null;
+		if (!this.llm.available) return null;
 		try {
-			const tr = await this.claude.translatePhrase(text);
+			const tr = await this.llm.translatePhrase(text);
 			return { entry: { w: text, tr }, surface: text };
 		} catch {
 			return null;
@@ -213,8 +212,8 @@ export default class WordFolioPlugin extends Plugin {
 				sentence,
 				this.settings.captureSentence,
 				// 已經花 token 生成過的內容一併寫進筆記,不用再花第二次。
-				this.claude.usageFor(lookup.entry.w),
-				this.claude.detailFor(lookup.entry.w)
+				this.llm.usageFor(lookup.entry.w),
+				this.llm.detailFor(lookup.entry.w)
 			);
 			new Notice(
 				t(created ? "notice_vocab_added" : "notice_vocab_exists", {
@@ -484,32 +483,34 @@ class WordFolioSettingTab extends PluginSettingTab {
 				})
 			);
 
-		// --- Claude ---
-		new Setting(containerEl).setName(t("heading_claude")).setHeading();
+		// --- 本地 AI ---
+		new Setting(containerEl)
+			.setName(t("heading_llm"))
+			.setDesc(t("heading_llm_desc"))
+			.setHeading();
 
 		new Setting(containerEl)
-			.setName(t("set_claude_key_name"))
-			.setDesc(t("set_claude_key_desc"))
-			.addText((txt) => {
-				txt.inputEl.type = "password";
-				txt.setPlaceholder("sk-ant-…")
-					.setValue(s.claudeApiKey)
+			.setName(t("set_llm_endpoint_name"))
+			.setDesc(t("set_llm_endpoint_desc"))
+			.addText((txt) =>
+				txt
+					.setPlaceholder("http://localhost:11434/v1")
+					.setValue(s.llmEndpoint)
 					.onChange(async (v) => {
-						s.claudeApiKey = v.trim();
+						s.llmEndpoint = v.trim() || DEFAULT_SETTINGS.llmEndpoint;
 						await this.plugin.saveSettings();
-					});
-			});
+					})
+			);
 
 		new Setting(containerEl)
-			.setName(t("set_claude_model_name"))
-			.setDesc(t("set_claude_model_desc"))
-			.addDropdown((d) =>
-				d
-					.addOption("claude-haiku-4-5-20251001", "Haiku 4.5")
-					.addOption("claude-sonnet-5", "Sonnet 5")
-					.setValue(s.claudeModel)
+			.setName(t("set_llm_model_name"))
+			.setDesc(t("set_llm_model_desc"))
+			.addText((txt) =>
+				txt
+					.setPlaceholder("qwen2.5:7b")
+					.setValue(s.llmModel)
 					.onChange(async (v) => {
-						s.claudeModel = v as ClaudeModel;
+						s.llmModel = v.trim() || DEFAULT_SETTINGS.llmModel;
 						await this.plugin.saveSettings();
 					})
 			);

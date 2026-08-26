@@ -61,7 +61,7 @@ const EN: Dict = {
 	tooltip_ask_claude: "What does it mean here?",
 	tooltip_usage: "Examples and usage",
 	tooltip_detail: "Roots and word family",
-	tooltip_asking: "Asking Claude…",
+	tooltip_asking: "Thinking…",
 	tooltip_inflection_of: "form of {lemma}",
 	tooltip_forms: "Forms",
 	label_uk: "UK",
@@ -129,14 +129,14 @@ const EN: Dict = {
 	section_exams_desc: "CET, TOEFL, GRE and so on. Useful when studying for a test, noise otherwise.",
 	section_forms: "Inflected forms",
 	section_forms_desc: "Plural, past tense, -ing form and the rest.",
-	section_claude: "Ask Claude",
+	section_claude: "What does it mean here (AI)",
 	section_claude_desc: "The button that explains the word in the sentence you are reading.",
-	section_usage: "Examples and usage (Claude)",
+	section_usage: "Examples and usage (AI)",
 	section_usage_desc:
-		"Example sentences, common collocations and near-synonym notes — the three things the offline dictionary does not have. Costs tokens per word, so it is off by default; whatever you generate is saved into the word's note.",
-	section_detail: "Roots & word family (Claude)",
+		"Example sentences, common collocations and near-synonym notes, written by the local AI. Free but slower than the offline sections, so it is off by default; whatever you generate is saved into the word's note.",
+	section_detail: "Roots & word family (AI)",
 	section_detail_desc:
-		"Breaks the word into prefix/root/suffix with Latin/Greek origins, plus words from the same root. Costs tokens per word, off by default; saved into the word's note.",
+		"Breaks the word into prefix/root/suffix with Latin/Greek origins, plus words from the same root. Written by the local AI; off by default because it takes a few seconds. Saved into the word's note.",
 	section_move_up: "Move up",
 	section_move_down: "Move down",
 
@@ -150,12 +150,13 @@ const EN: Dict = {
 	set_vocab_folder_name: "Notebook folder",
 	set_vocab_folder_desc:
 		"One note per word is written here; the plugin only ever touches this folder.",
-	heading_claude: "Claude (optional)",
-	set_claude_key_name: "Anthropic API key",
-	set_claude_key_desc:
-		"Only used when you press \"What does it mean here?\". Leave empty to disable. Stored in plain text in this plugin's data.json — if your vault syncs (iCloud, Dropbox, Git), the key syncs with it.",
-	set_claude_model_name: "Model",
-	set_claude_model_desc: "Haiku is fast and cheap; Sonnet writes better explanations.",
+	heading_llm: "Local AI (optional)",
+	heading_llm_desc:
+		"The AI sections (\"what does it mean here\", roots, usage) run on a local model via Ollama — no API key, nothing leaves your Mac. Install Ollama and run e.g. `ollama pull qwen2.5:7b`. Leave these as-is if you use Ollama's defaults.",
+	set_llm_endpoint_name: "Endpoint",
+	set_llm_endpoint_desc: "OpenAI-compatible API base. Ollama's default is http://localhost:11434/v1.",
+	set_llm_model_name: "Model",
+	set_llm_model_desc: "The Ollama model name, e.g. qwen2.5:7b. Qwen handles Chinese well.",
 };
 
 const ZH: Dict = {
@@ -180,7 +181,7 @@ const ZH: Dict = {
 	tooltip_ask_claude: "在這句話裡是什麼意思",
 	tooltip_usage: "例句與用法",
 	tooltip_detail: "字根字首與詞族",
-	tooltip_asking: "問 Claude 中…",
+	tooltip_asking: "本地 AI 思考中…",
 	tooltip_inflection_of: "{lemma} 的變化形",
 	tooltip_forms: "變化",
 	label_uk: "英",
@@ -246,14 +247,14 @@ const ZH: Dict = {
 	section_exams_desc: "CET、TOEFL、GRE 之類。準備考試時有用,一般閱讀是雜訊。",
 	section_forms: "變化形",
 	section_forms_desc: "複數、過去式、現在分詞等。",
-	section_claude: "問 Claude",
+	section_claude: "在這句話裡是什麼意思（AI）",
 	section_claude_desc: "那顆「在這句話裡是什麼意思」的按鈕。",
-	section_usage: "例句與用法（Claude）",
+	section_usage: "例句與用法（AI）",
 	section_usage_desc:
-		"例句、常見搭配、近義詞辨析——離線詞庫沒有的三樣。每個字要花 token,所以預設關閉;生成過的內容加進生詞本時會一起寫進筆記,不用再花第二次。",
-	section_detail: "字根字首與詞族（Claude）",
+		"例句、常見搭配、近義詞辨析,由本地 AI 生成。免費,但比離線區塊慢幾秒,所以預設關閉;生成過的內容加進生詞本時會一起寫進筆記。",
+	section_detail: "字根字首與詞族（AI）",
 	section_detail_desc:
-		"把字拆成字首/字根/字尾,標出拉丁或希臘來源,再加同一字根的衍生字。每個字要花 token,預設關閉;生成過的內容會一起寫進生詞本。",
+		"把字拆成字首/字根/字尾,標出拉丁或希臘來源,再加同一字根的衍生字。由本地 AI 生成,要跑幾秒所以預設關閉;生成過的內容會一起寫進生詞本。",
 	section_move_up: "往上移",
 	section_move_down: "往下移",
 
@@ -266,12 +267,13 @@ const ZH: Dict = {
 	heading_vocab: "生詞本",
 	set_vocab_folder_name: "生詞本資料夾",
 	set_vocab_folder_desc: "一個字一篇筆記寫在這裡;外掛永遠只碰這個資料夾。",
-	heading_claude: "Claude(選用)",
-	set_claude_key_name: "Anthropic API key",
-	set_claude_key_desc:
-		"只有按下「在這句話裡是什麼意思」時才會用到,留空就是不啟用。這把 key 以明文存在外掛的 data.json 裡——如果你的 vault 有同步(iCloud、Dropbox、Git),key 會跟著一起同步出去。",
-	set_claude_model_name: "模型",
-	set_claude_model_desc: "Haiku 快又便宜;Sonnet 解釋寫得比較好。",
+	heading_llm: "本地 AI（選用）",
+	heading_llm_desc:
+		"AI 那幾個區塊（「在這句話裡是什麼意思」、字根字首、例句用法）跑在本地模型上,透過 Ollama——不用 API key、查的字不會離開你的電腦。裝好 Ollama 後執行 `ollama pull qwen2.5:7b`。用 Ollama 預設的話這兩欄不用改。",
+	set_llm_endpoint_name: "端點",
+	set_llm_endpoint_desc: "OpenAI 相容的 API base。Ollama 預設是 http://localhost:11434/v1。",
+	set_llm_model_name: "模型",
+	set_llm_model_desc: "Ollama 的模型名,例如 qwen2.5:7b。Qwen 的中文不錯。",
 };
 
 const STRINGS: Record<Lang, Dict> = { en: EN, "zh-TW": ZH };

@@ -7,7 +7,6 @@ import type { IconMode } from "./tooltip";
 
 export type AudioSource = "online_first" | "system_only";
 export type TriggerMode = "hover" | "select" | "both";
-export type ClaudeModel = "claude-haiku-4-5-20251001" | "claude-sonnet-5";
 
 export interface WordFolioSettings {
 	// 介面語言:auto 跟 Obsidian、en、zh-TW
@@ -44,10 +43,10 @@ export interface WordFolioSettings {
 	// 加入生詞本時要不要一併記下原句。
 	captureSentence: boolean;
 
-	// --- Claude(選用) ---
-	// 注意:明文存在 data.json,vault 有同步就會跟著同步出去。設定頁必須講清楚。
-	claudeApiKey: string;
-	claudeModel: ClaudeModel;
+	// --- 本地 AI(選用) ---
+	// OpenAI 相容端點(預設 Ollama)。不用 API key、不把查的字送出電腦。
+	llmEndpoint: string;
+	llmModel: string;
 
 	// --- 詞庫 ---
 	// 已安裝的詞庫版本;空字串 = 尚未下載。
@@ -68,8 +67,8 @@ export const DEFAULT_SETTINGS: WordFolioSettings = {
 	audioSource: "online_first",
 	vocabFolder: "英文生詞本",
 	captureSentence: true,
-	claudeApiKey: "",
-	claudeModel: "claude-haiku-4-5-20251001",
+	llmEndpoint: "http://localhost:11434/v1",
+	llmModel: "qwen2.5:7b",
 	dictVersion: "",
 };
 
