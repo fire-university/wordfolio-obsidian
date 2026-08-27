@@ -9,7 +9,7 @@
 		"build:dict": "node tools/build-dict.mjs",
 		"deploy": "npm run build && node tools/deploy.mjs",
 		"fetch:sources": "node tools/fetch-sources.mjs",
-		"test": "tsx test/dict-check.ts && tsx test/schedule-check.ts && tsx test/skip-check.ts && tsx test/sections-check.ts"
+		"test": "tsx test/dict-check.ts && tsx test/schedule-check.ts && tsx test/skip-check.ts && tsx test/sections-check.ts && tsx test/cambridge-check.ts"
 	},
 	"keywords": [
 		"obsidian",
@@ -21,8 +21,10 @@
 	"author": "Doug (fire-university)",
 	"license": "MIT",
 	"devDependencies": {
+		"@types/jsdom": "^30.0.0",
 		"@types/node": "^20.11.0",
 		"esbuild": "^0.20.2",
+		"jsdom": "^30.0.1",
 		"obsidian": "latest",
 		"opencc-js": "^1.4.1",
 		"tslib": "^2.6.2",

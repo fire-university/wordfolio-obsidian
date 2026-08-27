@@ -18,6 +18,7 @@ import { VocabStore } from "./vocab";
 import { ReviewModal } from "./review";
 import { dueCards } from "./schedule";
 import { LocalLLM } from "./llm";
+import { Cambridge } from "./cambridge";
 import {
 	ALL_SECTIONS,
 	normalizeOrder,
@@ -36,6 +37,7 @@ export default class WordFolioPlugin extends Plugin {
 	private audio!: Audio;
 	private vocab!: VocabStore;
 	private llm!: LocalLLM;
+	private cambridge = new Cambridge();
 	private ribbon: HTMLElement | null = null;
 
 	async onload(): Promise<void> {
@@ -72,6 +74,8 @@ export default class WordFolioPlugin extends Plugin {
 			onDetail: (lookup, gen) =>
 				this.llm.detail(lookup.entry.w, lookup.entry.tr.split("\\n").join("; "), gen),
 			isSaved: (word) => this.vocab.has(word),
+			onCambridge: (word, signal) => this.cambridge.lookup(word, signal),
+			cachedCambridge: (word) => this.cambridge.cached(word),
 			cachedAsk: (lookup, sentence) => this.llm.cachedExplain(lookup.surface, sentence),
 			cachedUsage: (word) => this.llm.usageFor(word),
 			cachedDetail: (word) => this.llm.detailFor(word),
@@ -254,6 +258,21 @@ export default class WordFolioPlugin extends Plugin {
 	async loadSettings(): Promise<void> {
 		const data = (await this.loadData()) as Partial<WordFolioSettings> | null;
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, data ?? {});
+
+		// 遷移:加了劍橋詞典之後,AI 那三樣退位成加值選項(太慢)。已經存過設定的人
+		// 不會因為預設值改了就受惠,要主動關掉一次;同時把劍橋打開。只做一次,
+		// 之後使用者自己開回來就尊重他的選擇。
+		if (data && !this.settings.migratedCambridge) {
+			this.settings.sectionsEnabled = {
+				...this.settings.sectionsEnabled,
+				cambridge: true,
+				claude: false,
+				usage: false,
+				detail: false,
+			};
+			this.settings.migratedCambridge = true;
+			await this.saveSettings();
+		}
 
 		// 遷移:triggerMode 之前叫 hoverEnabled(布林)。舊使用者若關掉過 hover,
 		// 沿用其意圖;沒有 triggerMode 欄位又沒關過 hover 的,維持預設 hover。

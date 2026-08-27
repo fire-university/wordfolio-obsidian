@@ -5,6 +5,7 @@
 
 export type SectionId =
 	| "phonetics" // 英美音標與發音
+	| "cambridge" // 劍橋詞典:按義項分的英文定義＋繁中＋例句(線上)
 	| "translation" // 繁中釋義(ECDICT)
 	| "english" // 英英釋義(WordNet)
 	| "surface" // 變化形自己的釋義(跟原形不同時才有)
@@ -20,6 +21,9 @@ export type SectionId =
 /** 全部區塊,照預設順序。設定裡的排序以這個為起點。 */
 export const ALL_SECTIONS: SectionId[] = [
 	"phonetics",
+	// 劍橋擺在最前面:它是人編的詞典,按義項分、每個義項都有繁中與例句,
+	// 比 ECDICT 那幾行並列的釋義好讀得多。
+	"cambridge",
 	"translation",
 	// 「在這句話裡是什麼意思」緊接在釋義後面:那是讀者當下最想要的答案,
 	// 不該埋在一堆補充資料底下。
@@ -46,6 +50,7 @@ export const ALL_SECTIONS: SectionId[] = [
  */
 export const DEFAULT_ENABLED: Record<SectionId, boolean> = {
 	phonetics: true,
+	cambridge: true,
 	translation: true,
 	english: true,
 	surface: true,
@@ -55,12 +60,14 @@ export const DEFAULT_ENABLED: Record<SectionId, boolean> = {
 	// 例句、同義詞都是離線的、免費,預設開。
 	examples: true,
 	synonyms: true,
-	// AI 三樣預設全開:字典就該直接給答案,不該叫人按按鈕。
-	// 本地模型免費,唯一的成本是時間——那個用「停留才生成」的閘門處理
-	// (見 tooltip.ts 的 AI_DWELL_MS),不是丟給使用者自己去開關。
-	claude: true,
-	usage: true,
-	detail: true,
+	// AI 三樣改回預設關閉。
+	//
+	// 一度預設全開(字典就該直接給答案),但實測本地模型要等好幾秒、內容還不穩
+	// (會吐簡體、硬拆字根)。劍橋詞典把「例句」「多義項辨析」做得更好而且快一個
+	// 量級,所以那三樣退位成加值選項——想要中文的字根拆解再自己打開。
+	claude: false,
+	usage: false,
+	detail: false,
 };
 
 /** i18n 的 key,設定頁與說明共用。 */

@@ -210,6 +210,73 @@
 	font-size: 0.9em;
 }
 
+/* --- 劍橋詞典 --- */
+.wordfolio-camb {
+	margin-top: 0.6em;
+	padding-top: 0.5em;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.wf-camb-sense {
+	margin-top: 0.55em;
+}
+
+.wf-camb-sense:first-of-type {
+	margin-top: 0.25em;
+}
+
+.wf-camb-head {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5em;
+	margin-bottom: 0.15em;
+}
+
+/* 義項標籤(SUCCESSFUL / IN FACT):劍橋用來區分多義字,給它一個標籤樣式 */
+.wf-camb-gw {
+	padding: 0 0.4em;
+	border-radius: var(--radius-s);
+	background: var(--background-modifier-hover);
+	color: var(--text-accent);
+	font-size: 0.72em;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+}
+
+.wf-camb-pos {
+	color: var(--text-faint);
+	font-size: 0.78em;
+	font-style: italic;
+}
+
+.wf-camb-def {
+	color: var(--text-normal);
+	line-height: 1.45;
+}
+
+.wf-camb-zh {
+	margin-top: 0.1em;
+	color: var(--text-accent);
+}
+
+.wf-camb-eg {
+	margin: 0.3em 0 0 0.15em;
+	padding-left: 0.6em;
+	border-left: 2px solid var(--background-modifier-border);
+}
+
+.wf-camb-eg-en {
+	color: var(--text-muted);
+	font-style: italic;
+	line-height: 1.4;
+}
+
+.wf-camb-eg-zh {
+	color: var(--text-faint);
+	font-size: 0.9em;
+	line-height: 1.4;
+}
+
 /* --- AI 自動生成的區塊 --- */
 .wordfolio-ai {
 	margin-top: 0.6em;

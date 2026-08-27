@@ -48,6 +48,10 @@ export interface WordFolioSettings {
 	llmEndpoint: string;
 	llmModel: string;
 
+	// 一次性遷移的標記。改預設值救不了已經存過設定的人——他們的 data.json
+	// 裡是舊值。加了劍橋之後,AI 那三樣要真的關掉才看得到改善,所以需要這個。
+	migratedCambridge?: boolean;
+
 	// --- 詞庫 ---
 	// 已安裝的詞庫版本;空字串 = 尚未下載。
 	dictVersion: string;

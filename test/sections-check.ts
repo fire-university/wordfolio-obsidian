@@ -96,9 +96,16 @@ check(
 );
 check("英英釋義預設開啟", DEFAULT_ENABLED.english === true, "79.7% 的詞條有這份資料，關掉是浪費");
 check("考試標籤預設關閉", DEFAULT_ENABLED.exams === false, "一般閱讀是雜訊");
-// 改本地 AI 之後「花 token」的理由消失了,字典就該直接給答案 → 三樣預設全開。
-check("例句與用法預設開啟", DEFAULT_ENABLED.usage === true, "本地 AI 免費");
-check("字根詞族預設開啟", DEFAULT_ENABLED.detail === true, "本地 AI 免費");
+// AI 三樣一度預設全開(字典就該直接給答案),但本地模型要等好幾秒、內容還不穩。
+// 劍橋詞典把「例句」「多義項辨析」做得更好又快一個量級,所以 AI 退位成加值選項。
+check("劍橋詞典預設開啟", DEFAULT_ENABLED.cambridge === true, "主要內容來源");
+check("例句與用法(AI)預設關閉", DEFAULT_ENABLED.usage === false, "太慢,交給劍橋");
+check("字根詞族(AI)預設關閉", DEFAULT_ENABLED.detail === false, "太慢,想要再自己開");
+// 劍橋要排在離線釋義前面——它是人編的內容,該先看到。
+check(
+	"劍橋排在 ECDICT 釋義之前",
+	ALL_SECTIONS.indexOf("cambridge") < ALL_SECTIONS.indexOf("translation")
+);
 check(
 	"舊使用者升級後會拿到 usage 區塊",
 	normalizeOrder(["phonetics", "translation"]).includes("usage"),

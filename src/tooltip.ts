@@ -10,6 +10,7 @@ import { t } from "./i18n";
 import type { SectionId } from "./sections";
 import type { Lookup, InflectionKind, GenOpts } from "./types";
 import { ABORTED } from "./types";
+import type { CambridgeEntry } from "./cambridge-parse";
 
 /** 從畫面座標找出游標底下的英文字,連同所在句子。 */
 export interface HoverHit {
@@ -273,6 +274,10 @@ export interface TooltipCallbacks {
 	onBack?: () => void;
 	/** 還有沒有上一頁可回 */
 	canGoBack?: () => boolean;
+	/** 查劍橋詞典(線上);查不到回 null */
+	onCambridge?: (word: string, signal: AbortSignal) => Promise<CambridgeEntry | null>;
+	/** 劍橋查過了沒(undefined = 還沒查過,null = 查過但沒這個字) */
+	cachedCambridge?: (word: string) => CambridgeEntry | null | undefined;
 	/** 這幾樣算過了沒(算過就直接畫,不再等模型) */
 	cachedAsk?: (lookup: Lookup, sentence: string) => string | undefined;
 	cachedUsage?: (word: string) => string | undefined;
@@ -287,6 +292,12 @@ export interface TooltipCallbacks {
  * 停留超過這個時間才開始跑——掃視不會觸發,真的停下來看才會。
  */
 const AI_DWELL_MS = 700;
+
+/**
+ * 劍橋是查網頁不是跑模型,零點幾秒就回來,所以閘門可以短很多。
+ * 但還是要有——不然滑過一段文章會朝人家網站送一排請求。
+ */
+const CAMBRIDGE_DWELL_MS = 250;
 
 export class WordTooltip {
 	private el: HTMLDivElement;
@@ -484,6 +495,12 @@ export class WordTooltip {
 				return;
 			}
 
+			case "cambridge": {
+				if (!this.cb.onCambridge) return;
+				this.cambridgeSection(entry.w, hit);
+				return;
+			}
+
 			case "examples": {
 				if (!entry.ex?.length) return;
 				const box = this.el.createDiv({ cls: "wordfolio-examples" });
@@ -571,6 +588,72 @@ export class WordTooltip {
 	}
 
 	/** 兩顆 AI 按鈕的共用行為:按下去 → 顯示進行中 → 換成結果或錯誤。 */
+	/**
+	 * 劍橋詞典區塊:按義項顯示「英文定義 + 繁中 + 例句(附中譯)」。
+	 * 這是人編的詞典內容,比離線詞庫那幾行並列釋義好讀,也比本地模型生的可靠。
+	 */
+	private cambridgeSection(word: string, hit: HoverHit): void {
+		const cached = this.cb.cachedCambridge?.(word);
+		// 查過但沒有這個字(冷僻字、變化形):安靜跳過,不要留一塊空的。
+		if (cached === null) return;
+
+		const box = this.el.createDiv({ cls: "wordfolio-camb" });
+		if (cached) {
+			this.renderCambridge(box, cached);
+			return;
+		}
+
+		const loading = box.createDiv({ cls: "wordfolio-ai-body is-loading", text: t("tooltip_looking_up") });
+		const gen = this.renderGen;
+
+		window.setTimeout(async () => {
+			if (gen !== this.renderGen) return;
+			const ctrl = new AbortController();
+			this.inflight.push(ctrl);
+			try {
+				const data = await this.cb.onCambridge!(word, ctrl.signal);
+				if (gen !== this.renderGen) return;
+				loading.remove();
+				if (!data) {
+					box.remove(); // 查無此字,整塊收掉
+					return;
+				}
+				this.renderCambridge(box, data);
+				this.position(hit.rect);
+			} catch {
+				if (gen !== this.renderGen) return;
+				// 沒網路之類:安靜收掉。離線那幾個區塊本來就還在,不必嚇使用者。
+				box.remove();
+			}
+		}, CAMBRIDGE_DWELL_MS);
+	}
+
+	private renderCambridge(box: HTMLElement, data: CambridgeEntry): void {
+		box.empty();
+		box.createDiv({ cls: "wordfolio-ai-label", text: t("section_cambridge") });
+
+		// 義項多的字(get、run)會很長,取前六個就夠讀了。
+		for (const sense of data.senses.slice(0, 6)) {
+			const el = box.createDiv({ cls: "wf-camb-sense" });
+
+			if (sense.guideword || sense.pos) {
+				const head = el.createDiv({ cls: "wf-camb-head" });
+				if (sense.guideword) head.createSpan({ cls: "wf-camb-gw", text: sense.guideword });
+				if (sense.pos) head.createSpan({ cls: "wf-camb-pos", text: sense.pos });
+			}
+
+			el.createDiv({ cls: "wf-camb-def", text: sense.def });
+			if (sense.zh) el.createDiv({ cls: "wf-camb-zh", text: sense.zh });
+
+			// 每個義項留兩句就好,不然多義字會排到看不完。
+			for (const eg of sense.examples.slice(0, 2)) {
+				const e = el.createDiv({ cls: "wf-camb-eg" });
+				e.createDiv({ cls: "wf-camb-eg-en", text: eg.en });
+				if (eg.zh) e.createDiv({ cls: "wf-camb-eg-zh", text: eg.zh });
+			}
+		}
+	}
+
 	/** 中止所有還在跑的 AI 請求。 */
 	private abortInflight(): void {
 		for (const c of this.inflight) c.abort();

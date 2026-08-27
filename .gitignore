@@ -13,3 +13,6 @@ main.js
 # 產出的 shard 走 GitHub Release 發佈,不放 repo。
 vendor/
 dict/
+
+# 測試 fixture:第三方網頁內容,不進版控
+test/fixtures/
