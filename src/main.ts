@@ -59,6 +59,21 @@ export default class WordFolioPlugin extends Plugin {
 
 		this.vocab = new VocabStore(this.app, () => this.settings.vocabFolder);
 
+		// 劍橋查過的字寫進外掛資料夾,離線與重開之後都還在。
+		const cambDir = `${base}/cambridge`;
+		this.cambridge.useStore({
+			read: async (name) => {
+				const p = `${cambDir}/${name}`;
+				return (await this.app.vault.adapter.exists(p))
+					? this.app.vault.adapter.read(p)
+					: null;
+			},
+			write: async (name, data) => {
+				await this.app.vault.adapter.mkdir(cambDir).catch(() => undefined);
+				await this.app.vault.adapter.write(`${cambDir}/${name}`, data);
+			},
+		});
+
 		this.llm = new LocalLLM(() => ({
 			endpoint: this.settings.llmEndpoint,
 			model: this.settings.llmModel,

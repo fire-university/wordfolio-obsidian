@@ -113,7 +113,7 @@ const EN: Dict = {
 		"Turn parts on or off and reorder them. A part that has no data for a word simply doesn't appear.",
 	section_cambridge: "Cambridge dictionary",
 	section_cambridge_desc:
-		"Senses from the Cambridge English–Chinese (Traditional) dictionary: English definition, Chinese gloss and real example sentences with translations. Needs a network connection; results are cached per word.",
+		"Senses from the Cambridge English–Chinese (Traditional) dictionary: English definition, Chinese gloss and real example sentences with translations. Needs a network connection the first time you look a word up; after that the entry is saved to disk and works offline. Everything else in this plugin is already offline.",
 	section_phonetics: "Phonetics and pronunciation",
 	section_phonetics_desc: "UK and US IPA with playable audio.",
 	section_translation: "Chinese definition",
@@ -242,7 +242,7 @@ const ZH: Dict = {
 	sections_desc: "勾選要顯示的內容並調整順序。某個字沒有那項資料時,該區塊自己不會出現。",
 	section_cambridge: "劍橋詞典",
 	section_cambridge_desc:
-		"劍橋英漢（繁體）詞典的義項:英文定義、中文釋義,還有附中譯的真實例句。需要連網,查過的字會快取。",
+		"劍橋英漢（繁體）詞典的義項:英文定義、中文釋義,還有附中譯的真實例句。**只有第一次查那個字需要連網**,之後會存進磁碟,離線與重開之後都看得到。外掛其他內容(釋義、音標、例句、同義詞)本來就是離線的。",
 	section_phonetics: "音標與發音",
 	section_phonetics_desc: "英式與美式 IPA,可點喇叭發音。",
 	section_translation: "中文釋義",
