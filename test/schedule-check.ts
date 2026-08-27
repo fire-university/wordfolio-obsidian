@@ -2,7 +2,7 @@
 //
 //   npx tsx test/schedule-check.ts
 
-import { gradeCard, newCard, dueCards, isoDate, Rating } from "../src/schedule";
+import { gradeCard, newCard, dueCards, reviewQueue, isoDate, Rating } from "../src/schedule";
 import type { VocabCard } from "../src/types";
 
 let failures = 0;
@@ -99,6 +99,27 @@ const due = dueCards(pool, DAY0).map((x) => x.card.word);
 check("過期與今天到期都算", due.includes("a") && due.includes("b"), due.join(","));
 check("明天到期不算", !due.includes("c"), due.join(","));
 check("沒有到期日的當成要複習", due.includes("d"), due.join(","));
+
+console.log("\n每日新字上限");
+// 從 Anki 匯入之後生詞本會一次多兩百多個新字。到期的舊字一定要複習完
+// (排程算出來該複習的),新字才受上限管。
+const mixed = [
+	{ card: { ...newCard("old1", DAY0), state: "review" as const, due: "2026-07-20", reps: 5 } },
+	{ card: { ...newCard("old2", DAY0), state: "learning" as const, due: "2026-07-23", reps: 2 } },
+	{ card: { ...newCard("new1", DAY0) } },
+	{ card: { ...newCard("new2", DAY0) } },
+	{ card: { ...newCard("new3", DAY0) } },
+	{ card: { ...newCard("later", DAY0), due: "2026-08-30" } },
+];
+const q = (limit: number, done: number) =>
+	reviewQueue(mixed, limit, done, DAY0).map((x) => x.card.word).join(",");
+check("上限 2:舊字全進,新字只放 2 個", q(2, 0) === "old1,old2,new1,new2", q(2, 0));
+check("今天已經上過 1 個新字,只剩 1 個名額", q(2, 1) === "old1,old2,new1", q(2, 1));
+check("名額用完就只剩舊字", q(2, 2) === "old1,old2", q(2, 2));
+check("上限 0 = 只複習舊字", q(0, 0) === "old1,old2", q(0, 0));
+check("上限大於新字數不會爆", q(99, 0) === "old1,old2,new1,new2,new3", q(99, 0));
+check("超額也不會變成負數名額", q(2, 99) === "old1,old2", q(2, 99));
+check("還沒到期的字一律不進來", !q(99, 0).includes("later"), q(99, 0));
 
 console.log(failures === 0 ? "\n全部通過。" : `\n${failures} 項失敗。`);
 process.exit(failures === 0 ? 0 : 1);

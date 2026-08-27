@@ -488,3 +488,281 @@
 	font-size: 1.1em;
 	color: var(--text-muted);
 }
+
+/* ── 生詞清單視圖 ───────────────────────────────────────────────
+   顏色一律走 Obsidian 的主題變數,不寫死色碼——不然換深色/淺色主題就爛掉。 */
+
+.wordfolio-vocab-view {
+	padding: 0 1.5em 2em;
+}
+
+.wf-vocab-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1em;
+	flex-wrap: wrap;
+	padding-top: 0.5em;
+}
+
+.wf-vocab-header h2 {
+	margin: 0;
+}
+
+.wf-vocab-actions {
+	display: flex;
+	align-items: center;
+	gap: 0.5em;
+}
+
+.wf-icon-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0.4em;
+}
+
+/* 數據卡片。自動換行,窄視窗會排成兩列而不是被擠扁。 */
+.wf-stats {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+	gap: 0.6em;
+	margin: 1.2em 0 0.8em;
+}
+
+.wf-stat {
+	background: var(--background-secondary);
+	border-radius: var(--radius-m);
+	padding: 0.7em 0.9em;
+}
+
+.wf-stat-value {
+	font-size: 1.6em;
+	font-weight: 600;
+	line-height: 1.2;
+	color: var(--text-normal);
+}
+
+.wf-stat-unit {
+	font-size: 0.5em;
+	font-weight: 400;
+	color: var(--text-muted);
+	margin-left: 0.25em;
+}
+
+.wf-stat-label {
+	font-size: 0.8em;
+	color: var(--text-muted);
+	margin-top: 0.15em;
+}
+
+.wf-breakdown {
+	font-size: 0.85em;
+	color: var(--text-muted);
+	margin-bottom: 0.4em;
+}
+
+.wf-hardest-line {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.4em;
+	margin-bottom: 0.6em;
+}
+
+.wf-hardest-label {
+	font-size: 0.85em;
+	color: var(--text-muted);
+	margin-right: 0.2em;
+}
+
+.wf-chip {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 0.3em;
+	padding: 0.15em 0.55em;
+	border-radius: 999px;
+	background: var(--background-modifier-error-hover);
+	color: var(--text-normal);
+	font-size: 0.85em;
+	cursor: pointer;
+	text-decoration: none;
+}
+
+.wf-chip:hover {
+	background: var(--background-modifier-error);
+}
+
+.wf-chip-count {
+	font-size: 0.85em;
+	color: var(--text-muted);
+}
+
+.wf-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1em;
+	flex-wrap: wrap;
+	margin: 0.8em 0 0.4em;
+}
+
+.wf-filters {
+	display: flex;
+	gap: 0.35em;
+	flex-wrap: wrap;
+}
+
+.wf-filters button {
+	padding: 0.3em 0.8em;
+	font-size: 0.85em;
+	background: transparent;
+	box-shadow: none;
+	border: 1px solid var(--background-modifier-border);
+}
+
+.wf-filters button.is-active {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.wf-search {
+	min-width: 200px;
+	flex: 0 1 260px;
+}
+
+.wf-count {
+	font-size: 0.8em;
+	color: var(--text-faint);
+	margin-bottom: 0.4em;
+}
+
+/* 表格自己捲,不要讓整個頁面左右捲。 */
+.wf-table-wrap {
+	overflow-x: auto;
+}
+
+.wf-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.9em;
+}
+
+.wf-table th {
+	text-align: left;
+	padding: 0.5em 0.6em;
+	border-bottom: 1px solid var(--background-modifier-border);
+	color: var(--text-muted);
+	font-weight: 500;
+	cursor: pointer;
+	white-space: nowrap;
+	user-select: none;
+}
+
+.wf-table th:hover {
+	color: var(--text-normal);
+}
+
+.wf-table th.is-sorted {
+	color: var(--text-accent);
+}
+
+.wf-table td {
+	padding: 0.45em 0.6em;
+	border-bottom: 1px solid var(--background-modifier-border-hover);
+	vertical-align: top;
+}
+
+.wf-table tbody tr {
+	cursor: pointer;
+}
+
+.wf-table tbody tr:hover {
+	background: var(--background-modifier-hover);
+}
+
+.wf-col-word {
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+/* 釋義佔剩下的寬度,太長就切掉——一列一行,掃起來才快。 */
+.wf-col-meaning {
+	width: 100%;
+	max-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--text-muted);
+}
+
+.wf-col-state,
+.wf-col-due {
+	white-space: nowrap;
+}
+
+.wf-col-num {
+	text-align: right;
+	white-space: nowrap;
+	color: var(--text-muted);
+}
+
+.wf-state {
+	display: inline-block;
+	padding: 0.05em 0.5em;
+	border-radius: var(--radius-s);
+	font-size: 0.85em;
+	background: var(--background-secondary);
+	color: var(--text-muted);
+}
+
+.wf-state-new {
+	background: var(--background-modifier-border);
+	color: var(--text-normal);
+}
+
+.wf-state-learning,
+.wf-state-relearning {
+	background: var(--background-modifier-error-hover);
+	color: var(--text-normal);
+}
+
+.wf-state-review {
+	background: var(--background-modifier-success);
+	color: var(--text-normal);
+}
+
+.wf-col-due.is-due {
+	color: var(--text-accent);
+	font-weight: 500;
+}
+
+.wf-lapses {
+	color: var(--text-error);
+}
+
+.wf-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 1em;
+	padding: 3em 1em;
+	color: var(--text-muted);
+	text-align: center;
+}
+
+/* ── 確認對話框 ─────────────────────────────────────────────── */
+
+.wordfolio-confirm-body {
+	color: var(--text-muted);
+	font-size: 0.9em;
+	line-height: 1.6;
+	margin-bottom: 1.2em;
+}
+
+.wordfolio-confirm-buttons {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.5em;
+}

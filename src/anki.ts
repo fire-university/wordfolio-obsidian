@@ -26,6 +26,12 @@ export interface AnkiResult {
 	skipped: number;
 }
 
+/** 從 Anki 撈回來的一筆原始筆記。欄位怎麼解讀是 anki-import.ts 的事。 */
+export interface AnkiRawNote {
+	modelName: string;
+	fields: Record<string, string>;
+}
+
 /** WordFolio 專用的筆記類型。跟他既有的 Saladict Word 等並存,不去動人家的。 */
 export const MODEL = "WordFolio";
 const FIELDS = ["Word", "Phonetic", "Meaning", "Examples", "Source"];
@@ -58,6 +64,36 @@ export class Anki {
 		} catch {
 			return false;
 		}
+	}
+
+	/** Anki 裡目前有哪些筆記類型。匯入前拿來確認要找的類型真的存在。 */
+	async models(): Promise<string[]> {
+		return this.call<string[]>("modelNames");
+	}
+
+	/**
+	 * 反方向:把指定筆記類型的字撈回來。
+	 *
+	 * 這是 ADR-21 當初沒做的方向。當時只做 Obsidian → Anki,理由是雙向同步會讓
+	 * 兩套排程互相覆蓋——那個理由現在還是成立,所以**這裡只拿內容不拿排程**:
+	 * 撈欄位(單字、釋義、原句),不碰 Anki 的 due/reps/lapses。排程仍然只有
+	 * WordFolio 這一套在寫,沒有誰覆蓋誰的問題。
+	 */
+	async pull(models: string[]): Promise<AnkiRawNote[]> {
+		const out: AnkiRawNote[] = [];
+		for (const model of models) {
+			const ids = await this.call<number[]>("findNotes", { query: `note:"${model}"` });
+			if (!ids.length) continue;
+			const infos = await this.call<
+				{ modelName: string; fields: Record<string, { value: string }> }[]
+			>("notesInfo", { notes: ids });
+			for (const note of infos) {
+				const fields: Record<string, string> = {};
+				for (const [k, v] of Object.entries(note.fields)) fields[k] = v.value;
+				out.push({ modelName: note.modelName, fields });
+			}
+		}
+		return out;
 	}
 
 	/** 牌組與筆記類型不存在就建起來。已存在的不動。 */

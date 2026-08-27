@@ -92,6 +92,72 @@ const EN: Dict = {
 	review_done: "WordFolio: review finished — {count} cards.",
 	review_nothing_due: "WordFolio: nothing due today.",
 
+	// 清單視圖與練習數據
+	command_vocab_list: "Open the vocabulary list",
+	command_import_anki: "Import words from Anki",
+	list_title: "Vocabulary",
+	list_import: "Import from Anki",
+	list_refresh: "Reload",
+	list_review_n: "Review {n}",
+	list_review_none: "Nothing due",
+	list_search: "Search word or meaning",
+	list_count: "Showing {shown} of {total}",
+	list_empty: "Your vocabulary notebook is empty. Words you saved in the browser through Anki can be brought in here.",
+	list_empty_filtered: "No words match this filter.",
+	list_breakdown: "New {new} · Learning {learning} · Review {review} · Due today {due}",
+	list_hardest: "Hardest to remember",
+	list_filter_all: "All",
+	list_filter_due: "Due today",
+	list_filter_leech: "Keep forgetting",
+	list_filter_new: "New",
+	list_filter_learning: "Learning",
+	list_col_word: "Word",
+	list_col_meaning: "Meaning",
+	list_col_state: "State",
+	list_col_due: "Next due",
+	list_col_reps: "Reviews",
+	list_col_lapses: "Forgot",
+	state_new: "New",
+	state_learning: "Learning",
+	state_relearning: "Relearning",
+	state_review: "Review",
+	due_today: "Today",
+	due_overdue: "{days}d overdue",
+	stat_today: "Reviewed today",
+	stat_week: "Last 7 days",
+	stat_streak: "Streak",
+	stat_streak_unit: "d",
+	stat_accuracy_week: "Accuracy (7d)",
+	stat_total: "Words saved",
+	stat_stability: "Avg. memory",
+	stat_days: "d",
+
+	// 複習紀錄檔
+	log_title: "Review log",
+	log_col_date: "Date",
+	log_col_reviewed: "Reviewed",
+	log_col_new: "New",
+
+	// Anki 匯入
+	import_no_models: "WordFolio: Anki has none of these note types — {models}.",
+	import_nothing: "WordFolio: found nothing to import from Anki.",
+	import_working: "WordFolio: importing {count} words…",
+	import_confirm_title: "Import words from Anki",
+	import_confirm_body:
+		"{count} words found in: {models}\nThey will be written to {folder}/ — one note per word.\nSkipping {ignored} entries that are phrases or sentences rather than single words.\nNothing in Anki is modified or deleted; only the words are read, not their scheduling.",
+	import_confirm_ok: "Import",
+	import_done:
+		"WordFolio: import finished — {created} added, {existed} already there, {skipped} skipped (no definition found), {ignored} not single words.",
+	confirm_cancel: "Cancel",
+	set_new_per_day_name: "New words per day",
+	set_new_per_day_desc:
+		"How many words you have never seen get mixed into a review session. Words that are already due are always included on top of this. Set it to 0 to work through what you have already started and let no new words in.",
+	set_new_per_day_unit: "words",
+	set_import_anki_name: "Import from Anki",
+	set_import_anki_desc:
+		"Brings words you saved in the browser (Language Reactor, Saladict) into your notebook as notes, filling in phonetics and definitions from the offline dictionary. Anki must be running with AnkiConnect. Read-only as far as Anki is concerned — nothing there is changed or deleted, and review scheduling stays with this plugin.",
+	set_import_anki_button: "Import",
+
 	// 設定
 	set_language_name: "Language",
 	set_language_desc: "Interface language. Auto follows Obsidian.",
@@ -239,6 +305,72 @@ const ZH: Dict = {
 	review_done: "WordFolio:複習完成,共 {count} 張。",
 	review_nothing_due: "WordFolio:今天沒有要複習的。",
 
+	// 清單視圖與練習數據
+	command_vocab_list: "開啟生詞清單",
+	command_import_anki: "從 Anki 匯入生詞",
+	list_title: "生詞本",
+	list_import: "從 Anki 匯入",
+	list_refresh: "重新整理",
+	list_review_n: "開始複習（{n}）",
+	list_review_none: "今天沒有要複習的",
+	list_search: "搜尋單字或釋義",
+	list_count: "顯示 {shown} / {total}",
+	list_empty: "生詞本還是空的。你在瀏覽器裡存進 Anki 的字可以接進來。",
+	list_empty_filtered: "這個篩選底下沒有字。",
+	list_breakdown: "新字 {new} · 學習中 {learning} · 複習中 {review} · 今天到期 {due}",
+	list_hardest: "最記不牢",
+	list_filter_all: "全部",
+	list_filter_due: "今天到期",
+	list_filter_leech: "記不牢",
+	list_filter_new: "新字",
+	list_filter_learning: "學習中",
+	list_col_word: "單字",
+	list_col_meaning: "釋義",
+	list_col_state: "狀態",
+	list_col_due: "下次到期",
+	list_col_reps: "複習",
+	list_col_lapses: "忘記",
+	state_new: "新字",
+	state_learning: "學習中",
+	state_relearning: "重新學",
+	state_review: "複習中",
+	due_today: "今天",
+	due_overdue: "逾期 {days} 天",
+	stat_today: "今天複習",
+	stat_week: "最近七天",
+	stat_streak: "連續",
+	stat_streak_unit: "天",
+	stat_accuracy_week: "七天正確率",
+	stat_total: "生詞總數",
+	stat_stability: "平均記憶強度",
+	stat_days: "天",
+
+	// 複習紀錄檔
+	log_title: "複習紀錄",
+	log_col_date: "日期",
+	log_col_reviewed: "複習",
+	log_col_new: "新字",
+
+	// Anki 匯入
+	import_no_models: "WordFolio:Anki 裡沒有這幾種筆記類型 — {models}。",
+	import_nothing: "WordFolio:Anki 裡沒有可以匯入的字。",
+	import_working: "WordFolio:正在匯入 {count} 個字⋯⋯",
+	import_confirm_title: "從 Anki 匯入生詞",
+	import_confirm_body:
+		"在這些筆記類型裡找到 {count} 個字：{models}\n會寫進 {folder}/，一個字一篇筆記。\n另有 {ignored} 筆是片語或整句而不是單字，跳過。\nAnki 那邊不會被改動或刪除任何東西：只讀單字內容，不碰它的複習排程。",
+	import_confirm_ok: "開始匯入",
+	import_done:
+		"WordFolio:匯入完成 — 新增 {created}、本來就有 {existed}、查不到釋義跳過 {skipped}、不是單字跳過 {ignored}。",
+	confirm_cancel: "取消",
+	set_new_per_day_name: "每次複習放幾個新字",
+	set_new_per_day_desc:
+		"一次複習裡最多混進幾個你沒看過的字。已經到期的舊字不受這個限制，一定會排進來。設成 0 就是這陣子只把已經開始學的字複習完，不放新字進來。",
+	set_new_per_day_unit: "個",
+	set_import_anki_name: "從 Anki 匯入生詞",
+	set_import_anki_desc:
+		"把你在瀏覽器裡存進 Anki 的字（Language Reactor、Saladict）接成生詞筆記，音標與釋義用離線詞庫補齊。要先開著 Anki 並裝有 AnkiConnect。對 Anki 而言是唯讀的：不會改動也不會刪掉那邊的任何東西，複習排程仍然只有這個外掛在管。",
+	set_import_anki_button: "匯入",
+
 	// 設定
 	set_language_name: "語言",
 	set_language_desc: "介面語言。自動 = 跟著 Obsidian 走。",
@@ -329,4 +461,4 @@ const ZH: Dict = {
 	llm_model_none: "找不到模型——Ollama 有在執行嗎?",
 };
 
-const STRINGS: Record<Lang, Dict> = { en: EN, "zh-TW": ZH };
+export const STRINGS: Record<Lang, Dict> = { en: EN, "zh-TW": ZH };

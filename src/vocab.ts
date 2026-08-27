@@ -10,7 +10,21 @@
 
 import { App, TFile, normalizePath } from "obsidian";
 import { formsFor, meaningfulLines } from "./lemma";
+import { meaningOf, type VocabRow } from "./vocab-list";
+import type { ImportedWord } from "./anki-import";
 import type { DictEntry, Lookup, VocabCard } from "./types";
+
+/** renderNote 的可選內容。欄位一直加,用具名物件比一串位置參數好讀。 */
+interface NoteOpts {
+	sentence?: string;
+	usage?: string;
+	detail?: string;
+	/** 匯入來源,例如 "Language Reactor — 影片標題" */
+	source?: string;
+	url?: string;
+	/** 來源自己標的詞義,放在詞庫釋義旁邊當對照 */
+	sourceMeaning?: string;
+}
 
 const SENTENCE_HEADING = "## 我遇到它的地方";
 const USAGE_HEADING = "## 例句與用法";
@@ -34,9 +48,12 @@ export class VocabStore {
 		if (!(await this.app.vault.adapter.exists(dir))) return;
 		const listing = await this.app.vault.adapter.list(dir);
 		for (const p of listing.files) {
-			if (p.endsWith(".md")) {
-				this.index.add(p.split("/").pop()!.slice(0, -3).toLowerCase());
-			}
+			if (!p.endsWith(".md")) continue;
+			const name = p.split("/").pop()!.slice(0, -3);
+			// 底線開頭的是外掛自己的檔案(目前是 _review-log.md),不是生詞。
+			// 不擋掉的話「這個字存過沒」會把它們當成單字。
+			if (name.startsWith("_")) continue;
+			this.index.add(name.toLowerCase());
 		}
 	}
 
@@ -75,10 +92,51 @@ export class VocabStore {
 		await this.ensureFolder();
 		await this.app.vault.create(
 			path,
-			this.renderNote(entry, captureSentence ? sentence : "", usage, detail)
+			this.renderNote(entry, { sentence: captureSentence ? sentence : "", usage, detail })
 		);
 		this.index.add(fileNameFor(entry.w));
 		return true;
+	}
+
+	/**
+	 * 從 Anki 匯進來的一個字。
+	 *
+	 * 釋義的優先順序:**離線詞庫優先,來源自帶的當退路**。詞庫給的是完整的
+	 * 繁中釋義加英美音標加詞頻,Language Reactor 給的只有短短一行詞義,
+	 * Saladict 根本沒有。詞庫查不到(專有名詞、冷僻字)才用來源那行,
+	 * 兩邊都沒有就跳過——寧可少匯一個字,也不要在生詞本裡留一篇空殼筆記。
+	 *
+	 * 已經在生詞本裡的字只追加原句,不動既有內容也不重設複習進度。
+	 */
+	async addImported(
+		item: ImportedWord,
+		lookup: Lookup | null
+	): Promise<"created" | "existed" | "skipped"> {
+		const entry: DictEntry | null =
+			lookup?.entry ?? (item.definition ? { w: item.word, tr: item.definition } : null);
+		if (!entry) return "skipped";
+
+		const path = this.pathFor(entry.w);
+		const existing = this.app.vault.getAbstractFileByPath(path);
+		if (existing instanceof TFile) {
+			if (item.sentence) await this.appendSentence(existing, item.sentence);
+			return "existed";
+		}
+
+		await this.ensureFolder();
+		await this.app.vault.create(
+			path,
+			this.renderNote(entry, {
+				sentence: item.sentence ?? "",
+				source: item.source,
+				url: item.url,
+				// 詞庫查得到時,來源那行詞義仍然留著當對照——Language Reactor 的
+				// 詞義是照影片語境挑的,有時比詞庫的第一個義項更貼。
+				sourceMeaning: lookup ? item.definition : undefined,
+			})
+		);
+		this.index.add(fileNameFor(entry.w));
+		return "created";
 	}
 
 	private async ensureFolder(): Promise<void> {
@@ -107,7 +165,8 @@ export class VocabStore {
 
 	// ------------------------------------------------------------ 內容
 
-	private renderNote(entry: DictEntry, sentence: string, usage?: string, detail?: string): string {
+	private renderNote(entry: DictEntry, opts: NoteOpts = {}): string {
+		const { sentence = "", usage, detail, source, url, sourceMeaning } = opts;
 		const today = new Date().toISOString().slice(0, 10);
 		const fm: string[] = [
 			"---",
@@ -123,6 +182,9 @@ export class VocabStore {
 		if (freq.length) fm.push(`詞頻: ${freq.join(" / ")}`);
 		if (entry.collins) fm.push(`柯林斯: ${entry.collins}`);
 		if (entry.tag?.length) fm.push(`考試: ${entry.tag.join(", ")}`);
+
+		if (source) fm.push(`來源: ${source}`);
+		if (url) fm.push(`來源連結: ${url}`);
 
 		fm.push(
 			`date: ${today}`,
@@ -154,6 +216,9 @@ export class VocabStore {
 		const forms = formsFor(entry.exch);
 		if (forms.length) body.push(`**變化**：${forms.join(" / ")}`, "");
 
+		// 匯入來源自己標的詞義。放在詞庫釋義後面當對照,不覆蓋。
+		if (sourceMeaning) body.push(`**${source?.split(" — ")[0] ?? "來源"}**：${sourceMeaning}`, "");
+
 		// Claude 生成過的內容。花過的 token 就留著,複習時直接看得到。
 		if (detail) body.push(DETAIL_HEADING, "", detail.trim(), "");
 		if (usage) body.push(USAGE_HEADING, "", usage.trim(), "");
@@ -165,6 +230,26 @@ export class VocabStore {
 	}
 
 	// ------------------------------------------------------ FSRS 狀態
+
+	/**
+	 * 清單視圖要的一列一列資料:複習狀態再加上一行釋義。
+	 *
+	 * 釋義得讀筆記本文才拿得到(frontmatter 裡沒有),所以這裡比 allCards() 貴。
+	 * 用 cachedRead 而不是 read——Obsidian 會自己快取,兩百多篇筆記重畫一次
+	 * 感覺不出來。
+	 */
+	async listRows(): Promise<VocabRow[]> {
+		const rows: VocabRow[] = [];
+		for (const { file, card } of await this.allCards()) {
+			rows.push({
+				word: card.word,
+				meaning: meaningOf(await this.app.vault.cachedRead(file)),
+				card,
+				path: file.path,
+			});
+		}
+		return rows;
+	}
 
 	/** 讀出所有生詞的複習狀態。複習排程與 ribbon 徽章都靠這個。 */
 	async allCards(): Promise<{ file: TFile; card: VocabCard }[]> {

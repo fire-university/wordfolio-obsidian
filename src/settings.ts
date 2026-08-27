@@ -44,6 +44,10 @@ export interface WordFolioSettings {
 	captureSentence: boolean;
 	// 推進 Anki 時用哪個牌組(不存在會自動建)。
 	ankiDeck: string;
+	// 每次複習最多放幾個沒看過的新字進來。0 = 這陣子只複習舊字。
+	// 從 Anki 匯入之後生詞本會一次多兩百多個新字,不限量的話打開複習就是
+	// 兩百多張等著——那不會被複習完,只會被關掉。
+	newPerDay: number;
 
 	// --- 本地 AI(選用) ---
 	// OpenAI 相容端點(預設 Ollama)。不用 API key、不把查的字送出電腦。
@@ -74,6 +78,8 @@ export const DEFAULT_SETTINGS: WordFolioSettings = {
 	vocabFolder: "英文生詞本",
 	captureSentence: true,
 	ankiDeck: "WordFolio",
+	// 跟 Anki 的預設一樣。兩百多個字大約兩週消化完。
+	newPerDay: 20,
 	llmEndpoint: "http://localhost:11434/v1",
 	// 預設用 3b 而不是 7b:實測暖機後 3b 約 2 秒、7b 明顯更久。
 	// 這幾個任務(挑義項、拆字根、造例句)不需要大模型,速度比較重要。

@@ -2,7 +2,7 @@
 // 滑鼠滑過英文字 → 浮窗顯示英美音標、發音、繁中釋義 → 一鍵加進生詞本 → FSRS 排程複習。
 // 釋義走離線詞庫(ECDICT 轉繁 + ipa-dict 英美音標),只有「在這句話裡是什麼意思」才呼叫 Claude。
 
-import { App, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, Plugin, PluginSettingTab, Setting, TFile } from "obsidian";
 import {
 	WordFolioSettings,
 	DEFAULT_SETTINGS,
@@ -18,7 +18,15 @@ import { VocabStore } from "./vocab";
 import { toAnkiFields } from "./anki-fields";
 import { Anki } from "./anki";
 import { ReviewModal } from "./review";
-import { dueCards } from "./schedule";
+import { ReviewLog } from "./review-log";
+import { ConfirmModal } from "./confirm";
+import { VocabView, VIEW_TYPE_VOCAB } from "./vocab-view";
+import {
+	fromAnkiNote,
+	mergeImported,
+	IMPORT_MODELS,
+	type ImportedWord,
+} from "./anki-import";
 import { LocalLLM } from "./llm";
 import { WebSource, type SourceStore } from "./sources";
 import { CAMBRIDGE, LONGMAN, OXFORD, WIKTIONARY } from "./source-defs";
@@ -30,7 +38,17 @@ import {
 	sectionLabelKey,
 	sectionDescKey,
 } from "./sections";
-import type { Lookup } from "./types";
+import type { Lookup, VocabCard } from "./types";
+import { reviewQueue, Rating, type Grade } from "./schedule";
+import type { RatingName } from "./stats";
+
+/** 四個評分鍵 → 複習紀錄裡的欄位名。 */
+const RATING_NAME: Record<Grade, RatingName> = {
+	[Rating.Again]: "again",
+	[Rating.Hard]: "hard",
+	[Rating.Good]: "good",
+	[Rating.Easy]: "easy",
+};
 
 export default class WordFolioPlugin extends Plugin {
 	settings: WordFolioSettings = { ...DEFAULT_SETTINGS };
@@ -49,6 +67,7 @@ export default class WordFolioPlugin extends Plugin {
 	};
 	private ribbon: HTMLElement | null = null;
 	private anki = new Anki();
+	private log!: ReviewLog;
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -68,6 +87,7 @@ export default class WordFolioPlugin extends Plugin {
 		);
 
 		this.vocab = new VocabStore(this.app, () => this.settings.vocabFolder);
+		this.log = new ReviewLog(this.app, () => this.settings.vocabFolder);
 
 		// 線上詞典查過的字寫進外掛資料夾,離線與重開之後都還在。
 		const store: SourceStore = {
@@ -148,8 +168,30 @@ export default class WordFolioPlugin extends Plugin {
 			callback: () => void this.startReview(),
 		});
 
+		this.registerView(VIEW_TYPE_VOCAB, (leaf) => new VocabView(leaf, {
+			data: () => this.viewData(),
+			startReview: () => void this.startReview(),
+			importFromAnki: () => this.importFromAnki(),
+			openNote: (path) => void this.app.workspace.openLinkText(path, "", true),
+		}));
+
+		this.addCommand({
+			id: "open-vocab-list",
+			name: t("command_vocab_list"),
+			callback: () => void this.openVocabView(),
+		});
+
+		this.addCommand({
+			id: "import-from-anki",
+			name: t("command_import_anki"),
+			callback: () => void this.importFromAnki(),
+		});
+
+		// ribbon 改成開清單視圖,不是直接進複習 Modal。
+		// 「唯一的入口是一次一張卡的 Modal」正是他覺得不好用的原因;清單頁上
+		// 有一顆「開始複習(N)」,少一次點擊換來看得到全部的字與數據。
 		this.ribbon = this.addRibbonIcon("book-open-check", t("ribbon_tooltip_empty"), () =>
-			void this.startReview()
+			void this.openVocabView()
 		);
 
 		// 生詞本被改動(手動編輯、複習寫回)時更新徽章。
@@ -164,7 +206,9 @@ export default class WordFolioPlugin extends Plugin {
 		// 詞庫載入放到 layout ready 之後,不要拖慢 Obsidian 啟動。
 		this.app.workspace.onLayoutReady(() => {
 			void this.loadDictionary();
-			void this.vocab.refresh().then(() => this.refreshBadge());
+			void Promise.all([this.vocab.refresh(), this.log.load()]).then(() =>
+				this.refreshBadge()
+			);
 		});
 	}
 
@@ -184,10 +228,15 @@ export default class WordFolioPlugin extends Plugin {
 		await this.saveSettings();
 	}
 
-	/** ribbon 圖示顯示今天有幾個字要複習。 */
+	/**
+	 * ribbon 圖示顯示今天有幾個字要複習。
+	 *
+	 * 數的是**實際會排進佇列的張數**(受每日新字上限影響),不是所有到期的。
+	 * 徽章寫 240、按下去只有 20 張,那個數字就是在騙人。
+	 */
 	private async refreshBadge(): Promise<void> {
 		if (!this.ribbon) return;
-		const due = dueCards(await this.vocab.allCards()).length;
+		const due = (await this.queue()).length;
 		this.ribbon.setAttribute(
 			"aria-label",
 			due ? t("ribbon_tooltip", { due }) : t("ribbon_tooltip_empty")
@@ -196,13 +245,132 @@ export default class WordFolioPlugin extends Plugin {
 		this.ribbon.dataset.count = due ? String(due) : "";
 	}
 
+	/** 這次要複習哪些卡。到期的舊字全排,新字受每日上限管。 */
+	private async queue(): Promise<{ file: TFile; card: VocabCard }[]> {
+		return reviewQueue(
+			await this.vocab.allCards(),
+			this.settings.newPerDay,
+			this.log.newToday()
+		);
+	}
+
 	private async startReview(): Promise<void> {
-		const due = dueCards(await this.vocab.allCards());
+		const due = await this.queue();
 		if (!due.length) {
 			new Notice(t("review_nothing_due"));
 			return;
 		}
-		new ReviewModal(this.app, this.vocab, due).open();
+		new ReviewModal(this.app, this.vocab, due, {
+			// 每評一張就寫進 _review-log.md。複習到一半關掉視窗是常態,
+			// 那幾張不該憑空消失。
+			onGraded: (rating, wasNew) => this.log.record(RATING_NAME[rating], wasNew),
+			onClose: () => {
+				void this.refreshBadge();
+				void this.refreshViews();
+			},
+		}).open();
+	}
+
+	// ------------------------------------------------------------ 清單視圖
+
+	private async openVocabView(): Promise<void> {
+		const { workspace } = this.app;
+		const open = workspace.getLeavesOfType(VIEW_TYPE_VOCAB);
+		if (open.length) {
+			workspace.revealLeaf(open[0]);
+			return;
+		}
+		const leaf = workspace.getLeaf(true);
+		await leaf.setViewState({ type: VIEW_TYPE_VOCAB, active: true });
+		workspace.revealLeaf(leaf);
+	}
+
+	private async viewData() {
+		const rows = await this.vocab.listRows();
+		return {
+			rows,
+			days: this.log.all(),
+			queueSize: (await this.queue()).length,
+		};
+	}
+
+	private async refreshViews(): Promise<void> {
+		for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_VOCAB)) {
+			if (leaf.view instanceof VocabView) await leaf.view.refresh();
+		}
+	}
+
+	// ------------------------------------------------------------ Anki 匯入
+
+	/**
+	 * 把 Anki 裡的字接進生詞本(Anki → Obsidian)。
+	 *
+	 * 為什麼要有這個方向:道哥的字散在四個地方,Obsidian 生詞本只有其中最小的
+	 * 一份。他說「看不到全部的單字」,字面上就是真的——做完清單視圖也只會看到
+	 * 十個字。先把瀏覽器那邊存的字接進來,清單才有意義。
+	 *
+	 * 這不是雙向同步:**只拿內容,不拿排程**(見 anki.ts 的 pull)。
+	 */
+	private async importFromAnki(): Promise<void> {
+		if (!(await this.anki.available())) {
+			new Notice(t("anki_unreachable"), 8000);
+			return;
+		}
+
+		const present = await this.anki.models();
+		const models = IMPORT_MODELS.filter((m) => present.includes(m));
+		if (!models.length) {
+			new Notice(t("import_no_models", { models: IMPORT_MODELS.join("、") }), 8000);
+			return;
+		}
+
+		const raw = await this.anki.pull(models);
+		const parsed = raw
+			.map((n) => fromAnkiNote(n.modelName, n.fields))
+			.filter((x): x is ImportedWord => x !== null);
+		const items = mergeImported(parsed);
+		// 不是單字的(片語、整句)在這一步就被擋掉了,數量要講出來,不要靜靜吞掉。
+		const ignored = raw.length - parsed.length;
+
+		if (!items.length) {
+			new Notice(t("import_nothing"), 6000);
+			return;
+		}
+
+		new ConfirmModal(
+			this.app,
+			t("import_confirm_title"),
+			t("import_confirm_body", {
+				count: items.length,
+				folder: this.settings.vocabFolder,
+				models: models.join("、"),
+				ignored,
+			}),
+			t("import_confirm_ok"),
+			() => void this.runImport(items, ignored)
+		).open();
+	}
+
+	private async runImport(items: ImportedWord[], ignored: number): Promise<void> {
+		new Notice(t("import_working", { count: items.length }));
+
+		let created = 0;
+		let existed = 0;
+		let skipped = 0;
+		for (const item of items) {
+			// 走一般查詢,所以詞形還原也生效:Saladict 存的 `carved` 會落在
+			// `carve` 這篇筆記上,跟從浮窗加入的行為一致。
+			const lookup = this.dict.installed ? await this.dict.lookup(item.word) : null;
+			const r = await this.vocab.addImported(item, lookup);
+			if (r === "created") created++;
+			else if (r === "existed") existed++;
+			else skipped++;
+		}
+
+		await this.vocab.refresh();
+		await this.refreshBadge();
+		await this.refreshViews();
+		new Notice(t("import_done", { created, existed, skipped, ignored }), 12000);
 	}
 
 	/** 命令面板／快捷鍵的入口:對選取的字(沒選取就用游標位置)查詢。 */
@@ -304,15 +472,22 @@ export default class WordFolioPlugin extends Plugin {
 		}
 	}
 
+	/** 設定頁的按鈕用。 */
+	importFromAnkiFromSettings(): Promise<void> {
+		return this.importFromAnki();
+	}
+
 	/** 設定頁用:列出本地已安裝的模型。 */
 	listLocalModels(): Promise<string[]> {
 		return this.llm.listModels();
 	}
 
-	/** 改了生詞本資料夾之後重建索引與徽章。 */
+	/** 改了生詞本資料夾之後重建索引與徽章。複習紀錄也跟著換資料夾。 */
 	async reindexVocab(): Promise<void> {
 		await this.vocab.refresh();
+		await this.log.load();
 		await this.refreshBadge();
+		await this.refreshViews();
 	}
 
 	applyLang(): void {
@@ -374,13 +549,14 @@ class WordFolioSettingTab extends PluginSettingTab {
 		max: number,
 		step: number,
 		get: () => number,
-		set: (v: number) => Promise<void>
+		set: (v: number) => Promise<void>,
+		unit = "ms"
 	): void {
 		const setting = new Setting(container).setName(name).setDesc(desc);
 		// 讀數放在滑桿前面(靠標題那側),拖動時更新文字。
 		const readout = setting.controlEl.createSpan({ cls: "wordfolio-slider-value" });
 		const paint = (v: number) => {
-			readout.setText(`${v} ms`);
+			readout.setText(`${v} ${unit}`);
 		};
 		paint(get());
 		setting.addSlider((sl) =>
@@ -591,6 +767,31 @@ class WordFolioSettingTab extends PluginSettingTab {
 					s.vocabFolder = v.trim() || DEFAULT_SETTINGS.vocabFolder;
 					await this.plugin.saveSettings();
 					await this.plugin.reindexVocab();
+				})
+			);
+
+		this.msSlider(
+			containerEl,
+			t("set_new_per_day_name"),
+			t("set_new_per_day_desc"),
+			0,
+			100,
+			5,
+			() => s.newPerDay,
+			async (v) => {
+				s.newPerDay = v;
+				await this.plugin.saveSettings();
+				await this.plugin.reindexVocab();
+			},
+			t("set_new_per_day_unit")
+		);
+
+		new Setting(containerEl)
+			.setName(t("set_import_anki_name"))
+			.setDesc(t("set_import_anki_desc"))
+			.addButton((b) =>
+				b.setButtonText(t("set_import_anki_button")).onClick(() => {
+					void this.plugin.importFromAnkiFromSettings();
 				})
 			);
 

@@ -15,13 +15,26 @@ interface Queued {
 	card: VocabCard;
 }
 
+/** 複習過程中要回報出去的事。紀錄與畫面更新交給呼叫端。 */
+export interface ReviewHooks {
+	/** 每評一張就回報一次。wasNew = 這張是第一次見到的新字。 */
+	onGraded?: (rating: Grade, wasNew: boolean) => Promise<void>;
+	/** 視窗關掉時叫一次,讓清單視圖把數字重畫。 */
+	onClose?: () => void;
+}
+
 export class ReviewModal extends Modal {
 	private queue: Queued[];
 	private current: Queued | null = null;
 	private answered = false;
 	private reviewed = 0;
 
-	constructor(app: App, private store: VocabStore, queue: Queued[]) {
+	constructor(
+		app: App,
+		private store: VocabStore,
+		queue: Queued[],
+		private hooks: ReviewHooks = {}
+	) {
 		super(app);
 		// 每次順序不同,避免照字母序背成「順序記憶」。
 		this.queue = [...queue].sort(() => Math.random() - 0.5);
@@ -34,6 +47,7 @@ export class ReviewModal extends Modal {
 
 	onClose(): void {
 		this.contentEl.empty();
+		this.hooks.onClose?.();
 	}
 
 	private next(): void {
@@ -114,9 +128,13 @@ export class ReviewModal extends Modal {
 
 	private async grade(rating: Grade): Promise<void> {
 		const entry = this.current!;
+		// 「是不是新字」要在排程算下去之前問——gradeCard 一跑狀態就變成
+		// learning 了,事後再問永遠是 false,每日新字上限就會失效。
+		const wasNew = entry.card.state === "new";
 		const updated = gradeCard(entry.card, rating);
 
 		await this.store.saveCard(entry.file, updated);
+		await this.hooks.onGraded?.(rating, wasNew);
 		this.reviewed++;
 
 		// 到期只存到「日」,所以 FSRS 的 learning step 在這裡補回來:

@@ -89,3 +89,27 @@ export function dueCards<T extends { card: VocabCard }>(all: T[], now = new Date
 	const today = isoDate(now);
 	return all.filter(({ card }) => !card.due || card.due <= today);
 }
+
+/**
+ * 這次複習實際要排哪些卡。
+ *
+ * 為什麼需要新字上限:從 Anki 匯入之後生詞本一次多了兩百多個字,全部標成
+ * 「今天到期」的話,打開複習就是兩百多張等著——那不會被複習完,只會被關掉。
+ * Anki 的解法是每天限量放新卡進來,這裡照做:**到期的舊字全部要複習**
+ * (它們是排程算出來該複習的,漏掉就白排了),新字才受上限管。
+ *
+ * @param newLimit  每天最多放幾個新字進來;0 = 這陣子只複習舊字
+ * @param newToday  今天已經上過幾個新字(從複習紀錄來)
+ */
+export function reviewQueue<T extends { card: VocabCard }>(
+	all: T[],
+	newLimit: number,
+	newToday: number,
+	now = new Date()
+): T[] {
+	const due = dueCards(all, now);
+	const old = due.filter(({ card }) => card.state !== "new");
+	const fresh = due.filter(({ card }) => card.state === "new");
+	const room = Math.max(0, newLimit - newToday);
+	return [...old, ...fresh.slice(0, room)];
+}
