@@ -63,10 +63,20 @@ check(
 		"forms",
 	];
 	const upgraded = normalizeOrder(oldDefault);
+	// 斷言「誰緊接在誰後面」會隨著正典順序改動而過期(加了朗文/牛津/字源就壞過一次)。
+	// 改成驗真正的不變量:每個補進來的新區塊,都要緊接在「正典順序裡排它前面、
+	// 而且也在清單裡」的那個區塊之後。
+	const inserted = ALL_SECTIONS.filter((id) => !oldDefault.includes(id));
+	const misplaced = inserted.filter((id) => {
+		const canonPrev = ALL_SECTIONS.slice(0, ALL_SECTIONS.indexOf(id))
+			.reverse()
+			.find((x) => upgraded.includes(x));
+		return canonPrev ? upgraded[upgraded.indexOf(canonPrev) + 1] !== id : false;
+	});
 	check(
-		"claude 插在 translation 後面(它的正典鄰居)",
-		upgraded[upgraded.indexOf("translation") + 1] === "claude",
-		upgraded.join(" ")
+		"新區塊都插在自己的正典鄰居後面",
+		misplaced.length === 0,
+		misplaced.length ? `錯位: ${misplaced.join(", ")}` : upgraded.join(" ")
 	);
 	check(
 		"新區塊沒有全部堆在尾端",
