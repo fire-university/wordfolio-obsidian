@@ -41,7 +41,9 @@ export class Cambridge {
 				throw: false,
 			});
 			if (res.status !== 200) {
-				this.cache.set(key, null);
+				// **不要快取。** 非 200 可能只是一時的(網路抖一下、對方限流),
+				// 記成 null 的話這個字整個 session 都不會再查——症狀會是
+				// 「這個字就是查不到,重開才好」。真的沒這個字是走下面 parse 回 null。
 				return null;
 			}
 			html = res.text;

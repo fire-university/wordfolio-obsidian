@@ -65,6 +65,15 @@ export class HoverController {
 	 * 不然浮窗會在畫面上亂跳。
 	 */
 	private history: { lookup: Lookup; hit: HoverHit }[] = [];
+	/**
+	 * 正在開一個「使用者明確要求」的浮窗(點圖示、點關聯字、命令面板)。
+	 *
+	 * 這段期間 hover 完全不插手。否則會出現這個競態:查詢是非同步的,而使用者
+	 * 選完字後那段選取還在畫面上——只要查詢途中滑鼠動一下,就會走進下面
+	 * 「有選取就關掉」那條,close() 把 generation 加一,結果回來時被判定成過期、
+	 * 靜靜丟掉。症狀是「有時候展不開,又不報錯」。
+	 */
+	private opening = false;
 	/** 目前浮窗顯示的是什麼(導覽時要把它推進歷史)。 */
 	private shown: { lookup: Lookup; hit: HoverHit } | null = null;
 
@@ -97,11 +106,14 @@ export class HoverController {
 	private onMouseMove = (e: MouseEvent) => {
 		if (!this.opts.enabled() || !this.hoverOn()) return;
 		// sticky 浮窗開著時,hover 完全不插手——那是使用者刻意留住的。
-		if (this.sticky) return;
+		// opening 期間同理:那是使用者明確要求的查詢,不能被 hover 的邏輯打斷。
+		if (this.sticky || this.opening) return;
 
-		// 游標在浮窗上(或安全區內):維持現狀,讓使用者滑得進來、點得到按鈕。
+		// 游標在浮窗上、在選取圖示上、或在浮窗的安全區內:維持現狀,
+		// 讓使用者滑得進來、點得到按鈕。
 		if (
 			this.opts.tooltip.contains(e.target) ||
+			this.icon.contains(e.target) ||
 			this.opts.tooltip.isNear(e.clientX, e.clientY, SAFE_MARGIN)
 		) {
 			this.clearOpenTimer();
@@ -110,9 +122,11 @@ export class HoverController {
 		}
 
 		// 使用者正在選字,那是別的意圖(交給 select 那條路)。
+		// **只是不開新的,不要 close()** ——close() 會遞增 generation,把使用者
+		// 正在等的那個查詢結果判成過期丟掉(見 opening 的註解)。
 		const sel = window.getSelection();
 		if (sel && !sel.isCollapsed) {
-			this.close();
+			this.clearOpenTimer();
 			return;
 		}
 
@@ -182,9 +196,15 @@ export class HoverController {
 		if (p) void this.triggerSelection(p.text, p.rect);
 	}
 
-	private onScroll = () => {
+	private onScroll = (e: Event) => {
+		// 浮窗自己在捲(內容太長時它是可捲的)——這不是「頁面捲走了」,不能關。
+		// document 上是捕獲階段監聽,所以浮窗內部的捲動也會傳到這裡。
+		if (this.opts.tooltip.contains(e.target)) return;
+
 		this.icon.hide();
-		this.close();
+		// sticky 是使用者刻意打開的(點圖示、點關聯字),頁面捲動不該把它收掉;
+		// 他可能正邊捲筆記邊對照。要關就自己點外面或按 Esc。
+		if (!this.sticky) this.close();
 	};
 
 	// 鍵盤:只有 Esc 關。其他鍵一律不理,不然截圖組合鍵一按浮窗就沒了。
@@ -226,7 +246,13 @@ export class HoverController {
 	/** 快捷鍵/命令走這條:略過延遲,直接對指定的字開浮窗,且是 sticky。 */
 	async showFor(hit: HoverHit): Promise<boolean> {
 		const gen = ++this.generation;
-		const result = await this.opts.lookup(hit.word);
+		this.opening = true;
+		let result;
+		try {
+			result = await this.opts.lookup(hit.word);
+		} finally {
+			this.opening = false;
+		}
 		if (gen !== this.generation) return false;
 		if (!result) return false;
 		this.clearCloseTimer();
@@ -240,7 +266,13 @@ export class HoverController {
 	/** 選取觸發:sticky,點框外或 Esc 才關。 */
 	private async triggerSelection(text: string, rect: DOMRect): Promise<void> {
 		const gen = ++this.generation;
-		const result = await this.opts.lookupSelection(text);
+		this.opening = true;
+		let result;
+		try {
+			result = await this.opts.lookupSelection(text);
+		} finally {
+			this.opening = false;
+		}
 		if (gen !== this.generation) return;
 		if (!result) {
 			this.close();
@@ -285,7 +317,13 @@ export class HoverController {
 	 */
 	async navigateTo(word: string): Promise<void> {
 		const current = this.shown;
-		const result = await this.opts.lookup(word);
+		this.opening = true;
+		let result;
+		try {
+			result = await this.opts.lookup(word);
+		} finally {
+			this.opening = false;
+		}
 		if (!result) return;
 		if (current) this.history.push(current);
 		// 導覽出來的浮窗一律 sticky:使用者正在深入看,不該被滑鼠移開就關掉。
@@ -334,6 +372,7 @@ export class HoverController {
 		this.generation++;
 		this.currentWord = "";
 		this.sticky = false;
+		this.opening = false;
 		// 關掉浮窗就結束這一輪導覽,歷史不跨越兩次查詢。
 		this.history = [];
 		this.shown = null;
