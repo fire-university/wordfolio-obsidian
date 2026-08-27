@@ -45,6 +45,14 @@ const EN: Dict = {
 	ribbon_tooltip_empty: "WordFolio: nothing due today",
 	command_lookup: "Look up the selected word",
 	command_review: "Start vocabulary review",
+	command_anki: "Send vocabulary to Anki",
+	anki_unreachable:
+		"WordFolio: cannot reach Anki.\nOpen Anki and make sure the AnkiConnect add-on is installed.",
+	anki_nothing: "WordFolio: your vocabulary notebook is empty.",
+	anki_done: "WordFolio: sent to Anki — {added} new, {skipped} already there.",
+	set_anki_deck_name: "Anki deck",
+	set_anki_deck_desc:
+		"Where \"Send vocabulary to Anki\" puts the cards; created if it does not exist. One-way only (Obsidian → Anki) — this plugin has its own spaced repetition, so pick one of the two as your main review system rather than running both.",
 	command_download_dict: "Download / update the offline dictionary",
 
 	// 詞庫
@@ -184,6 +192,14 @@ const ZH: Dict = {
 	ribbon_tooltip_empty: "WordFolio:今天沒有要複習的",
 	command_lookup: "查詢選取的單字",
 	command_review: "開始複習生詞",
+	command_anki: "把生詞本送進 Anki",
+	anki_unreachable:
+		"WordFolio:連不上 Anki。\n請打開 Anki,並確認裝了 AnkiConnect 外掛。",
+	anki_nothing: "WordFolio:生詞本是空的。",
+	anki_done: "WordFolio:已送進 Anki——新增 {added} 個,{skipped} 個已經有了。",
+	set_anki_deck_name: "Anki 牌組",
+	set_anki_deck_desc:
+		"「把生詞本送進 Anki」會放進這個牌組,不存在會自動建立。**單向而已(Obsidian → Anki)**——這個外掛自己就有間隔複習,兩邊各記各的進度,建議挑一邊當主力,不要兩套並行。",
 	command_download_dict: "下載／更新離線詞庫",
 
 	// 詞庫

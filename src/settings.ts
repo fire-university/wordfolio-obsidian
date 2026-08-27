@@ -42,6 +42,8 @@ export interface WordFolioSettings {
 	vocabFolder: string;
 	// 加入生詞本時要不要一併記下原句。
 	captureSentence: boolean;
+	// 推進 Anki 時用哪個牌組(不存在會自動建)。
+	ankiDeck: string;
 
 	// --- 本地 AI(選用) ---
 	// OpenAI 相容端點(預設 Ollama)。不用 API key、不把查的字送出電腦。
@@ -71,6 +73,7 @@ export const DEFAULT_SETTINGS: WordFolioSettings = {
 	audioSource: "online_first",
 	vocabFolder: "英文生詞本",
 	captureSentence: true,
+	ankiDeck: "WordFolio",
 	llmEndpoint: "http://localhost:11434/v1",
 	// 預設用 3b 而不是 7b:實測暖機後 3b 約 2 秒、7b 明顯更久。
 	// 這幾個任務(挑義項、拆字根、造例句)不需要大模型,速度比較重要。

@@ -15,6 +15,8 @@ import { HoverController, type TriggerMode } from "./hover";
 import type { IconMode } from "./tooltip";
 import { Audio } from "./audio";
 import { VocabStore } from "./vocab";
+import { toAnkiFields } from "./anki-fields";
+import { Anki } from "./anki";
 import { ReviewModal } from "./review";
 import { dueCards } from "./schedule";
 import { LocalLLM } from "./llm";
@@ -46,6 +48,7 @@ export default class WordFolioPlugin extends Plugin {
 		wiktionary: new WebSource(WIKTIONARY),
 	};
 	private ribbon: HTMLElement | null = null;
+	private anki = new Anki();
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -131,6 +134,12 @@ export default class WordFolioPlugin extends Plugin {
 			id: "lookup-word",
 			name: t("command_lookup"),
 			callback: () => void this.lookupAtCursor(),
+		});
+
+		this.addCommand({
+			id: "sync-anki",
+			name: t("command_anki"),
+			callback: () => void this.syncToAnki(),
 		});
 
 		this.addCommand({
@@ -258,6 +267,40 @@ export default class WordFolioPlugin extends Plugin {
 			await this.refreshBadge();
 		} catch (e) {
 			new Notice(e instanceof Error ? e.message : String(e));
+		}
+	}
+
+	/**
+	 * 把生詞本推進 Anki。單向:Obsidian → Anki。
+	 * 已經在 Anki 裡的字會跳過,所以重複執行是安全的。
+	 */
+	private async syncToAnki(): Promise<void> {
+		if (!(await this.anki.available())) {
+			new Notice(t("anki_unreachable"), 8000);
+			return;
+		}
+
+		const prefix = this.settings.vocabFolder + "/";
+		const notes = [];
+		for (const file of this.app.vault.getMarkdownFiles()) {
+			if (!file.path.startsWith(prefix)) continue;
+			const uri = `obsidian://open?vault=${encodeURIComponent(
+				this.app.vault.getName()
+			)}&file=${encodeURIComponent(file.path)}`;
+			const fields = toAnkiFields(await this.app.vault.read(file), uri);
+			if (fields) notes.push(fields);
+		}
+
+		if (!notes.length) {
+			new Notice(t("anki_nothing"));
+			return;
+		}
+
+		try {
+			const r = await this.anki.push(this.settings.ankiDeck, notes);
+			new Notice(t("anki_done", { added: r.added, skipped: r.skipped }), 6000);
+		} catch (e) {
+			new Notice(`Anki: ${e instanceof Error ? e.message : String(e)}`, 8000);
 		}
 	}
 
@@ -549,6 +592,19 @@ class WordFolioSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 					await this.plugin.reindexVocab();
 				})
+			);
+
+		new Setting(containerEl)
+			.setName(t("set_anki_deck_name"))
+			.setDesc(t("set_anki_deck_desc"))
+			.addText((txt) =>
+				txt
+					.setPlaceholder("WordFolio")
+					.setValue(s.ankiDeck)
+					.onChange(async (v) => {
+						s.ankiDeck = v.trim() || DEFAULT_SETTINGS.ankiDeck;
+						await this.plugin.saveSettings();
+					})
 			);
 
 		// --- 本地 AI ---
