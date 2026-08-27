@@ -10,7 +10,7 @@ import { t } from "./i18n";
 import type { SectionId } from "./sections";
 import type { Lookup, InflectionKind, GenOpts } from "./types";
 import { ABORTED } from "./types";
-import type { CambridgeEntry } from "./cambridge-parse";
+import type { SourceEntry } from "./sources-parse";
 
 /** 從畫面座標找出游標底下的英文字,連同所在句子。 */
 export interface HoverHit {
@@ -274,10 +274,10 @@ export interface TooltipCallbacks {
 	onBack?: () => void;
 	/** 還有沒有上一頁可回 */
 	canGoBack?: () => boolean;
-	/** 查劍橋詞典(線上);查不到回 null */
-	onCambridge?: (word: string, signal: AbortSignal) => Promise<CambridgeEntry | null>;
-	/** 劍橋查過了沒(undefined = 還沒查過,null = 查過但沒這個字) */
-	cachedCambridge?: (word: string) => CambridgeEntry | null | undefined;
+	/** 查某一家線上詞典;查不到回 null */
+	onSource?: (id: string, word: string, signal: AbortSignal) => Promise<SourceEntry | null>;
+	/** 那家查過了沒(undefined = 還沒查過,null = 查過但沒這個字) */
+	cachedSource?: (id: string, word: string) => SourceEntry | null | undefined;
 	/** 這幾樣算過了沒(算過就直接畫,不再等模型) */
 	cachedAsk?: (lookup: Lookup, sentence: string) => string | undefined;
 	cachedUsage?: (word: string) => string | undefined;
@@ -495,9 +495,12 @@ export class WordTooltip {
 				return;
 			}
 
-			case "cambridge": {
-				if (!this.cb.onCambridge) return;
-				this.cambridgeSection(entry.w, hit);
+			case "cambridge":
+			case "longman":
+			case "oxford":
+			case "wiktionary": {
+				if (!this.cb.onSource) return;
+				this.sourceSection(id, entry.w, hit);
 				return;
 			}
 
@@ -589,17 +592,17 @@ export class WordTooltip {
 
 	/** 兩顆 AI 按鈕的共用行為:按下去 → 顯示進行中 → 換成結果或錯誤。 */
 	/**
-	 * 劍橋詞典區塊:按義項顯示「英文定義 + 繁中 + 例句(附中譯)」。
-	 * 這是人編的詞典內容,比離線詞庫那幾行並列釋義好讀,也比本地模型生的可靠。
+	 * 線上詞典區塊(劍橋/朗文/牛津/Wiktionary 共用)。
+	 * 人編的詞典內容,比離線詞庫那幾行並列釋義好讀,也比本地模型生的可靠。
 	 */
-	private cambridgeSection(word: string, hit: HoverHit): void {
-		const cached = this.cb.cachedCambridge?.(word);
+	private sourceSection(id: SectionId, word: string, hit: HoverHit): void {
+		const cached = this.cb.cachedSource?.(id, word);
 		// 查過但沒有這個字(冷僻字、變化形):安靜跳過,不要留一塊空的。
 		if (cached === null) return;
 
 		const box = this.el.createDiv({ cls: "wordfolio-camb" });
 		if (cached) {
-			this.renderCambridge(box, cached);
+			this.renderSource(box, id, cached);
 			return;
 		}
 
@@ -611,14 +614,14 @@ export class WordTooltip {
 			const ctrl = new AbortController();
 			this.inflight.push(ctrl);
 			try {
-				const data = await this.cb.onCambridge!(word, ctrl.signal);
+				const data = await this.cb.onSource!(id, word, ctrl.signal);
 				if (gen !== this.renderGen) return;
 				loading.remove();
 				if (!data) {
 					box.remove(); // 查無此字,整塊收掉
 					return;
 				}
-				this.renderCambridge(box, data);
+				this.renderSource(box, id, data);
 				this.position(hit.rect);
 			} catch {
 				if (gen !== this.renderGen) return;
@@ -628,17 +631,24 @@ export class WordTooltip {
 		}, CAMBRIDGE_DWELL_MS);
 	}
 
-	private renderCambridge(box: HTMLElement, data: CambridgeEntry): void {
+	private renderSource(box: HTMLElement, id: SectionId, data: SourceEntry): void {
 		box.empty();
-		box.createDiv({ cls: "wordfolio-ai-label", text: t("section_cambridge") });
+		box.createDiv({ cls: "wordfolio-ai-label", text: t(`section_${id}`) });
+
+		// 字源那種散文式的內容:直接一段文字,沒有義項。
+		if (data.text) {
+			box.createDiv({ cls: "wf-camb-ety", text: data.text });
+			return;
+		}
 
 		// 義項多的字(get、run)會很長,取前六個就夠讀了。
 		for (const sense of data.senses.slice(0, 6)) {
 			const el = box.createDiv({ cls: "wf-camb-sense" });
 
-			if (sense.guideword || sense.pos) {
+			if (sense.guideword || sense.pos || sense.level) {
 				const head = el.createDiv({ cls: "wf-camb-head" });
 				if (sense.guideword) head.createSpan({ cls: "wf-camb-gw", text: sense.guideword });
+				if (sense.level) head.createSpan({ cls: "wf-camb-gw", text: sense.level });
 				if (sense.pos) head.createSpan({ cls: "wf-camb-pos", text: sense.pos });
 			}
 

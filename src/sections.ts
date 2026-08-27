@@ -6,6 +6,9 @@
 export type SectionId =
 	| "phonetics" // 英美音標與發音
 	| "cambridge" // 劍橋詞典:按義項分的英文定義＋繁中＋例句(線上)
+	| "longman" // 朗文當代:定義用最基本的詞彙寫(線上,純英文)
+	| "oxford" // 牛津學習者:定義＋CEFR 等級(線上,純英文)
+	| "wiktionary" // Wiktionary 字源:真實的字根字首來源鏈(線上 API)
 	| "translation" // 繁中釋義(ECDICT)
 	| "english" // 英英釋義(WordNet)
 	| "surface" // 變化形自己的釋義(跟原形不同時才有)
@@ -25,6 +28,11 @@ export const ALL_SECTIONS: SectionId[] = [
 	// 比 ECDICT 那幾行並列的釋義好讀得多。
 	"cambridge",
 	"translation",
+	// 朗文/牛津擺在中文釋義後面:它們是「劍橋還看不懂時」的補充。
+	"longman",
+	"oxford",
+	// 字源放靠後:那是想深究時才看的。
+	"wiktionary",
 	// 「在這句話裡是什麼意思」緊接在釋義後面:那是讀者當下最想要的答案,
 	// 不該埋在一堆補充資料底下。
 	"claude",
@@ -52,6 +60,11 @@ export const DEFAULT_ENABLED: Record<SectionId, boolean> = {
 	phonetics: true,
 	cambridge: true,
 	translation: true,
+	// 朗文/牛津/字源預設關:一次跑四家會慢,而且劍橋通常就夠了。
+	// 想要更淺白的定義(朗文/牛津)或真實字根來源(字源)再自己打開。
+	longman: false,
+	oxford: false,
+	wiktionary: false,
 	english: true,
 	surface: true,
 	frequency: true,

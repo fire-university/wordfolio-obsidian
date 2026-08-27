@@ -9,7 +9,7 @@
 		"build:dict": "node tools/build-dict.mjs",
 		"deploy": "npm run build && node tools/deploy.mjs",
 		"fetch:sources": "node tools/fetch-sources.mjs",
-		"test": "tsx test/dict-check.ts && tsx test/schedule-check.ts && tsx test/skip-check.ts && tsx test/sections-check.ts && tsx test/cambridge-check.ts && tsx test/hover-check.ts"
+		"test": "tsx test/dict-check.ts && tsx test/schedule-check.ts && tsx test/skip-check.ts && tsx test/sections-check.ts && tsx test/cambridge-check.ts && tsx test/sources-check.ts && tsx test/hover-check.ts"
 	},
 	"keywords": [
 		"obsidian",

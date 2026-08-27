@@ -18,7 +18,8 @@ import { VocabStore } from "./vocab";
 import { ReviewModal } from "./review";
 import { dueCards } from "./schedule";
 import { LocalLLM } from "./llm";
-import { Cambridge } from "./cambridge";
+import { WebSource, type SourceStore } from "./sources";
+import { CAMBRIDGE, LONGMAN, OXFORD, WIKTIONARY } from "./source-defs";
 import {
 	ALL_SECTIONS,
 	normalizeOrder,
@@ -37,7 +38,13 @@ export default class WordFolioPlugin extends Plugin {
 	private audio!: Audio;
 	private vocab!: VocabStore;
 	private llm!: LocalLLM;
-	private cambridge = new Cambridge();
+	/** 四家線上詞典。每一家是設定裡一個可勾選的區塊。 */
+	private sources: Record<string, WebSource> = {
+		cambridge: new WebSource(CAMBRIDGE),
+		longman: new WebSource(LONGMAN),
+		oxford: new WebSource(OXFORD),
+		wiktionary: new WebSource(WIKTIONARY),
+	};
 	private ribbon: HTMLElement | null = null;
 
 	async onload(): Promise<void> {
@@ -59,20 +66,21 @@ export default class WordFolioPlugin extends Plugin {
 
 		this.vocab = new VocabStore(this.app, () => this.settings.vocabFolder);
 
-		// 劍橋查過的字寫進外掛資料夾,離線與重開之後都還在。
-		const cambDir = `${base}/cambridge`;
-		this.cambridge.useStore({
-			read: async (name) => {
-				const p = `${cambDir}/${name}`;
+		// 線上詞典查過的字寫進外掛資料夾,離線與重開之後都還在。
+		const store: SourceStore = {
+			read: async (name: string) => {
+				const p = `${base}/sources/${name}`;
 				return (await this.app.vault.adapter.exists(p))
 					? this.app.vault.adapter.read(p)
 					: null;
 			},
-			write: async (name, data) => {
-				await this.app.vault.adapter.mkdir(cambDir).catch(() => undefined);
-				await this.app.vault.adapter.write(`${cambDir}/${name}`, data);
+			write: async (name: string, data: string) => {
+				const dir = `${base}/sources/${name.split("/")[0]}`;
+				await this.app.vault.adapter.mkdir(dir).catch(() => undefined);
+				await this.app.vault.adapter.write(`${base}/sources/${name}`, data);
 			},
-		});
+		};
+		for (const src of Object.values(this.sources)) src.useStore(store);
 
 		this.llm = new LocalLLM(() => ({
 			endpoint: this.settings.llmEndpoint,
@@ -89,8 +97,8 @@ export default class WordFolioPlugin extends Plugin {
 			onDetail: (lookup, gen) =>
 				this.llm.detail(lookup.entry.w, lookup.entry.tr.split("\\n").join("; "), gen),
 			isSaved: (word) => this.vocab.has(word),
-			onCambridge: (word, signal) => this.cambridge.lookup(word, signal),
-			cachedCambridge: (word) => this.cambridge.cached(word),
+			onSource: (id, word, signal) => this.sources[id]?.lookup(word, signal) ?? Promise.resolve(null),
+			cachedSource: (id, word) => this.sources[id]?.cached(word),
 			cachedAsk: (lookup, sentence) => this.llm.cachedExplain(lookup.surface, sentence),
 			cachedUsage: (word) => this.llm.usageFor(word),
 			cachedDetail: (word) => this.llm.detailFor(word),

@@ -277,6 +277,12 @@
 	line-height: 1.4;
 }
 
+/* 字源那種散文式內容 */
+.wf-camb-ety {
+	color: var(--text-muted);
+	line-height: 1.55;
+}
+
 /* --- AI 自動生成的區塊 --- */
 .wordfolio-ai {
 	margin-top: 0.6em;

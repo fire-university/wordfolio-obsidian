@@ -114,6 +114,15 @@ const EN: Dict = {
 	section_cambridge: "Cambridge dictionary",
 	section_cambridge_desc:
 		"Senses from the Cambridge English–Chinese (Traditional) dictionary: English definition, Chinese gloss and real example sentences with translations. Needs a network connection the first time you look a word up; after that the entry is saved to disk and works offline. Everything else in this plugin is already offline.",
+	section_longman: "Longman (LDOCE)",
+	section_longman_desc:
+		"Learner-focused definitions written with a very small vocabulary — useful when the Cambridge definition is still hard to read. English only, online (cached to disk after the first lookup).",
+	section_oxford: "Oxford Learner's",
+	section_oxford_desc:
+		"Like Longman, plus CEFR levels (A1–C2). English only, online (cached to disk after the first lookup).",
+	section_wiktionary: "Etymology (Wiktionary)",
+	section_wiktionary_desc:
+		"The real origin chain, e.g. effective ← French effectif ← Latin effect\u012bvus. Uses the official Wiktionary API, so it will not break when a site redesigns. English only.",
 	section_phonetics: "Phonetics and pronunciation",
 	section_phonetics_desc: "UK and US IPA with playable audio.",
 	section_translation: "Chinese definition",
@@ -243,6 +252,15 @@ const ZH: Dict = {
 	section_cambridge: "劍橋詞典",
 	section_cambridge_desc:
 		"劍橋英漢（繁體）詞典的義項:英文定義、中文釋義,還有附中譯的真實例句。**只有第一次查那個字需要連網**,之後會存進磁碟,離線與重開之後都看得到。外掛其他內容(釋義、音標、例句、同義詞)本來就是離線的。",
+	section_longman: "朗文當代（LDOCE）",
+	section_longman_desc:
+		"學習者字典:定義只用最基本的詞彙寫成,劍橋的定義還是看不懂時看這個。純英文,線上(查過一次就存進磁碟,之後離線也看得到)。",
+	section_oxford: "牛津學習者（OALD）",
+	section_oxford_desc:
+		"跟朗文同類,額外標 CEFR 等級(A1–C2)。純英文,線上(查過一次就存進磁碟)。",
+	section_wiktionary: "字源（Wiktionary）",
+	section_wiktionary_desc:
+		"真實的字源鏈,例如 effective ← 法語 effectif ← 拉丁 effectīvus。走**官方 API**,不會因為對方改版面而壞。純英文。",
 	section_phonetics: "音標與發音",
 	section_phonetics_desc: "英式與美式 IPA,可點喇叭發音。",
 	section_translation: "中文釋義",
