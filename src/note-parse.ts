@@ -10,8 +10,8 @@
 // 順便解掉兩個資料一直都在、只是被丟掉的東西:音標(在 frontmatter,被整段剝掉)
 // 與出處例句(在「我遇到它的地方」,被 split 主動切掉)。
 
-const SENTENCE_HEADING = "## 我遇到它的地方";
-const ENGLISH_HEADING = "英英釋義";
+import { FRONTMATTER_ALIASES, FORMS_LINE, headingIs } from "./note-schema";
+
 /** 中譯行的標記。放在引用區塊裡,原句底下一行。 */
 export const TRANSLATION_MARK = "↳";
 
@@ -39,9 +39,15 @@ export interface ParsedNote {
 	extras: { heading: string; body: string }[];
 }
 
-/** frontmatter 的單行值。yamlString 寫出來的雙引號字串要脫掉引號與跳脫。 */
-function frontmatterValue(front: string, key: string): string | undefined {
-	const m = front.match(new RegExp(`^${key}:\\s*(.*)$`, "m"));
+/**
+ * frontmatter 的單行值。yamlString 寫出來的雙引號字串要脫掉引號與跳脫。
+ *
+ * 吃的是**別名清單**而不是單一欄位名:同一篇 vault 裡可能同時有繁中版
+ * (`音標_英`)與英文版(`phonetic_uk`)的筆記,兩種都要讀得出來。
+ */
+function frontmatterValue(front: string, keys: string | string[]): string | undefined {
+	const list = typeof keys === "string" ? [keys] : keys;
+	const m = list.map((k) => front.match(new RegExp(`^${k}:\\s*(.*)$`, "m"))).find(Boolean);
 	if (!m) return undefined;
 	const raw = m[1].trim();
 	if (!raw) return undefined;
@@ -58,19 +64,19 @@ export function parseNote(markdown: string): ParsedNote {
 
 	const out: ParsedNote = {
 		word: frontmatterValue(front, "word") ?? "",
-		ukPhonetic: frontmatterValue(front, "音標_英"),
-		usPhonetic: frontmatterValue(front, "音標_美"),
+		ukPhonetic: frontmatterValue(front, FRONTMATTER_ALIASES.uk),
+		usPhonetic: frontmatterValue(front, FRONTMATTER_ALIASES.us),
 		meaning: [],
 		english: [],
 		forms: [],
 		sentences: [],
-		source: frontmatterValue(front, "來源"),
+		source: frontmatterValue(front, FRONTMATTER_ALIASES.source),
 		extras: [],
 	};
 
 	// 變化形那一行不一定在哪:renderNote 是把它接在「英英釋義」區塊**後面**,
 	// 所以不能只在第一段裡找。全文抓一次。
-	const formLine = body.match(/^\*\*變化\*\*：(.+)$/m);
+	const formLine = body.match(FORMS_LINE);
 	if (formLine) {
 		out.forms = formLine[1].split("/").map((f) => f.trim()).filter(Boolean);
 	}
@@ -83,8 +89,11 @@ export function parseNote(markdown: string): ParsedNote {
 		const t = line.trim();
 		if (!t) continue;
 		if (/^#\s/.test(t)) continue; // 大標題就是那個字,正面已經看過
-		if (/^\*\*變化\*\*：/.test(t)) continue; // 上面已經抓過了
-		out.meaning.push(t.replace(/\*\*/g, ""));
+		if (FORMS_LINE.test(t)) continue; // 上面已經抓過了
+		// 前導的「- 」要剝掉。英文版筆記的主釋義是列點(英英釋義當主體),
+		// 留著的話複習卡上就是一個孤零零的破折號——這個檔一開始就是為了修掉
+		// 這種東西才存在的,不要在自己身上重犯。
+		out.meaning.push(t.replace(/^[-*]\s+/, "").replace(/\*\*/g, ""));
 	}
 
 	for (const chunk of chunks) {
@@ -92,7 +101,7 @@ export function parseNote(markdown: string): ParsedNote {
 		const heading = (nl < 0 ? chunk : chunk.slice(0, nl)).trim();
 		const rest = nl < 0 ? "" : chunk.slice(nl + 1);
 
-		if (heading === ENGLISH_HEADING) {
+		if (headingIs(heading, "english")) {
 			out.english = rest
 				.split("\n")
 				.map((l) => l.trim())
@@ -100,7 +109,7 @@ export function parseNote(markdown: string): ParsedNote {
 				.map((l) => l.replace(/^-\s*/, ""));
 			continue;
 		}
-		if (SENTENCE_HEADING.endsWith(heading)) {
+		if (headingIs(heading, "sentence")) {
 			// 引用行有兩種:原句,以及緊接其後、用 ↳ 標記的中譯。
 			// 用明確標記而不是「第二行就是翻譯」,免得他自己手動加第二句時被誤判。
 			for (const raw of rest.split("\n")) {

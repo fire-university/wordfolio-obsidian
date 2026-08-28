@@ -1,10 +1,11 @@
 {
 	"id": "wordfolio",
 	"name": "WordFolio",
-	"version": "0.1.0",
+	"version": "1.0.0",
 	"minAppVersion": "1.4.0",
-	"description": "Hover any English word to see Traditional Chinese definitions, UK/US phonetics and pronunciation — fully offline. Save words to a Markdown vocabulary notebook and review them with FSRS spaced repetition.",
+	"description": "Hover any English word for definitions, UK/US phonetics and pronunciation — fully offline. Traditional Chinese or English definitions, a Markdown vocabulary notebook, and FSRS spaced repetition.",
 	"author": "Doug (fire-university)",
 	"authorUrl": "https://firetw.com",
-	"isDesktopOnly": true
+	"isDesktopOnly": true,
+	"fundingUrl": "https://buymeacoffee.com/firetw"
 }

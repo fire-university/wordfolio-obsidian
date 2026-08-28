@@ -71,5 +71,34 @@ check("沒有 word 欄位就回 null", toAnkiFields("---\ntype: 生詞\n---\n\n#
 	check("沒有例句也不會壞", noEg !== null && noEg.examples === "", `例句=${noEg?.examples}`);
 }
 
+console.log("\n英文格式的筆記也要轉得出來");
+{
+	const EN = `---
+type: vocabulary
+word: overrate
+phonetic_uk: "/ˌəʊvəɹˈeɪt/"
+phonetic_us: "/ˌoʊvɝˈɹeɪt/"
+tags: [english, vocabulary]
+---
+# overrate
+
+- v make too high an estimate of
+
+## Where I met it
+
+> Hard work is really overrated.
+`;
+	const f = toAnkiFields(EN, URI);
+	check("轉得出來", f !== null);
+	check("單字", f?.word === "overrate", String(f?.word));
+	check("音標讀得到(phonetic_uk / phonetic_us)", !!f?.phonetic.includes("UK /"), String(f?.phonetic));
+	check(
+		"例句讀得到(Where I met it)",
+		f?.examples === "Hard work is really overrated.",
+		String(f?.examples)
+	);
+	check("釋義是英英那行", !!f?.meaning.includes("make too high an estimate"), String(f?.meaning));
+}
+
 console.log(failures === 0 ? "\n全部通過。" : `\n${failures} 項失敗。`);
 process.exit(failures === 0 ? 0 : 1);

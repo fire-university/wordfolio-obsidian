@@ -62,6 +62,27 @@ const EN: Dict = {
 	notice_dict_ready: "WordFolio: dictionary ready ({entries} entries).",
 	notice_dict_failed: "WordFolio: dictionary download failed.\n{err}",
 	notice_not_found: "WordFolio: \"{word}\" is not in the dictionary.",
+	dict_progress: "WordFolio: downloading the dictionary… {done}/{total} files · {mb}",
+	dict_verifying: "WordFolio: checking files already on disk…",
+	dict_up_to_date: "WordFolio: the dictionary is already complete ({entries} entries).",
+	dict_cancelled: "WordFolio: download cancelled. Run the command again to carry on where it stopped.",
+	dict_err_http: "Could not reach the download server. Check your connection and run the command again — files already downloaded are kept.",
+	dict_err_hash: "A downloaded file was damaged ({file}). Run the command again to re-fetch just that one.",
+	dict_err_meta: "The download server did not return a valid dictionary index.",
+	dict_err_version: "This release does not have the dictionary version this plugin expects ({version}).",
+	dict_err_write: "Could not write to the plugin folder. Check that the disk is not full or read-only.",
+
+	// 首次啟動的安裝引導
+	setup_title: "Install the offline dictionary",
+	setup_body:
+		"WordFolio looks words up entirely on your own machine, so the dictionary is downloaded once and then never needs a network again.\n\n{size} · {entries} entries · downloaded from this plugin's GitHub release.\n\nIt goes into the plugin's own folder, not your vault, and you can delete it any time by removing the plugin. If the download is interrupted, run the command again — it carries on from where it stopped.",
+	setup_download: "Download now",
+	setup_later: "Not now",
+	setup_later_hint:
+		"WordFolio: no dictionary, so lookups are off.\nRun \"Download / update the offline dictionary\" from the command palette when you are ready.",
+
+	// 複習紀錄
+	log_sentinel_note: "Maintained by WordFolio — do not edit this table by hand",
 
 	// 浮窗
 	tooltip_add: "Add to vocabulary notebook",
@@ -187,6 +208,25 @@ const EN: Dict = {
 	set_language_name: "Language",
 	set_language_desc: "Interface language. Auto follows Obsidian.",
 	lang_auto: "Auto",
+	// --- 詞庫(設定頁) ---
+	default_vocab_folder: "Vocabulary",
+	heading_dict: "Offline dictionary",
+	set_dict_status_name: "Dictionary files",
+	set_dict_installed: "Installed — version {version}, {entries} entries, {size} on disk.",
+	set_dict_not_installed:
+		"Not installed. Nothing can be looked up until the dictionary is downloaded ({size}, one time only).",
+	set_dict_download: "Download",
+	set_dict_repair: "Check and repair",
+	set_dict_cancel: "Cancel",
+	set_dict_folder_note:
+		"The files live in this plugin's own folder inside .obsidian/plugins, not in your vault. Removing the plugin removes them too; your vocabulary notes are not touched.",
+
+	// --- 贊助 ---
+	heading_support: "Support",
+	set_donate_desc:
+		"WordFolio is free and open source, with no accounts, no servers and no tracking. If it saves you time, a coffee keeps it maintained.",
+	set_donate_button: "Buy me a coffee",
+
 	heading_lookup: "Lookup",
 	set_trigger_name: "How to look up",
 	set_trigger_desc:
@@ -309,6 +349,27 @@ const ZH: Dict = {
 	notice_dict_ready: "WordFolio:詞庫就緒(共 {entries} 個詞條)。",
 	notice_dict_failed: "WordFolio:詞庫下載失敗。\n{err}",
 	notice_not_found: "WordFolio:詞庫裡沒有「{word}」。",
+	dict_progress: "WordFolio:正在下載詞庫… {done}/{total} 個檔案 · {mb}",
+	dict_verifying: "WordFolio:正在檢查已經下載好的檔案…",
+	dict_up_to_date: "WordFolio:詞庫已經是完整的(共 {entries} 個詞條)。",
+	dict_cancelled: "WordFolio:已取消下載。再執行一次指令會從中斷的地方接著下載。",
+	dict_err_http: "連不上下載伺服器。檢查網路後再執行一次指令,已經下載好的檔案會保留。",
+	dict_err_hash: "有一個檔案下載壞掉({file})。再執行一次指令會只重抓那一個。",
+	dict_err_meta: "下載伺服器沒有回傳正確的詞庫索引檔。",
+	dict_err_version: "這個 release 裡沒有外掛需要的詞庫版本({version})。",
+	dict_err_write: "寫不進外掛資料夾。確認磁碟沒有滿、也不是唯讀。",
+
+	// 首次啟動的安裝引導
+	setup_title: "安裝離線詞庫",
+	setup_body:
+		"WordFolio 查字完全在你自己的電腦上進行,所以詞庫只下載這一次,之後永遠不需要連網。\n\n{size} · {entries} 個詞條 · 從這個外掛的 GitHub release 下載。\n\n檔案放在外掛自己的資料夾,不會進你的 vault;移除外掛就一起消失。下載中斷的話再執行一次指令,會從中斷的地方接著下載。",
+	setup_download: "現在下載",
+	setup_later: "稍後再說",
+	setup_later_hint:
+		"WordFolio:沒有詞庫,查詢功能是關著的。\n想裝的時候從命令面板執行「下載／更新離線詞庫」。",
+
+	// 複習紀錄
+	log_sentinel_note: "這個表格由外掛自動維護,請不要手動編輯",
 
 	// 浮窗
 	tooltip_add: "加入生詞本",
@@ -434,6 +495,25 @@ const ZH: Dict = {
 	set_language_name: "語言",
 	set_language_desc: "介面語言。自動 = 跟著 Obsidian 走。",
 	lang_auto: "自動",
+	// --- 詞庫(設定頁) ---
+	default_vocab_folder: "英文生詞本",
+	heading_dict: "離線詞庫",
+	set_dict_status_name: "詞庫檔案",
+	set_dict_installed: "已安裝——版本 {version},{entries} 個詞條,佔用 {size}。",
+	set_dict_not_installed:
+		"尚未安裝。詞庫下載完成之前查不了任何字({size},只需要下載這一次)。",
+	set_dict_download: "下載",
+	set_dict_repair: "檢查並修復",
+	set_dict_cancel: "取消",
+	set_dict_folder_note:
+		"檔案放在 .obsidian/plugins 底下這個外掛自己的資料夾,不在你的 vault 裡。移除外掛時會一起消失,你的生詞筆記不會被動到。",
+
+	// --- 贊助 ---
+	heading_support: "支持這個外掛",
+	set_donate_desc:
+		"WordFolio 是免費的開源外掛,沒有帳號、沒有伺服器、沒有任何追蹤。如果它幫你省下了時間,請我一杯咖啡就是最好的支持。",
+	set_donate_button: "請我喝杯咖啡",
+
 	heading_lookup: "查詢",
 	set_trigger_name: "怎麼觸發查詢",
 	set_trigger_desc:

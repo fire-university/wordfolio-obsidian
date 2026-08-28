@@ -7,6 +7,7 @@
 import fs from "fs";
 import path from "path";
 import { Dictionary } from "../src/dict";
+import { DICT_VERSION, DICT_ENTRIES, DICT_BYTES } from "../src/settings";
 import { wordAt, formsFor } from "../src/lemma";
 
 const DICT_DIR = path.resolve(__dirname, "../dict");
@@ -31,6 +32,20 @@ async function main() {
 
 	const loaded = await dict.load();
 	check("詞庫載入", loaded, `${dict.entryCount.toLocaleString()} 詞條 · ${dict.version}`);
+
+	// 外掛要下載哪一版詞庫,是寫死在 settings.ts 的常數裡(執行期不去問遠端)。
+	// 常數跟實際產出對不上時,使用者按下「下載」會抓到不存在的 Release 標籤——
+	// 而那個錯誤只有他會遇到,我不會,因為我的 dict/ 是 npm run deploy 複製過去的。
+	console.log("\n程式碼裡的詞庫常數要跟 meta.json 對得上");
+	const meta = JSON.parse(fs.readFileSync(path.join(DICT_DIR, "meta.json"), "utf8"));
+	const bytes = Object.values(meta.sizes ?? {}).reduce((a: number, b) => a + Number(b), 0);
+	check("DICT_VERSION", DICT_VERSION === meta.version, `${DICT_VERSION} vs ${meta.version}`);
+	check("DICT_ENTRIES", DICT_ENTRIES === meta.entries, `${DICT_ENTRIES} vs ${meta.entries}`);
+	check("DICT_BYTES", DICT_BYTES === bytes, `${DICT_BYTES} vs ${bytes}`);
+	check(
+		"meta.json 每個檔都有大小",
+		!!meta.sizes && Object.keys(meta.sizes).length === Object.keys(meta.shards).length
+	);
 
 	// --- 釋義必須是繁體 ---
 	console.log("\n繁體轉換");

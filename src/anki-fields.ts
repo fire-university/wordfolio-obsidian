@@ -11,6 +11,8 @@
  * 純函式(吃檔案內容字串),所以可以直接測——生詞筆記的格式是自己定的,
  * 格式一改這裡就會壞,值得有測試守著。
  */
+import { FRONTMATTER_ALIASES, HEADING_ALIASES } from "./note-schema";
+
 export function toAnkiFields(markdown: string, obsidianUri: string): {
 	word: string;
 	phonetic: string;
@@ -20,10 +22,14 @@ export function toAnkiFields(markdown: string, obsidianUri: string): {
 } | null {
 	const fm = markdown.match(/^---\n([\s\S]*?)\n---/);
 	const front = fm?.[1] ?? "";
-	const pick = (k: string) =>
-		front.match(new RegExp(`^${k}:\\s*"?(.*?)"?\\s*$`, "m"))?.[1]?.trim() ?? "";
+	// 欄位名吃別名清單:繁中筆記寫 `音標_英`,英文筆記寫 `phonetic_uk`,
+	// 同一個生詞本裡兩種都可能存在。
+	const pick = (keys: string[]) =>
+		keys
+			.map((k) => front.match(new RegExp(`^${k}:\\s*"?(.*?)"?\\s*$`, "m"))?.[1]?.trim())
+			.find((v) => v) ?? "";
 
-	const word = pick("word");
+	const word = pick(["word"]);
 	if (!word) return null;
 
 	const body = markdown.slice(fm ? fm[0].length : 0);
@@ -33,8 +39,10 @@ export function toAnkiFields(markdown: string, obsidianUri: string): {
 		.split(/^##\s/m)[0]
 		.trim();
 
-	// 例句:「我遇到它的地方」底下的引用行。
-	const examples = (body.split("## 我遇到它的地方")[1] ?? "")
+	// 例句:「我遇到它的地方」(英文筆記是 "Where I met it")底下的引用行。
+	const sentenceSection =
+		HEADING_ALIASES.sentence.map((h) => body.split(`## ${h}`)[1]).find((v) => v) ?? "";
+	const examples = sentenceSection
 		.split(/^##\s/m)[0]
 		.split("\n")
 		.filter((l) => l.trim().startsWith(">"))
@@ -42,8 +50,8 @@ export function toAnkiFields(markdown: string, obsidianUri: string): {
 		.filter(Boolean)
 		.join("<br>");
 
-	const uk = pick("音標_英");
-	const us = pick("音標_美");
+	const uk = pick(FRONTMATTER_ALIASES.uk);
+	const us = pick(FRONTMATTER_ALIASES.us);
 	const phonetic = [uk && `UK ${uk}`, us && `US ${us}`].filter(Boolean).join("　");
 
 	return {

@@ -27,9 +27,20 @@ export interface DayLog {
 
 export type RatingName = "again" | "hard" | "good" | "easy";
 
-/** 自動維護區塊的界線。區塊外面留給使用者自己寫,永遠不動。 */
-export const LOG_START = "<!-- WORDFOLIO:START 這個表格由外掛自動維護，請不要手動編輯 -->";
+/**
+ * 自動維護區塊的界線。區塊外面留給使用者自己寫,永遠不動。
+ *
+ * 找的時候只認 `<!-- WORDFOLIO:START` 這個前綴,不認後面那句說明——說明要跟著
+ * 介面語言換,而**已經存在的檔案裡寫的是舊那句**。認整串的話,換一次語言就
+ * 接不上舊區塊,結果是同一個檔裡長出第二張表,舊的那張永遠不再更新。
+ */
+export const LOG_START_PREFIX = "<!-- WORDFOLIO:START";
 export const LOG_END = "<!-- WORDFOLIO:END -->";
+
+/** 寫出去用的完整界線。note 是給人看的那句提醒。 */
+export function logStart(note: string): string {
+	return `${LOG_START_PREFIX} ${note} -->`;
+}
 
 /**
  * 從紀錄檔撈出每天的資料。
@@ -79,16 +90,21 @@ export function renderLog(days: DayLog[], headers: string[]): string {
  * 把表格塞回檔案的自動維護區塊裡。檔案還沒有那個區塊就整份重建。
  * 區塊外的內容原樣保留——沿用 PaperFolio 與 Kobo 畫線那套「不碰手寫區」的做法。
  */
-export function upsertLogTable(md: string, table: string, title: string): string {
-	const block = `${LOG_START}\n\n${table}\n\n${LOG_END}`;
-	const start = md.indexOf(LOG_START);
+export function upsertLogTable(
+	md: string,
+	table: string,
+	title: string,
+	labels: { note: string; type: string }
+): string {
+	const block = `${logStart(labels.note)}\n\n${table}\n\n${LOG_END}`;
+	const start = md.indexOf(LOG_START_PREFIX);
 	const end = md.indexOf(LOG_END);
 	if (start >= 0 && end > start) {
 		return md.slice(0, start) + block + md.slice(end + LOG_END.length);
 	}
 	const head = md.trim()
 		? md.trimEnd() + "\n\n"
-		: `---\ntype: 複習紀錄\n---\n\n# ${title}\n\n`;
+		: `---\ntype: ${labels.type}\n---\n\n# ${title}\n\n`;
 	return head + block + "\n";
 }
 

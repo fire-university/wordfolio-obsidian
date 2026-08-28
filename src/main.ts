@@ -2,13 +2,24 @@
 // 滑鼠滑過英文字 → 浮窗顯示英美音標、發音、繁中釋義 → 一鍵加進生詞本 → FSRS 排程複習。
 // 釋義走離線詞庫(ECDICT 轉繁 + ipa-dict 英美音標),只有「在這句話裡是什麼意思」才呼叫 Claude。
 
-import { App, Notice, Plugin, PluginSettingTab, Setting, TFile } from "obsidian";
+import { App, Notice, Plugin, PluginSettingTab, Setting, TFile, requestUrl } from "obsidian";
 import {
 	WordFolioSettings,
 	DEFAULT_SETTINGS,
 	AudioSource,
 	AccentPref,
+	DICT_RELEASE_BASE,
+	DICT_VERSION,
+	DICT_ENTRIES,
+	DICT_BYTES,
+	FUNDING_URL,
 } from "./settings";
+import {
+	installDictionary,
+	formatMB,
+	DictDownloadError,
+	type DownloadIO,
+} from "./dict-download";
 import { t, setLang, LangSetting, currentLang } from "./i18n";
 import { Dictionary } from "./dict";
 import { WordTooltip } from "./tooltip";
@@ -33,6 +44,7 @@ import { WebSource, type SourceStore } from "./sources";
 import { CAMBRIDGE, LONGMAN, OXFORD, WIKTIONARY } from "./source-defs";
 import {
 	ALL_SECTIONS,
+	defaultEnabledFor,
 	normalizeOrder,
 	normalizeEnabled,
 	setSectionEnabled,
@@ -68,6 +80,10 @@ export default class WordFolioPlugin extends Plugin {
 		wiktionary: new WebSource(WIKTIONARY),
 	};
 	private ribbon: HTMLElement | null = null;
+	/** 詞庫下載中的取消控制;null = 沒有在下載。 */
+	private dictAbort: AbortController | null = null;
+	/** 設定頁要在下載進行中重畫狀態列,靠這個回呼。 */
+	private onDictChange: (() => void) | null = null;
 	private anki = new Anki();
 	private log!: ReviewLog;
 
@@ -160,6 +176,12 @@ export default class WordFolioPlugin extends Plugin {
 		});
 
 		this.addCommand({
+			id: "download-dictionary",
+			name: t("command_download_dict"),
+			callback: () => void this.downloadDictionary(),
+		});
+
+		this.addCommand({
 			id: "sync-anki",
 			name: t("command_anki"),
 			callback: () => void this.syncToAnki(),
@@ -224,11 +246,146 @@ export default class WordFolioPlugin extends Plugin {
 	private async loadDictionary(): Promise<void> {
 		const ok = await this.dict.load();
 		if (!ok) {
-			new Notice(t("notice_dict_missing"), 8000);
+			this.promptSetup();
 			return;
 		}
 		this.settings.dictVersion = this.dict.version;
 		await this.saveSettings();
+		this.onDictChange?.();
+	}
+
+	/**
+	 * 沒有詞庫時的第一次引導。
+	 *
+	 * 原本這裡只跳一則 Notice 叫人「去命令面板執行下載指令」。那是壞的:
+	 * Notice 八秒就消失、使用者剛裝完外掛根本不知道命令面板在哪,而外掛在
+	 * 詞庫到位之前是**完全不會動的**。要人做一件必做的事,就給他一顆按鈕。
+	 */
+	private promptSetup(): void {
+		new ConfirmModal(
+			this.app,
+			t("setup_title"),
+			t("setup_body", {
+				size: formatMB(DICT_BYTES),
+				entries: DICT_ENTRIES.toLocaleString(),
+			}),
+			t("setup_download"),
+			() => void this.downloadDictionary(),
+			() => new Notice(t("setup_later_hint"), 8000),
+			t("setup_later")
+		).open();
+	}
+
+	/** 下載中?設定頁靠這個決定要畫「下載」還是「取消」。 */
+	get dictDownloading(): boolean {
+		return this.dictAbort !== null;
+	}
+
+	/** 設定頁開著時登記一個回呼,下載狀態一變就重畫。 */
+	watchDict(cb: (() => void) | null): void {
+		this.onDictChange = cb;
+	}
+
+	cancelDictDownload(): void {
+		this.dictAbort?.abort();
+	}
+
+	/** 詞庫檔案的存取。抽成物件是為了讓 dict-download 完全不認得 Obsidian。 */
+	private dictIO(): DownloadIO {
+		const dir = `${this.manifest.dir ?? ""}/dict`;
+		const adapter = this.app.vault.adapter;
+		return {
+			async fetchBinary(url: string) {
+				// requestUrl 而不是 fetch:GitHub 的下載網址會轉址到另一個網域,
+				// 瀏覽器 fetch 會被 CORS 擋下來,requestUrl 走 Obsidian 自己的
+				// 網路層,沒有這個問題。
+				const res = await requestUrl({ url, throw: false });
+				if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
+				return res.arrayBuffer;
+			},
+			async readLocal(name: string) {
+				const p = `${dir}/${name}`;
+				if (!(await adapter.exists(p))) return null;
+				return adapter.readBinary(p);
+			},
+			async writeLocal(name: string, data: ArrayBuffer) {
+				await adapter.writeBinary(`${dir}/${name}`, data);
+			},
+			async removeLocal(name: string) {
+				const p = `${dir}/${name}`;
+				if (await adapter.exists(p)) await adapter.remove(p);
+			},
+			async ensureFolder() {
+				if (!(await adapter.exists(dir))) await adapter.mkdir(dir);
+			},
+		};
+	}
+
+	/**
+	 * 下載(或補齊)離線詞庫。
+	 *
+	 * 進度用同一則 Notice 一直改寫,不是每個檔跳一次——54 個檔會刷出 54 則通知,
+	 * 那不叫進度回報,那叫洗版。
+	 */
+	async downloadDictionary(): Promise<void> {
+		if (this.dictAbort) return; // 已經在下載了
+		const ac = new AbortController();
+		this.dictAbort = ac;
+		this.onDictChange?.();
+
+		const notice = new Notice(t("notice_dict_downloading"), 0);
+		try {
+			const res = await installDictionary(DICT_RELEASE_BASE, DICT_VERSION, this.dictIO(), {
+				signal: ac.signal,
+				onProgress: (p) => {
+					notice.setMessage(
+						t("dict_progress", {
+							done: p.done,
+							total: p.total,
+							mb: p.totalBytes
+								? `${formatMB(p.bytes)} / ${formatMB(p.totalBytes)}`
+								: formatMB(p.bytes),
+						})
+					);
+				},
+			});
+			notice.hide();
+
+			await this.dict.load();
+			this.settings.dictVersion = this.dict.version;
+			await this.saveSettings();
+			new Notice(
+				res.downloaded === 0
+					? t("dict_up_to_date", { entries: res.entries.toLocaleString() })
+					: t("notice_dict_ready", { entries: res.entries.toLocaleString() }),
+				6000
+			);
+		} catch (e) {
+			notice.hide();
+			new Notice(this.dictErrorMessage(e), 10000);
+		} finally {
+			this.dictAbort = null;
+			this.onDictChange?.();
+		}
+	}
+
+	/** 把下載失敗翻成一句使用者看得懂、而且講得出下一步的話。 */
+	private dictErrorMessage(e: unknown): string {
+		if (!(e instanceof DictDownloadError)) {
+			return t("notice_dict_failed", { err: String(e) });
+		}
+		if (e.code === "aborted") return t("dict_cancelled");
+		const detail =
+			e.code === "hash"
+				? t("dict_err_hash", { file: e.file ?? "" })
+				: e.code === "version"
+					? t("dict_err_version", { version: DICT_VERSION })
+					: e.code === "meta"
+						? t("dict_err_meta")
+						: e.code === "write"
+							? t("dict_err_write")
+							: t("dict_err_http");
+		return t("notice_dict_failed", { err: detail });
 	}
 
 	/**
@@ -426,11 +583,16 @@ export default class WordFolioPlugin extends Plugin {
 		const entry = await this.dict.lookupPhrase(text);
 		if (entry) return { entry, surface: text };
 
-		// 離線庫沒有:交給 Claude 生一個臨時詞條(有 key 才行)。
+		// 離線庫沒有:交給本地 AI 生一個臨時詞條。
 		if (!this.llm.available) return null;
 		try {
-			const tr = await this.llm.translatePhrase(text);
-			return { entry: { w: text, tr }, surface: text };
+			const answer = await this.llm.translatePhrase(text);
+			// 中文介面拿到的是翻譯,放繁中釋義那格;英文介面拿到的是白話改寫,
+			// 要放英英釋義那格——放錯格子的話,該語言預設關掉的區塊會把它藏起來,
+			// 使用者只會看到一個空浮窗。
+			return currentLang() === "en"
+				? { entry: { w: text, tr: "", def: answer }, surface: text }
+				: { entry: { w: text, tr: answer }, surface: text };
 		} catch {
 			return null;
 		}
@@ -519,6 +681,21 @@ export default class WordFolioPlugin extends Plugin {
 		const data = (await this.loadData()) as Partial<WordFolioSettings> | null;
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, data ?? {});
 
+		// 語言要先定下來,底下的首次預設值靠它。
+		this.applyLang();
+
+		// 第一次安裝:把跟語言有關的預設值換成這個語言的版本。
+		//
+		// 只在**沒有存過設定**時做一次。之後切換介面語言不會再動這些——已經
+		// 建好的生詞本資料夾不會自己搬家,使用者調過的區塊也不該被重置。
+		if (!data) {
+			const lang = currentLang();
+			this.settings.sectionsEnabled = defaultEnabledFor(lang);
+			this.settings.vocabFolder = t("default_vocab_folder");
+			this.settings.migratedCambridge = true; // 全新安裝不需要那次遷移
+			await this.saveSettings();
+		}
+
 		// 遷移:加了劍橋詞典之後,AI 那三樣退位成加值選項(太慢)。已經存過設定的人
 		// 不會因為預設值改了就受惠,要主動關掉一次;同時把劍橋打開。只做一次,
 		// 之後使用者自己開回來就尊重他的選擇。
@@ -589,6 +766,56 @@ class WordFolioSettingTab extends PluginSettingTab {
 		);
 	}
 
+	/**
+	 * 詞庫狀態與下載鍵。
+	 *
+	 * 下載進行中要能看到進度、也要能喊停,所以這一區在下載狀態變動時會重畫
+	 * (plugin.watchDict)。整頁 display() 重畫會把捲動位置彈回最上面,所以
+	 * 只重畫這一區。
+	 */
+	private dictSection(containerEl: HTMLElement): void {
+		new Setting(containerEl).setName(t("heading_dict")).setHeading();
+
+		const row = new Setting(containerEl).setName(t("set_dict_status_name"));
+		const paint = () => {
+			const installed = !!this.plugin.settings.dictVersion;
+			row.setDesc(
+				installed
+					? t("set_dict_installed", {
+							version: this.plugin.settings.dictVersion,
+							entries: DICT_ENTRIES.toLocaleString(),
+							size: formatMB(DICT_BYTES),
+					  })
+					: t("set_dict_not_installed", { size: formatMB(DICT_BYTES) })
+			);
+			row.controlEl.empty();
+			const btn = row.controlEl.createEl("button", {
+				cls: this.plugin.dictDownloading || installed ? "" : "mod-cta",
+				text: this.plugin.dictDownloading
+					? t("set_dict_cancel")
+					: installed
+						? t("set_dict_repair")
+						: t("set_dict_download"),
+			});
+			btn.onclick = () => {
+				if (this.plugin.dictDownloading) this.plugin.cancelDictDownload();
+				else void this.plugin.downloadDictionary();
+			};
+		};
+		paint();
+		this.plugin.watchDict(paint);
+
+		containerEl.createDiv({
+			cls: "setting-item-description wordfolio-dict-note",
+			text: t("set_dict_folder_note"),
+		});
+	}
+
+	/** 設定頁關掉之後不要再回呼進來重畫一個已經被清空的 DOM。 */
+	hide(): void {
+		this.plugin.watchDict(null);
+	}
+
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
@@ -610,6 +837,12 @@ class WordFolioSettingTab extends PluginSettingTab {
 						this.display();
 					})
 			);
+
+		// --- 離線詞庫 ---
+		//
+		// 擺在語言下面、所有功能設定的最上面,因為在詞庫到位之前這個外掛
+		// 一個字都查不了。狀態看不到的話,使用者只會覺得「這外掛壞的」。
+		this.dictSection(containerEl);
 
 		// --- 查詢 ---
 		new Setting(containerEl).setName(t("heading_lookup")).setHeading();
@@ -911,5 +1144,15 @@ class WordFolioSettingTab extends PluginSettingTab {
 				}
 			});
 		});
+
+		// --- 支持 ---
+		// 放在最後面。贊助不是設定,不該卡在使用者真正要調的東西前面。
+		new Setting(containerEl).setName(t("heading_support")).setHeading();
+		new Setting(containerEl).setDesc(t("set_donate_desc")).addButton((b) =>
+			b
+				.setButtonText(t("set_donate_button"))
+				.setCta()
+				.onClick(() => window.open(FUNDING_URL, "_blank"))
+		);
 	}
 }

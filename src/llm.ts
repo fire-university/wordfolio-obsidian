@@ -319,7 +319,12 @@ export class LocalLLM {
 		return text;
 	}
 
-	/** 翻譯一整個片語(離線片語庫沒收到時的退路)。 */
+	/**
+	 * 說明一整個片語(離線片語庫沒收到時的退路)。
+	 *
+	 * 繁中介面是「翻譯成中文」;英文介面不能也叫它翻譯——把英文片語翻成英文
+	 * 沒有意義,那裡要的是**改寫成白話**,所以兩邊問的是不同的問題。
+	 */
 	async translatePhrase(phrase: string): Promise<string> {
 		const { traditional } = this.opts();
 		const key = `phrase:${phrase.toLowerCase()}`;
@@ -328,7 +333,7 @@ export class LocalLLM {
 
 		const prompt = traditional
 			? `翻譯這個英文片語，只給翻譯本身。${this.zhRules}\n\n${phrase}`
-			: `Translate this English phrase. Only the translation, nothing else:\n\n${phrase}`;
+			: `Explain this English phrase in one short, plain sentence. No preamble:\n\n${phrase}`;
 
 		const text = await this.enqueue(() => this.chat(prompt, 80));
 		this.cache.set(key, text);

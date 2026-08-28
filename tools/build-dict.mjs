@@ -12,7 +12,7 @@
 //   a.json … z.json  依首字母切的詞條 shard
 //   other.json       非 a–z 開頭的詞條
 //   inflect.json     變化形 → 原形
-//   meta.json        版本、詞條數、各 shard 的 sha256
+//   meta.json        版本、詞條數、各 shard 的 sha256 與 bytes
 //
 // 為什麼切 shard:hover 是高頻操作,每次查詢只 parse 一個 1–3MB 的小檔,
 // 比一次載入整包 30MB+ 進記憶體體感好得多,也讓日後上行動裝置不用重寫。
@@ -619,6 +619,10 @@ function main() {
 		phrases: keptPhrase,
 		inflections: inflect.size,
 		shards: {},
+		// 檔案大小(bytes)。下載端拿它算「已下載 / 總共 幾 MB」——
+		// 沒有這個就只能報「第幾個檔」,而 54 個 shard 的大小差到二十倍,
+		// 檔數的進度條會走得很不誠實。
+		sizes: {},
 	};
 
 	const writeShard = (map, key) => {
@@ -626,6 +630,7 @@ function main() {
 		const json = JSON.stringify(map.get(key));
 		fs.writeFileSync(path.join(OUT, file), json);
 		meta.shards[file] = crypto.createHash("sha256").update(json).digest("hex");
+		meta.sizes[file] = Buffer.byteLength(json);
 		const kb = (Buffer.byteLength(json) / 1024).toFixed(0);
 		console.log(`  ${file.padEnd(11)} ${Object.keys(map.get(key)).length.toString().padStart(7)} entries  ${kb.padStart(6)} KB`);
 	};
@@ -639,6 +644,7 @@ function main() {
 	const inflectJson = JSON.stringify(Object.fromEntries(inflect));
 	fs.writeFileSync(path.join(OUT, "inflect.json"), inflectJson);
 	meta.shards["inflect.json"] = crypto.createHash("sha256").update(inflectJson).digest("hex");
+	meta.sizes["inflect.json"] = Buffer.byteLength(inflectJson);
 	console.log(`  inflect.json ${inflect.size.toString().padStart(7)} entries  ${(Buffer.byteLength(inflectJson) / 1024).toFixed(0).padStart(6)} KB`);
 
 	fs.writeFileSync(path.join(OUT, "meta.json"), JSON.stringify(meta, null, "\t"));

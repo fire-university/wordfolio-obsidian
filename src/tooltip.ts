@@ -6,7 +6,7 @@
 // 代價是要自己處理定位與生命週期。
 
 import { formsFor, meaningfulLines } from "./lemma";
-import { t } from "./i18n";
+import { t, currentLang } from "./i18n";
 import type { SectionId } from "./sections";
 import type { Lookup, InflectionKind, GenOpts } from "./types";
 import { ABORTED } from "./types";
@@ -188,9 +188,20 @@ export class SelectionIcon {
 		this.el.className = "wordfolio-select-icon";
 		this.el.setAttribute("aria-label", "WordFolio");
 		// 一本翻開的書:靜止的左頁 + 會翻的右頁(右頁單獨一個元素才能做翻頁動畫)。
-		this.el.innerHTML =
-			'<span class="wf-book"><span class="wf-page wf-page-left"></span>' +
-			'<span class="wf-page wf-page-right"></span></span>';
+		// 用 DOM API 一個一個建,不用 innerHTML——字串是寫死的、不危險,但
+		// Obsidian 的社群外掛審查一律擋 innerHTML,不值得為三個 span 去解釋。
+		//
+		// 這裡刻意用原生的 createElement 而不是 Obsidian 的 createSpan:
+		// SelectionIcon 會在 node 測試裡用 JSDOM 建起來,而 JSDOM 沒有
+		// Obsidian 那套 DOM 擴充,用 createSpan 會直接炸掉。
+		const book = document.createElement("span");
+		book.className = "wf-book";
+		for (const side of ["left", "right"]) {
+			const page = document.createElement("span");
+			page.className = `wf-page wf-page-${side}`;
+			book.appendChild(page);
+		}
+		this.el.appendChild(book);
 
 		// mousedown 一定要擋掉,不然點 Logo 會先清掉選取,查詢就拿不到字了。
 		this.el.addEventListener("mousedown", (e) => {
@@ -404,7 +415,7 @@ export class WordTooltip {
 		head.createSpan({ cls: "wordfolio-word", text: entry.w });
 
 		if (lookup.inflection) {
-			const zh = t("label_uk") === "英"; // 借語言判斷,避免再開一個 API
+			const zh = currentLang() === "zh-TW";
 			const label = zh
 				? INFLECTION_LABEL_ZH[lookup.inflection]
 				: INFLECTION_LABEL[lookup.inflection];

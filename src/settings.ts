@@ -110,5 +110,25 @@ export const DEFAULT_SETTINGS: WordFolioSettings = {
 export const DICT_RELEASE_BASE =
 	"https://github.com/fire-university/wordfolio-obsidian/releases/download";
 
+/**
+ * 這一版外掛要用哪個詞庫。對應 Release 的 `dict-<版本>` 標籤。
+ *
+ * 綁死在程式碼裡,不去問遠端「有沒有更新的」:詞庫的欄位跟解析它的程式是一起
+ * 演進的,讓執行期自己撿最新版等於允許新資料配舊解析器。要換詞庫就發一版外掛。
+ *
+ * 下面三個常數必須跟 `dict/meta.json` 一致,`npm test` 的 dict-check 會擋。
+ */
+export const DICT_VERSION = "2026-08-28";
+/** 詞條數,只拿來在安裝引導裡顯示。 */
+export const DICT_ENTRIES = 58250;
+/** 全部檔案加起來多少 bytes,拿來在下載前先告訴使用者要花多少流量。 */
+export const DICT_BYTES = 40_416_408;
+
+/**
+ * 贊助連結。也寫在 manifest.json 的 fundingUrl,Obsidian 會在外掛頁顯示。
+ * 兩邊要一致——設定頁的按鈕跟外掛頁的連結指到不同地方會很怪。
+ */
+export const FUNDING_URL = "https://buymeacoffee.com/firetw";
+
 // 有道 dictvoice:免費、免 key、真人錄音。type=1 英式,type=2 美式。
 export const DICTVOICE_ENDPOINT = "https://dict.youdao.com/dictvoice";

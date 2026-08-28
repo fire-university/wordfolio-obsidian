@@ -9,7 +9,8 @@
 // stats.ts 的解析器認日期不認表頭,所以換語言不會讓舊資料讀不出來。
 
 import { App, TFile, normalizePath } from "obsidian";
-import { t } from "./i18n";
+import { t, currentLang } from "./i18n";
+import { schemaFor } from "./note-schema";
 import { isoDate } from "./schedule";
 import {
 	parseLog,
@@ -29,6 +30,11 @@ export class ReviewLog {
 
 	private path(): string {
 		return normalizePath(`${this.folder()}/${LOG_FILE}`);
+	}
+
+	/** 界線裡那句提醒,以及新檔案的 frontmatter type。都跟介面語言走。 */
+	private labels(): { note: string; type: string } {
+		return { note: t("log_sentinel_note"), type: schemaFor(currentLang()).logType };
 	}
 
 	private headers(): string[] {
@@ -75,7 +81,12 @@ export class ReviewLog {
 		const file = this.app.vault.getAbstractFileByPath(path);
 
 		if (file instanceof TFile) {
-			const next = upsertLogTable(await this.app.vault.read(file), table, t("log_title"));
+			const next = upsertLogTable(
+				await this.app.vault.read(file),
+				table,
+				t("log_title"),
+				this.labels()
+			);
 			await this.app.vault.modify(file, next);
 			return;
 		}
@@ -84,6 +95,6 @@ export class ReviewLog {
 		if (!(await this.app.vault.adapter.exists(dir))) {
 			await this.app.vault.createFolder(dir);
 		}
-		await this.app.vault.create(path, upsertLogTable("", table, t("log_title")));
+		await this.app.vault.create(path, upsertLogTable("", table, t("log_title"), this.labels()));
 	}
 }

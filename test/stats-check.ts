@@ -10,7 +10,8 @@ import {
 	streak,
 	shiftDate,
 	summarize,
-	LOG_START,
+	LOG_START_PREFIX,
+	logStart,
 	LOG_END,
 	type DayLog,
 	type StatCard,
@@ -51,7 +52,7 @@ type: 複習紀錄
 
 我自己寫的一段話，換語言、重寫表格都不該把它弄丟。
 
-${LOG_START}
+${logStart("這個表格由外掛自動維護，請不要手動編輯")}
 
 | 日期 | 複習 |
 |---|---|
@@ -60,17 +61,29 @@ ${LOG_END}
 
 下面也是我寫的。
 `;
-const updated = upsertLogTable(handwritten, table, "複習紀錄");
+const ZH = { note: "這個表格由外掛自動維護，請不要手動編輯", type: "複習紀錄" };
+const EN = { note: "Maintained by WordFolio — do not edit by hand", type: "review log" };
+const updated = upsertLogTable(handwritten, table, "複習紀錄", ZH);
 check("上面的手寫段落還在", updated.includes("我自己寫的一段話"));
 check("下面的手寫段落還在", updated.includes("下面也是我寫的。"));
 check("新表格進去了", updated.includes("2026-08-27"));
-check("界線只有一組", updated.split(LOG_START).length === 2 && updated.split(LOG_END).length === 2);
+check("界線只有一組", updated.split(LOG_START_PREFIX).length === 2 && updated.split(LOG_END).length === 2);
 
 console.log("\n檔案還不存在時整份建起來");
-const fresh = upsertLogTable("", table, "複習紀錄");
+const fresh = upsertLogTable("", table, "複習紀錄", ZH);
 check("有 frontmatter", fresh.startsWith("---\ntype: 複習紀錄"));
-check("有界線與表格", fresh.includes(LOG_START) && fresh.includes("2026-08-27"));
-check("再 upsert 一次不會長出第二組界線", upsertLogTable(fresh, table, "複習紀錄").split(LOG_START).length === 2);
+check("有界線與表格", fresh.includes(LOG_START_PREFIX) && fresh.includes("2026-08-27"));
+check(
+	"再 upsert 一次不會長出第二組界線",
+	upsertLogTable(fresh, table, "複習紀錄", ZH).split(LOG_START_PREFIX).length === 2
+);
+
+// 換語言時,舊檔案裡的界線寫的是舊那句說明。認整串就會接不上,結果是同一個檔
+// 長出第二張表、舊的那張再也不更新——而且畫面上看不出來。
+const switched = upsertLogTable(fresh, table, "Review log", EN);
+check("換成英文之後界線仍然只有一組", switched.split(LOG_START_PREFIX).length === 2);
+check("換語言不會丟掉原本的資料列", switched.includes("2026-08-27"));
+check("界線的說明換成英文", switched.includes("Maintained by WordFolio"));
 
 console.log("\n記一次評分");
 let d2 = bumpDay([], "2026-08-27", "good", true);

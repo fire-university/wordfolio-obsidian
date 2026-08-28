@@ -83,6 +83,32 @@ export const DEFAULT_ENABLED: Record<SectionId, boolean> = {
 	detail: false,
 };
 
+/**
+ * 英文介面的預設值。
+ *
+ * 繁中的預設(上面那份)對英文使用者是錯的:`translation` 是繁中釋義,劍橋走的
+ * 是**英漢**詞典——兩個都給他看不懂的中文。反過來,英英釋義、例句、同義詞在
+ * 詞庫裡本來就有(覆蓋率 80.9% / 28.1% / 47.4%),對他才是主菜。
+ *
+ * 線上詞典留一家打開,理由跟繁中版留劍橋一樣:離線詞庫是逐字義項並列,人編的
+ * 詞典按義項分、有例句,好讀得多。英文使用者選牛津學習者詞典——它標 CEFR 等級,
+ * 學習者判斷「這個字該不該現在學」用得上。
+ */
+export const DEFAULT_ENABLED_EN: Record<SectionId, boolean> = {
+	...DEFAULT_ENABLED,
+	translation: false,
+	cambridge: false,
+	oxford: true,
+	english: true,
+	examples: true,
+	synonyms: true,
+};
+
+/** 這個語言的預設區塊設定。只在使用者還沒存過設定時當起點。 */
+export function defaultEnabledFor(lang: "en" | "zh-TW"): Record<SectionId, boolean> {
+	return { ...(lang === "en" ? DEFAULT_ENABLED_EN : DEFAULT_ENABLED) };
+}
+
 /** i18n 的 key,設定頁與說明共用。 */
 export function sectionLabelKey(id: SectionId): string {
 	return `section_${id}`;

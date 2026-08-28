@@ -42,6 +42,36 @@ vt. 評價過高, 高估, 估價過高
 > ↳ 努力工作真的被高估了。
 `;
 
+/**
+ * 英文介面寫出來的同一篇筆記。欄位名與標題全部換掉,解析器要照樣讀得出來。
+ *
+ * 這是整個雙語筆記格式的關鍵測試:語言是可以隨時切換的,而**已經寫好的筆記
+ * 不會跟著變**。解析器只認一種的話,切一次語言就等於把兩百多篇筆記弄丟——
+ * 而且畫面上不會報錯,只是清單突然變短。
+ */
+const NOTE_EN = `---
+type: vocabulary
+word: overrate
+phonetic_uk: "/ˌəʊvəɹˈeɪt/"
+phonetic_us: "/ˌoʊvɝˈɹeɪt/"
+frequency: BNC 41677 / COCA 29696
+source: "Saladict — BUILDING JUDGMENT: Almanack of Naval Ravikant"
+source_url: "https://www.navalmanack.com/almanack-of-naval-ravikant/judgment"
+date: 2026-08-28
+fsrs_state: new
+tags: [english, vocabulary]
+---
+# overrate
+
+- v make too high an estimate of
+
+**Forms**: overrated / overrating / overrates
+
+## Where I met it
+
+> Hard work is really overrated.
+`;
+
 console.log("拆解生詞筆記");
 const n = parseNote(NOTE);
 check("單字", n.word === "overrate", n.word);
@@ -185,6 +215,33 @@ check("填了東西", hasAttempt(["i", "b"]));
 check("全空 = 沒作答", !hasAttempt(["", "", ""]));
 check("只有空白 = 沒作答", !hasAttempt([" ", "  "]));
 check("空陣列 = 沒作答", !hasAttempt([]));
+
+
+
+console.log("\n英文格式的筆記也要讀得出來");
+const en = parseNote(NOTE_EN);
+check("單字", en.word === "overrate", en.word);
+check("英式音標(phonetic_uk)", en.ukPhonetic === "/ˌəʊvəɹˈeɪt/", String(en.ukPhonetic));
+check("美式音標(phonetic_us)", en.usPhonetic === "/ˌoʊvɝˈɹeɪt/", String(en.usPhonetic));
+check("來源(source)", en.source?.startsWith("Saladict"), String(en.source));
+check(
+	"變化形(**Forms**: 半形冒號)",
+	en.forms.join("/") === "overrated/overrating/overrates",
+	en.forms.join("/")
+);
+check("變化形那一行不會混進主釋義", !en.meaning.some((l) => l.includes("overrated")), en.meaning.join("|"));
+check(
+	"主釋義是英英那行,而且列點的破折號被剝掉了",
+	en.meaning.join("|") === "v make too high an estimate of",
+	en.meaning.join("|")
+);
+check(
+	"例句(Where I met it)",
+	en.sentences.length === 1 && en.sentences[0].text === "Hard work is really overrated.",
+	JSON.stringify(en.sentences)
+);
+check("英文標題不會被丟進 extras", en.extras.length === 0, JSON.stringify(en.extras.map((e) => e.heading)));
+
 
 console.log(failures ? `\n${failures} 項失敗` : "\n全部通過");
 process.exit(failures ? 1 : 0);

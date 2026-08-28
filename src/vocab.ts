@@ -13,6 +13,8 @@ import { formsFor, meaningfulLines } from "./lemma";
 import { meaningOf, type VocabRow } from "./vocab-list";
 import { yamlString } from "./frontmatter";
 import { TRANSLATION_MARK, parseNote } from "./note-parse";
+import { schemaFor, HEADING_ALIASES, type NoteLang } from "./note-schema";
+import { currentLang } from "./i18n";
 import type { ImportedWord } from "./anki-import";
 import type { DictEntry, Lookup, VocabCard } from "./types";
 
@@ -30,9 +32,20 @@ interface NoteOpts {
 	sourceMeaning?: string;
 }
 
-const SENTENCE_HEADING = "## 我遇到它的地方";
-const USAGE_HEADING = "## 例句與用法";
-const DETAIL_HEADING = "## 字詞詳解";
+/**
+ * 在既有筆記裡找「我遇到它的地方」那個標題。
+ *
+ * 找的時候兩種語言都要試:切過介面語言的人,生詞本裡會同時有繁中版與英文版的
+ * 筆記,只認當下語言的話,舊筆記會在尾端被接上第二個同義的標題。
+ */
+function findSentenceHeading(text: string): { heading: string; idx: number } | null {
+	for (const h of HEADING_ALIASES.sentence) {
+		const heading = `## ${h}`;
+		const idx = text.indexOf(heading);
+		if (idx >= 0) return { heading, idx };
+	}
+	return null;
+}
 
 /** 檔名安全化。英文字本來就安全,但 ' 與 - 在某些檔案系統上要留意。 */
 function fileNameFor(word: string): string {
@@ -165,41 +178,57 @@ export class VocabStore {
 		const text = await this.app.vault.read(file);
 		if (text.includes(sentence)) return;
 
-		const idx = text.indexOf(SENTENCE_HEADING);
-		const next =
-			idx < 0
-				? `${text.trimEnd()}\n\n${SENTENCE_HEADING}\n\n${quote}\n`
-				: (() => {
-						const cut = idx + SENTENCE_HEADING.length;
-						return `${text.slice(0, cut)}\n\n${quote}\n${text.slice(cut)}`;
-				  })();
+		const found = findSentenceHeading(text);
+		const next = !found
+			? `${text.trimEnd()}\n\n## ${schemaFor(this.lang()).sentenceHeading}\n\n${quote}\n`
+			: (() => {
+					const cut = found.idx + found.heading.length;
+					return `${text.slice(0, cut)}\n\n${quote}\n${text.slice(cut)}`;
+			  })();
 		await this.app.vault.modify(file, next);
 	}
 
 	// ------------------------------------------------------------ 內容
 
+	/** 這篇筆記要用哪種語言寫。跟介面語言走,不另外開設定。 */
+	private lang(): NoteLang {
+		return currentLang();
+	}
+
+	/**
+	 * 產生一篇生詞筆記。
+	 *
+	 * 用字全部走 note-schema,因為這些字串會**留在使用者的 vault 裡一輩子**。
+	 * 英文使用者的筆記不該長出 `音標_英:` 與「我遇到它的地方」——那不是介面
+	 * 沒翻譯,是他自己的檔案看不懂。
+	 *
+	 * 釋義的主體也跟語言走:繁中版把中文釋義放最上面、英英釋義另開一節;
+	 * 英文版直接把英英釋義當主體,不放中文(放了只是佔位置)。
+	 */
 	private renderNote(entry: DictEntry, opts: NoteOpts = {}): string {
 		const { sentence = "", sentenceTranslation, usage, detail, source, url, sourceMeaning } = opts;
+		const sc = schemaFor(this.lang());
+		const english = this.lang() === "en";
 		const today = new Date().toISOString().slice(0, 10);
 		const fm: string[] = [
 			"---",
-			"type: 生詞",
+			`type: ${sc.type}`,
 			`word: ${entry.w}`,
 		];
 		const uk = entry.uk ?? entry.ph;
-		if (uk) fm.push(`音標_英: ${yamlString(uk)}`);
-		if (entry.us) fm.push(`音標_美: ${yamlString(entry.us)}`);
+		if (uk) fm.push(`${sc.ukKey}: ${yamlString(uk)}`);
+		if (entry.us) fm.push(`${sc.usKey}: ${yamlString(entry.us)}`);
 
 		const freq: string[] = [];
 		if (entry.bnc) freq.push(`BNC ${entry.bnc}`);
 		if (entry.frq) freq.push(`COCA ${entry.frq}`);
-		if (freq.length) fm.push(`詞頻: ${freq.join(" / ")}`);
-		if (entry.collins) fm.push(`柯林斯: ${entry.collins}`);
-		if (entry.tag?.length) fm.push(`考試: ${entry.tag.join(", ")}`);
+		if (freq.length) fm.push(`${sc.freqKey}: ${freq.join(" / ")}`);
+		if (entry.collins) fm.push(`${sc.collinsKey}: ${entry.collins}`);
+		if (entry.tag?.length) fm.push(`${sc.examKey}: ${entry.tag.join(", ")}`);
 
 		// 來源是外部標題,含冒號、引號都很正常,一定要包起來——不包的下場見 frontmatter.ts。
-		if (source) fm.push(`來源: ${yamlString(source)}`);
-		if (url) fm.push(`來源連結: ${yamlString(url)}`);
+		if (source) fm.push(`${sc.sourceKey}: ${yamlString(source)}`);
+		if (url) fm.push(`${sc.sourceUrlKey}: ${yamlString(url)}`);
 
 		fm.push(
 			`date: ${today}`,
@@ -210,35 +239,47 @@ export class VocabStore {
 			"fsrs_reps: 0",
 			"fsrs_lapses: 0",
 			"fsrs_state: new",
-			"tags: [英文, 生詞]",
+			`tags: [${sc.tags.join(", ")}]`,
 			"---",
 			""
 		);
 
-		const body: string[] = [`# ${entry.w}`, ""];
-		for (const line of meaningfulLines(entry.tr)) {
-			body.push(line, "");
-		}
+		const defLines = (entry.def ?? "")
+			.split("\\n")
+			.map((l) => l.trim())
+			.filter(Boolean);
 
-		if (entry.def) {
-			body.push("## 英英釋義", "");
-			for (const line of entry.def.split("\\n")) {
-				if (line.trim()) body.push(`- ${line.trim()}`);
+		const body: string[] = [`# ${entry.w}`, ""];
+
+		if (english) {
+			// 英英釋義當主體。80.9% 的詞條有;沒有的字退回中文那行也沒意義,
+			// 就讓主體空著,由音標、變化形與例句撐住這篇筆記。
+			for (const line of defLines) body.push(`- ${line}`);
+			if (defLines.length) body.push("");
+		} else {
+			for (const line of meaningfulLines(entry.tr)) {
+				body.push(line, "");
 			}
-			body.push("");
+			if (defLines.length) {
+				body.push(`## ${sc.englishHeading}`, "");
+				for (const line of defLines) body.push(`- ${line}`);
+				body.push("");
+			}
 		}
 
 		const forms = formsFor(entry.exch);
-		if (forms.length) body.push(`**變化**：${forms.join(" / ")}`, "");
+		if (forms.length) body.push(`**${sc.formsLabel}**${sc.colon}${forms.join(" / ")}`, "");
 
 		// 匯入來源自己標的詞義。放在詞庫釋義後面當對照,不覆蓋。
-		if (sourceMeaning) body.push(`**${source?.split(" — ")[0] ?? "來源"}**：${sourceMeaning}`, "");
+		if (sourceMeaning) {
+			body.push(`**${source?.split(" — ")[0] ?? sc.sourceLabel}**${sc.colon}${sourceMeaning}`, "");
+		}
 
-		// Claude 生成過的內容。花過的 token 就留著,複習時直接看得到。
-		if (detail) body.push(DETAIL_HEADING, "", detail.trim(), "");
-		if (usage) body.push(USAGE_HEADING, "", usage.trim(), "");
+		// 生成過的內容。花過的時間就留著,複習時直接看得到。
+		if (detail) body.push(`## ${sc.detailHeading}`, "", detail.trim(), "");
+		if (usage) body.push(`## ${sc.usageHeading}`, "", usage.trim(), "");
 
-		body.push(SENTENCE_HEADING, "");
+		body.push(`## ${sc.sentenceHeading}`, "");
 		if (sentence) {
 			body.push(`> ${sentence.replace(/\n/g, " ")}`);
 			// 中譯緊接在原句下面。複習卡的正面就靠它當第一層線索——
