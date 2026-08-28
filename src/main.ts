@@ -361,20 +361,30 @@ export default class WordFolioPlugin extends Plugin {
 		let created = 0;
 		let existed = 0;
 		let skipped = 0;
+		let backfilled = 0;
 		for (const item of items) {
 			// 走一般查詢,所以詞形還原也生效:Saladict 存的 `carved` 會落在
 			// `carve` 這篇筆記上,跟從浮窗加入的行為一致。
 			const lookup = this.dict.installed ? await this.dict.lookup(item.word) : null;
 			const r = await this.vocab.addImported(item, lookup);
 			if (r === "created") created++;
-			else if (r === "existed") existed++;
-			else skipped++;
+			else if (r === "existed") {
+				existed++;
+				// 已經在生詞本裡、但當初匯進來時還沒撿中譯的,順手補上。
+				// 只加不改:原句與複習進度一律不動。
+				if (item.sentenceTranslation) {
+					const word = lookup?.entry.w ?? item.word;
+					if (await this.vocab.backfillTranslation(word, item.sentenceTranslation)) {
+						backfilled++;
+					}
+				}
+			} else skipped++;
 		}
 
 		await this.vocab.refresh();
 		await this.refreshBadge();
 		await this.refreshViews();
-		new Notice(t("import_done", { created, existed, skipped, ignored }), 12000);
+		new Notice(t("import_done", { created, existed, skipped, ignored, backfilled }), 12000);
 	}
 
 	/** 命令面板／快捷鍵的入口:對選取的字(沒選取就用游標位置)查詢。 */

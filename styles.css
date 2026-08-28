@@ -895,3 +895,85 @@
 	color: var(--text-faint);
 	text-decoration: line-through;
 }
+
+/* ── 複習卡正面的線索 ───────────────────────────────────────────
+   2026-08-28 二改:正面不再顯示那個字(上一版把答案印在標題上,挖空等於白做)。
+   線索由淺到深:中譯 → 挖空句 → 首尾字母 → 聽發音/看音標(要自己按)。 */
+
+.wordfolio-review-hint-zh {
+	margin: 1.5em auto 0.8em;
+	max-width: 32em;
+	font-size: 1.25em;
+	line-height: 1.7;
+	color: var(--text-normal);
+	text-align: center;
+}
+
+.wordfolio-review-cloze {
+	margin: 0 auto 0.8em;
+	max-width: 34em;
+	font-size: 1.05em;
+	line-height: 1.8;
+	color: var(--text-muted);
+	text-align: center;
+}
+
+/* 首尾字母。等寬字讓底線對得整齊,一眼數得出中間幾個字母。 */
+.wordfolio-review-shape {
+	font-family: var(--font-monospace);
+	font-size: 1.5em;
+	letter-spacing: 0.12em;
+	color: var(--text-accent);
+	text-align: center;
+	margin-bottom: 1.4em;
+}
+
+.wordfolio-review-hints {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 0.5em;
+	flex-wrap: wrap;
+	margin-bottom: 1.6em;
+}
+
+.wf-hint-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4em;
+	padding: 0.3em 0.9em;
+	font-size: 0.9em;
+	background: var(--background-secondary);
+	color: var(--text-muted);
+	box-shadow: none;
+	cursor: pointer;
+}
+
+.wf-hint-btn:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.wf-review-eg-zh {
+	color: var(--text-muted);
+	font-size: 0.95em;
+	margin-bottom: 0.4em;
+}
+
+/* 封存與開啟筆記:上一版做成淡淡的純文字,看起來不能按就等於不存在。
+   給它們真正的按鈕外觀,但仍比四顆評分鍵低調。 */
+.wordfolio-review-extra-actions button {
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	box-shadow: none;
+	font-size: 0.88em;
+	color: var(--text-muted);
+	padding: 0.4em 1em;
+	cursor: pointer;
+}
+
+.wordfolio-review-extra-actions button:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+	border-color: var(--background-modifier-border-hover);
+}

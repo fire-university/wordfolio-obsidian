@@ -24,6 +24,8 @@ export interface ImportedWord {
 	definition?: string;
 	/** 遇到這個字的原句 */
 	sentence?: string;
+	/** 那一句的中文翻譯(來源有給才有) */
+	sentenceTranslation?: string;
 	/** 來源名稱,寫進筆記的 frontmatter */
 	source?: string;
 	/** 原始出處連結(Saladict 有) */
@@ -61,6 +63,59 @@ export function stripHtml(html: string): string {
 }
 
 /**
+ * 一組常見簡化字,用來認出簡體譯文。
+ *
+ * Saladict 一次存三個引擎的譯文(google / deepl / …),**其中往往有簡體**——
+ * 而「繁體」正是做 WordFolio 的理由之一(ADR-9),挑錯就把它還回去了。
+ * 不做完整的簡繁轉換(那要 opencc,執行期不值得背這個包),只要能在三個候選
+ * 之間分出高下就夠。
+ */
+const SIMPLIFIED = new Set(
+	"们这个说时会来国对开经无产头难过应从后动务学实见证张边里机东车马长门问题间样点儿两业内书买卖发号台叶电话语汉义节约级纪线组织统计划则测试认识风飞习乡画笔结给练细终绿维绍继续届层属岁帮带担单图团园圆坏欢环极乐丽灵刘龙楼罗吗满庙灭亩恼脑闹宁农盘辟苹凭扑仆朴启弃气迁签墙桥窃寝庆穷区权劝却让扰热荣软洒伞丧扫涩杀晒陕伤烧摄绅审声胜湿"
+);
+
+function simplifiedScore(text: string): number {
+	let n = 0;
+	for (const c of text) if (SIMPLIFIED.has(c)) n++;
+	return n;
+}
+
+const hasChinese = (s: string) => /[\u4e00-\u9fff]/.test(s);
+
+/**
+ * 從 Saladict 的 Translation 欄挑一個繁體譯文。
+ *
+ * 那一欄是三個引擎的結果串在一起:
+ *   <span class="trans_title">google</span><div class="trans_content">譯文</div>…
+ *
+ * 挑選順序:先認 google(實測它跟著 Saladict 的 zh-TW 設定給繁體),
+ * 不然挑簡化字最少的,再平手就取第一個。
+ */
+export function pickTranslation(html: string): string | undefined {
+	const pairs: { engine: string; text: string }[] = [];
+	const re = /<span class="trans_title">(.*?)<\/span>\s*<div class="trans_content">(.*?)<\/div>/g;
+	let m: RegExpExecArray | null;
+	while ((m = re.exec(html)) !== null) {
+		const text = stripHtml(m[2]);
+		if (hasChinese(text)) pairs.push({ engine: stripHtml(m[1]).toLowerCase(), text });
+	}
+	// 沒有引擎標記時退回單純抓內容。
+	if (!pairs.length) {
+		for (const c of html.matchAll(/<div class="trans_content">(.*?)<\/div>/g)) {
+			const text = stripHtml(c[1]);
+			if (hasChinese(text)) pairs.push({ engine: "", text });
+		}
+	}
+	if (!pairs.length) return undefined;
+
+	const google = pairs.find((p) => p.engine === "google");
+	if (google) return google.text;
+	return pairs.reduce((best, p) =>
+		simplifiedScore(p.text) < simplifiedScore(best.text) ? p : best
+	).text;
+}
+
+/**
  * 是不是一個值得匯入的英文單字。
  *
  * Saladict 存的 `Text` 常常是片語甚至整句(實測 101 筆裡有 12 筆:`risk tolerance`、
@@ -83,10 +138,18 @@ export function fromAnkiNote(
 		const word = get("Lemma") || get("Word");
 		if (!isSingleWord(word)) return null;
 		const title = get("Item Title");
+		const sentence = get("Subtitle") || undefined;
+		// Translation 欄不一定是中文:影片本身沒有中文字幕時,它會等於英文原句
+		// (實測 152 筆裡有 28 筆是這樣)。要檢查真的有中文才收。
+		const translated = get("Translation");
 		return {
 			word: word.toLowerCase(),
 			definition: get("Word Definition") || undefined,
-			sentence: get("Subtitle") || undefined,
+			sentence,
+			sentenceTranslation:
+				translated && hasChinese(translated) && translated !== sentence
+					? translated
+					: undefined,
 			source: title ? `Language Reactor — ${title}` : "Language Reactor",
 		};
 	}
@@ -97,9 +160,11 @@ export function fromAnkiNote(
 		const title = get("Title");
 		return {
 			word: word.toLowerCase(),
-			// Translation 欄刻意不用:那是整句機翻,不是這個字的意思。
+			// Translation 欄不能當釋義:那是**整句**機翻,不是這個字的意思。
+			// 但它正好是那一句的中譯,拿來當複習卡的線索剛好。
 			definition: undefined,
 			sentence: get("Context") || undefined,
+			sentenceTranslation: pickTranslation(fields["Translation"] ?? ""),
 			source: title ? `Saladict — ${title}` : "Saladict",
 			url: fields["Url"]?.trim() || undefined,
 		};
@@ -125,7 +190,10 @@ export function mergeImported(items: ImportedWord[]): ImportedWord[] {
 			continue;
 		}
 		if (!prev.definition && item.definition) prev.definition = item.definition;
-		if (!prev.sentence && item.sentence) prev.sentence = item.sentence;
+		if (!prev.sentence && item.sentence) {
+			prev.sentence = item.sentence;
+			prev.sentenceTranslation = item.sentenceTranslation;
+		}
 		if (!prev.url && item.url) prev.url = item.url;
 	}
 	return [...byWord.values()];

@@ -15,7 +15,7 @@
 import { App, Modal, TFile, setIcon } from "obsidian";
 import { t } from "./i18n";
 import { gradeCard, Rating, type Grade } from "./schedule";
-import { parseNote, clozeSentence, type ParsedNote } from "./note-parse";
+import { parseNote, clozeSentence, focusSentence, hintFor, type ParsedNote } from "./note-parse";
 import type { Accent } from "./audio";
 import type { VocabStore } from "./vocab";
 import type { VocabCard } from "./types";
@@ -93,13 +93,13 @@ export class ReviewModal extends Modal {
 			cls: "wordfolio-review-progress",
 			text: `${this.reviewed + 1} / ${this.reviewed + 1 + this.queue.length}`,
 		});
-		contentEl.createDiv({ cls: "wordfolio-review-word", text: entry.card.word });
-		this.renderPhonetics(contentEl, note, entry.card.word);
-
 		if (!this.answered) {
 			this.renderFront(contentEl, note, entry.card.word);
 			return;
 		}
+
+		contentEl.createDiv({ cls: "wordfolio-review-word", text: entry.card.word });
+		this.renderPhonetics(contentEl, note, entry.card.word);
 		this.renderBack(contentEl, note);
 	}
 
@@ -126,18 +126,58 @@ export class ReviewModal extends Modal {
 	}
 
 	/**
-	 * 正面:單字 + 音標 + 挖空的例句。
+	 * 正面:**不顯示那個字**,只給線索。
 	 *
-	 * 例句挖空而不是照抄:句子裡就有那個字的話等於先給了答案。挖掉之後你得先把
-	 * 字想出來,那才是複習。挖不到(沒有例句、或句子裡的形態認不出來)就不顯示,
-	 * 不要放一句原封不動的句子在那裡當提示。
+	 * 上一版把單字大大地印在最上面,底下才是挖空的例句——挖掉的字自己在標題裡,
+	 * 挖空完全失效。道哥的原話:「你直接就把答案給我了,我根本就沒有辦法學習啊!」
+	 *
+	 * 線索由淺到深排,前三樣免費、後兩樣要自己按:
+	 *
+	 *   1. 那句話的中文翻譯    知道要表達什麼,才有辦法想那個字
+	 *   2. 挖空的原句          看得到它在句子裡的位置與詞性
+	 *   3. 首尾字母            w_______r,把範圍縮到想得起來的程度
+	 *   4. 聽發音(要按)       音檔本身就是很強的提示,不主動播
+	 *   5. 看音標(要按)       IPA 幾乎等於答案,所以收起來
+	 *
+	 * 他說得很清楚:「重點是在我思考的過程,你要給我線索去思考」——所以這裡的
+	 * 設計目標不是「讓他答對」,是**讓他想得動**。
 	 */
 	private renderFront(parent: HTMLElement, note: ParsedNote, word: string): void {
-		const cloze = note.sentences
-			.map((s) => clozeSentence(s, word, note.forms))
-			.find((s): s is string => s !== null);
+		// 挑一句挖得動的。焦點化先把字幕的 `>>` 前後文切掉,只留含這個字的那段。
+		let cloze: string | null = null;
+		let translation: string | undefined;
+		for (const s of note.sentences) {
+			const focused = focusSentence(s.text, word, note.forms);
+			const blanked = clozeSentence(focused, word, note.forms);
+			if (blanked) {
+				cloze = blanked;
+				translation = s.translation;
+				break;
+			}
+		}
+
+		if (translation) {
+			parent.createDiv({ cls: "wordfolio-review-hint-zh", text: translation });
+		}
 		if (cloze) {
 			parent.createDiv({ cls: "wordfolio-review-cloze", text: cloze });
+		}
+		// 沒有句子可挖時至少給首尾字母,不然正面會是一片空白。
+		parent.createDiv({ cls: "wordfolio-review-shape", text: hintFor(word) });
+
+		const hints = parent.createDiv({ cls: "wordfolio-review-hints" });
+
+		const listen = hints.createEl("button", { cls: "wf-hint-btn" });
+		setIcon(listen.createSpan(), "volume-2");
+		listen.createSpan({ text: t("review_hint_listen") });
+		listen.onclick = () => this.hooks.speak?.(word, "uk");
+
+		if (note.ukPhonetic || note.usPhonetic) {
+			const reveal = hints.createEl("button", { cls: "wf-hint-btn", text: t("review_hint_ipa") });
+			reveal.onclick = () => {
+				reveal.remove();
+				this.renderPhonetics(hints, note, word);
+			};
 		}
 
 		const show = parent.createEl("button", {
@@ -181,7 +221,10 @@ export class ReviewModal extends Modal {
 		// 出處例句:答案面給完整的句子(正面是挖空的),看得到這個字實際怎麼用。
 		if (note.sentences.length) {
 			const box = this.section(body, t("review_sec_sentence"));
-			for (const s of note.sentences) box.createDiv({ cls: "wf-review-eg", text: s });
+			for (const s of note.sentences) {
+				box.createDiv({ cls: "wf-review-eg", text: focusSentence(s.text, note.word, note.forms) });
+				if (s.translation) box.createDiv({ cls: "wf-review-eg-zh", text: s.translation });
+			}
 			if (note.source) box.createDiv({ cls: "wf-review-source", text: note.source });
 		}
 
@@ -209,6 +252,8 @@ export class ReviewModal extends Modal {
 		});
 
 		const extras = parent.createDiv({ cls: "wordfolio-review-extra-actions" });
+		// 這兩顆上一版做成淡淡的純文字,道哥說「應該要給我一個按鈕,而不是只有
+		// 一行字」——看起來不能按的東西,就等於不存在。
 		// 封存:匯進來兩百多個字,一定有一批本來就會的。Easy 只是把它推遠,
 		// 它還是會回來;這顆是「別再問我這個字了」。
 		const park = extras.createEl("button", { text: t("review_suspend") });

@@ -12,6 +12,7 @@ import { App, TFile, normalizePath } from "obsidian";
 import { formsFor, meaningfulLines } from "./lemma";
 import { meaningOf, type VocabRow } from "./vocab-list";
 import { yamlString } from "./frontmatter";
+import { TRANSLATION_MARK, parseNote } from "./note-parse";
 import type { ImportedWord } from "./anki-import";
 import type { DictEntry, Lookup, VocabCard } from "./types";
 
@@ -22,6 +23,8 @@ interface NoteOpts {
 	detail?: string;
 	/** 匯入來源,例如 "Language Reactor — 影片標題" */
 	source?: string;
+	/** 原句的中文翻譯 */
+	sentenceTranslation?: string;
 	url?: string;
 	/** 來源自己標的詞義,放在詞庫釋義旁邊當對照 */
 	sourceMeaning?: string;
@@ -120,7 +123,9 @@ export class VocabStore {
 		const path = this.pathFor(entry.w);
 		const existing = this.app.vault.getAbstractFileByPath(path);
 		if (existing instanceof TFile) {
-			if (item.sentence) await this.appendSentence(existing, item.sentence);
+			if (item.sentence) {
+				await this.appendSentence(existing, item.sentence, item.sentenceTranslation);
+			}
 			return "existed";
 		}
 
@@ -129,6 +134,7 @@ export class VocabStore {
 			path,
 			this.renderNote(entry, {
 				sentence: item.sentence ?? "",
+				sentenceTranslation: item.sentenceTranslation,
 				source: item.source,
 				url: item.url,
 				// 詞庫查得到時,來源那行詞義仍然留著當對照——Language Reactor 的
@@ -148,8 +154,14 @@ export class VocabStore {
 	}
 
 	/** 把新句子接在「我遇到它的地方」底下;重複的句子不再加一次。 */
-	private async appendSentence(file: TFile, sentence: string): Promise<void> {
-		const quote = `> ${sentence.replace(/\n/g, " ")}`;
+	private async appendSentence(
+		file: TFile,
+		sentence: string,
+		translation?: string
+	): Promise<void> {
+		const quote = translation
+			? `> ${sentence.replace(/\n/g, " ")}\n> ${TRANSLATION_MARK} ${translation}`
+			: `> ${sentence.replace(/\n/g, " ")}`;
 		const text = await this.app.vault.read(file);
 		if (text.includes(sentence)) return;
 
@@ -167,7 +179,7 @@ export class VocabStore {
 	// ------------------------------------------------------------ 內容
 
 	private renderNote(entry: DictEntry, opts: NoteOpts = {}): string {
-		const { sentence = "", usage, detail, source, url, sourceMeaning } = opts;
+		const { sentence = "", sentenceTranslation, usage, detail, source, url, sourceMeaning } = opts;
 		const today = new Date().toISOString().slice(0, 10);
 		const fm: string[] = [
 			"---",
@@ -227,7 +239,13 @@ export class VocabStore {
 		if (usage) body.push(USAGE_HEADING, "", usage.trim(), "");
 
 		body.push(SENTENCE_HEADING, "");
-		if (sentence) body.push(`> ${sentence.replace(/\n/g, " ")}`, "");
+		if (sentence) {
+			body.push(`> ${sentence.replace(/\n/g, " ")}`);
+			// 中譯緊接在原句下面。複習卡的正面就靠它當第一層線索——
+			// 知道那句話在講什麼,才有辦法把英文字想出來。
+			if (sentenceTranslation) body.push(`> ${TRANSLATION_MARK} ${sentenceTranslation}`);
+			body.push("");
+		}
 
 		return fm.join("\n") + body.join("\n");
 	}
@@ -292,6 +310,36 @@ export class VocabStore {
 			fm.fsrs_state = card.state;
 			if (card.lastReview) fm.fsrs_last_review = card.lastReview;
 		});
+	}
+
+	/**
+	 * 幫既有筆記補上例句的中譯。
+	 *
+	 * 為什麼要獨立一個動作:245 篇是在「還沒開始撿中譯」的時候匯進來的,而中譯
+	 * 只有 Anki 那邊有,顯示時生不出來。這個動作**只加不改**——原句、正文、
+	 * 複習進度一律不動,只在缺中譯的原句底下補一行。
+	 *
+	 * 回傳補了幾篇。
+	 */
+	async backfillTranslation(word: string, sentenceTranslation: string): Promise<boolean> {
+		const path = this.pathFor(word);
+		const file = this.app.vault.getAbstractFileByPath(path);
+		if (!(file instanceof TFile)) return false;
+
+		const text = await this.app.vault.read(file);
+		const note = parseNote(text);
+		// 已經有中譯的不碰;沒有例句的也沒地方補。
+		if (!note.sentences.length || note.sentences.some((s) => s.translation)) return false;
+
+		const first = note.sentences[0].text;
+		const quoted = `> ${first}`;
+		const idx = text.indexOf(quoted);
+		if (idx < 0) return false;
+
+		const cut = idx + quoted.length;
+		const next = `${text.slice(0, cut)}\n> ${TRANSLATION_MARK} ${sentenceTranslation}${text.slice(cut)}`;
+		await this.app.vault.modify(file, next);
+		return true;
 	}
 
 	/**

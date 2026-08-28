@@ -3,7 +3,7 @@
 //
 //   npx tsx test/note-parse-check.ts
 
-import { parseNote, clozeSentence, BLANK } from "../src/note-parse";
+import { parseNote, clozeSentence, focusSentence, hintFor, BLANK } from "../src/note-parse";
 
 let failures = 0;
 function check(label: string, ok: boolean, detail = "") {
@@ -36,6 +36,7 @@ vt. 評價過高, 高估, 估價過高
 ## 我遇到它的地方
 
 > Hard work is really overrated.
+> ↳ 努力工作真的被高估了。
 `;
 
 console.log("拆解生詞筆記");
@@ -48,7 +49,10 @@ check("大標題不算釋義", !n.meaning.some((m) => m === "overrate"));
 check("英英釋義去掉列點符號", n.english.join("|") === "v make too high an estimate of", n.english.join("|"));
 check("變化形", n.forms.join(",") === "overrated,overrating,overrates", n.forms.join(","));
 check("變化那行不會混進釋義", !n.meaning.some((m) => m.includes("變化")));
-check("出處例句", n.sentences.join("|") === "Hard work is really overrated.", n.sentences.join("|"));
+check("出處例句", n.sentences.map((x) => x.text).join("|") === "Hard work is really overrated.",
+	n.sentences.map((x) => x.text).join("|"));
+check("例句的中譯", n.sentences[0].translation === "努力工作真的被高估了。", String(n.sentences[0].translation));
+check("↳ 那行不會被當成第二句", n.sentences.length === 1, String(n.sentences.length));
 // 來源用 yamlString 寫的,值裡有冒號,解析時要把引號與跳脫脫乾淨。
 check("來源(帶冒號、脫引號)", n.source === "Saladict — BUILDING JUDGMENT: Almanack of Naval Ravikant", String(n.source));
 
@@ -57,7 +61,7 @@ const withExtra = NOTE.replace("## 我遇到它的地方", "## 字詞詳解\n\n�
 const e = parseNote(withExtra);
 check("撿到字詞詳解", e.extras.length === 1 && e.extras[0].heading === "字詞詳解", JSON.stringify(e.extras));
 check("內容保留", e.extras[0].body.includes("字首 over-"));
-check("例句仍然解析得到", e.sentences.length === 1);
+check("例句仍然解析得到", e.sentences.length === 1 && !!e.sentences[0].translation);
 
 console.log("\n殘缺的筆記不能爆");
 check("空字串", parseNote("").word === "");
@@ -68,7 +72,7 @@ check("沒有音標時是 undefined", bare.ukPhonetic === undefined && bare.usPh
 check("沒有例句時是空陣列", bare.sentences.length === 0);
 
 console.log("\n例句挖空");
-const s = "Hard work is really overrated.";
+const s = n.sentences[0].text;
 // 這是最重要的一條:句子裡是變化形 overrated,筆記的字是原形 overrate。
 check("挖得到變化形", clozeSentence(s, "overrate", n.forms) === `Hard work is really ${BLANK}.`,
 	String(clozeSentence(s, "overrate", n.forms)));
@@ -95,6 +99,39 @@ check("只挖第一個出現的", clozeSentence("Rate the rate.", "rate", []) ==
 check("挖不到回 null,呼叫端才知道要退回完整句", clozeSentence("Nothing here.", "absent", []) === null);
 check("空句子回 null", clozeSentence("", "x", []) === null);
 check("空格長度固定,不洩漏字有多長", BLANK === "______");
+
+console.log("\n沒有中譯的例句");
+const noTr = parseNote(NOTE.replace("> ↳ 努力工作真的被高估了。\n", ""));
+check("translation 是 undefined", noTr.sentences[0].translation === undefined);
+check("原句還在", noTr.sentences[0].text === "Hard work is really overrated.");
+const twoSent = parseNote(NOTE.replace("> ↳ 努力工作真的被高估了。",
+	"> ↳ 努力工作真的被高估了。\n\n> Another sentence here."));
+check("兩個原句都收得到", twoSent.sentences.length === 2, String(twoSent.sentences.length));
+check("中譯掛在正確的那一句上",
+	twoSent.sentences[0].translation === "努力工作真的被高估了。" &&
+	twoSent.sentences[1].translation === undefined);
+
+console.log("\n字幕的前後文要切掉,只留含這個字的那一段");
+// 這就是道哥截圖上那句:LR 用 >> 把好幾句黏成一串,最後一句還被切在半路。
+const subtitle = "stop relying only on willpower. >> That sounds brilliant. So, by the end of";
+check("只留含目標字的那段", focusSentence(subtitle, "willpower", []) === "stop relying only on willpower.",
+	focusSentence(subtitle, "willpower", []));
+check("沒有 >> 就原樣回傳", focusSentence("A plain sentence.", "plain", []) === "A plain sentence.");
+check("變化形也認得",
+	focusSentence("He overrated it. >> Not really.", "overrate", ["overrated"]) === "He overrated it.",
+	focusSentence("He overrated it. >> Not really.", "overrate", ["overrated"]));
+check("哪一段都不含目標字時退回第一段",
+	focusSentence("Nothing here. >> Nor here.", "absent", []) === "Nothing here.",
+	focusSentence("Nothing here. >> Nor here.", "absent", []));
+
+console.log("\n首尾字母提示");
+check("willpower → w_______r", hintFor("willpower") === "w_______r", hintFor("willpower"));
+check("底線數 = 長度 - 2", hintFor("overrate").length === "overrate".length);
+check("連字號原樣保留(比一整排底線好讀)", hintFor("well-known") === "w___-____n", hintFor("well-known"));
+check("撇號原樣保留", hintFor("don't") === "d__'t", hintFor("don't"));
+check("三個字母的字", hintFor("cat") === "c_t", hintFor("cat"));
+check("兩個字母不動(給不出有意義的提示)", hintFor("ox") === "ox", hintFor("ox"));
+check("空字串不會爆", hintFor("") === "");
 
 console.log(failures ? `\n${failures} 項失敗` : "\n全部通過");
 process.exit(failures ? 1 : 0);

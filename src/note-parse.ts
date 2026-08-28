@@ -12,6 +12,14 @@
 
 const SENTENCE_HEADING = "## 我遇到它的地方";
 const ENGLISH_HEADING = "英英釋義";
+/** 中譯行的標記。放在引用區塊裡,原句底下一行。 */
+export const TRANSLATION_MARK = "↳";
+
+/** 一句出處例句,以及它的中文翻譯(如果來源有給)。 */
+export interface SourceSentence {
+	text: string;
+	translation?: string;
+}
 
 export interface ParsedNote {
 	word: string;
@@ -23,8 +31,8 @@ export interface ParsedNote {
 	english: string[];
 	/** 變化形,例如 overrated / overrating / overrates */
 	forms: string[];
-	/** 「我遇到它的地方」底下的原句 */
-	sentences: string[];
+	/** 「我遇到它的地方」底下的原句與中譯 */
+	sentences: SourceSentence[];
 	/** 匯入來源 */
 	source?: string;
 	/** 其他區塊(字詞詳解、例句與用法…),原樣帶著標題 */
@@ -93,12 +101,20 @@ export function parseNote(markdown: string): ParsedNote {
 			continue;
 		}
 		if (SENTENCE_HEADING.endsWith(heading)) {
-			out.sentences = rest
-				.split("\n")
-				.map((l) => l.trim())
-				.filter((l) => l.startsWith(">"))
-				.map((l) => l.replace(/^>\s*/, ""))
-				.filter(Boolean);
+			// 引用行有兩種:原句,以及緊接其後、用 ↳ 標記的中譯。
+			// 用明確標記而不是「第二行就是翻譯」,免得他自己手動加第二句時被誤判。
+			for (const raw of rest.split("\n")) {
+				const line = raw.trim();
+				if (!line.startsWith(">")) continue;
+				const body = line.replace(/^>\s*/, "");
+				if (!body) continue;
+				if (body.startsWith(TRANSLATION_MARK)) {
+					const last = out.sentences[out.sentences.length - 1];
+					if (last) last.translation = body.slice(TRANSLATION_MARK.length).trim();
+					continue;
+				}
+				out.sentences.push({ text: body });
+			}
 			continue;
 		}
 		const trimmed = rest.trim();
@@ -143,4 +159,52 @@ export function clozeSentence(
 		}
 	}
 	return null;
+}
+
+
+// ------------------------------------------------------- 例句清理與提示
+
+/**
+ * 字幕來源的句子常常黏成一長串。
+ *
+ * Language Reactor 匯出的 `Subtitle` 是用 `>>` 接起來的好幾句,而且最後一句
+ * 往往被切在半路:
+ *
+ *   stop relying only on willpower. >> That sounds brilliant. So, by the end of
+ *
+ * 只留**含目標字的那一段**,其餘丟掉——複習要看的是那個字怎麼用,不是前後文。
+ * 找不到含目標字的段落就回整句(至少不是空的)。
+ */
+export function focusSentence(sentence: string, word: string, forms: string[] = []): string {
+	const parts = sentence
+		.split(/\s*>>\s*/)
+		.map((p) => p.trim())
+		.filter(Boolean);
+	if (parts.length <= 1) return sentence.trim();
+
+	const targets = [word, ...forms].map((w) => w.trim().toLowerCase()).filter(Boolean);
+	const hit = parts.find((p) => {
+		const lower = p.toLowerCase();
+		return targets.some((tWord) =>
+			new RegExp(`(^|[^a-z'’-])${tWord.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=[^a-z'’-]|$)`).test(lower)
+		);
+	});
+	return (hit ?? parts[0]).trim();
+}
+
+/**
+ * 首尾字母提示:`willpower` → `w_______r`。
+ *
+ * 道哥要的是「回想的過程」,不是答對答錯——首尾字母把搜尋範圍縮小到他真的想得
+ * 起來的程度,又不至於直接給答案。非字母(連字號、撇號)原樣保留,
+ * `well-known` → `w___-____n` 比一整排底線好讀。
+ */
+export function hintFor(word: string): string {
+	const w = word.trim();
+	if (w.length <= 2) return w;
+	return [...w]
+		.map((c, i) =>
+			i === 0 || i === w.length - 1 || !/[A-Za-z]/.test(c) ? c : "_"
+		)
+		.join("");
 }

@@ -99,6 +99,8 @@ const EN: Dict = {
 	review_suspend: "I already know this",
 	review_suspend_desc: "Stop scheduling this word. The note stays, and you can bring it back from the vocabulary list.",
 	review_open_note: "Open note",
+	review_hint_listen: "Hear it",
+	review_hint_ipa: "Show phonetics",
 	set_auto_speak_name: "Say the word when the card flips",
 	set_auto_speak_desc:
 		"Plays the British recording as soon as you reveal the answer, so you do not have to click every time. Both accents stay clickable next to the phonetics either way.",
@@ -161,7 +163,7 @@ const EN: Dict = {
 		"{count} words found in: {models}\nThey will be written to {folder}/ — one note per word.\nSkipping {ignored} entries that are phrases or sentences rather than single words.\nNothing in Anki is modified or deleted; only the words are read, not their scheduling.",
 	import_confirm_ok: "Import",
 	import_done:
-		"WordFolio: import finished — {created} added, {existed} already there, {skipped} skipped (no definition found), {ignored} not single words.",
+		"WordFolio: import finished — {created} added, {existed} already there ({backfilled} got their sentence translated), {skipped} skipped (no definition found), {ignored} not single words.",
 	confirm_cancel: "Cancel",
 	set_new_per_day_name: "New words per day",
 	set_new_per_day_desc:
@@ -326,6 +328,8 @@ const ZH: Dict = {
 	review_suspend: "這個我會了",
 	review_suspend_desc: "不再排這個字進複習。筆記不會刪，之後在生詞清單的「已封存」裡隨時可以放回來。",
 	review_open_note: "開啟筆記",
+	review_hint_listen: "聽發音",
+	review_hint_ipa: "顯示音標",
 	set_auto_speak_name: "翻到答案面時自動念一次",
 	set_auto_speak_desc:
 		"翻面就播英式真人錄音，不用每張都手動點。不管開或關，音標旁邊的英美兩顆播放鍵都在。",
@@ -388,7 +392,7 @@ const ZH: Dict = {
 		"在這些筆記類型裡找到 {count} 個字：{models}\n會寫進 {folder}/，一個字一篇筆記。\n另有 {ignored} 筆是片語或整句而不是單字，跳過。\nAnki 那邊不會被改動或刪除任何東西：只讀單字內容，不碰它的複習排程。",
 	import_confirm_ok: "開始匯入",
 	import_done:
-		"WordFolio:匯入完成 — 新增 {created}、本來就有 {existed}、查不到釋義跳過 {skipped}、不是單字跳過 {ignored}。",
+		"WordFolio:匯入完成 — 新增 {created}、本來就有 {existed}（其中 {backfilled} 篇補上了例句中譯）、查不到釋義跳過 {skipped}、不是單字跳過 {ignored}。",
 	confirm_cancel: "取消",
 	set_new_per_day_name: "每次複習放幾個新字",
 	set_new_per_day_desc:

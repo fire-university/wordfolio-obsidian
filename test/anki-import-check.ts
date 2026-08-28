@@ -8,6 +8,7 @@ import {
 	isSingleWord,
 	fromAnkiNote,
 	mergeImported,
+	pickTranslation,
 	LANGUAGE_REACTOR,
 	SALADICT,
 	type ImportedWord,
@@ -81,12 +82,46 @@ check("單字", b.word === "carved");
 // 這是這次匯入最關鍵的一條:Saladict 的 Translation 是整句機翻,不是這個字的意思。
 // 拿它當釋義會讓 carved 的釋義變成「這就是大部分山谷的形成原因」。
 check("整句機翻不能當釋義", b.definition === undefined, String(b.definition));
+// 但它正好是那一句的中譯,拿來當複習卡正面的第一層線索剛好。
+check("整句機翻拿來當例句中譯", b.sentenceTranslation === "這就是大部分山谷的形成原因。",
+	String(b.sentenceTranslation));
 check("原句解過 HTML 實體", b.sentence === "And that's what carved out most of these valleys.", b.sentence);
 check("留下原始連結", b.url === "https://www.youtube.com/watch?v=bDoE4JI0DBg&t=176s");
 check("來源帶上頁面標題", b.source?.startsWith("Saladict — "), b.source);
 
 check("片語擋掉", fromAnkiNote(SALADICT, { ...sal, Text: "risk tolerance" }) === null);
 check("整句擋掉", fromAnkiNote(SALADICT, { ...sal, Text: "wears off." }) === null);
+
+console.log("\n挑譯文:三個引擎裡有簡體,不能挑錯(繁體是做 WordFolio 的理由之一)");
+const three =
+	'<div class="trans"><span class="trans_title">google</span><div class="trans_content">數百萬年前曾經是巨大的。</div>' +
+	'<span class="trans_title">deepl</span><div class="trans_content">数百万年前，它们曾经是巨大的。</div>' +
+	'<span class="trans_title">bing</span><div class="trans_content">數百萬年前，它曾經是巨大的。</div></div>';
+check("優先挑 google(它跟著 zh-TW 設定給繁體)", pickTranslation(three) === "數百萬年前曾經是巨大的。",
+	String(pickTranslation(three)));
+const noGoogle =
+	'<span class="trans_title">deepl</span><div class="trans_content">这就是大部分山谷的形成原因。</div>' +
+	'<span class="trans_title">bing</span><div class="trans_content">這就是大部分山谷的形成原因。</div>';
+check("沒有 google 時挑簡化字最少的", pickTranslation(noGoogle) === "這就是大部分山谷的形成原因。",
+	String(pickTranslation(noGoogle)));
+check("沒有引擎標記時也抓得到",
+	pickTranslation('<div class="trans_content">冰川。</div>') === "冰川。",
+	String(pickTranslation('<div class="trans_content">冰川。</div>')));
+check("整欄沒有中文就回 undefined",
+	pickTranslation('<div class="trans_content">just english</div>') === undefined);
+check("空字串回 undefined", pickTranslation("") === undefined);
+
+console.log("\nLanguage Reactor 的翻譯欄不一定是中文");
+// 實測 152 筆裡有 28 筆的 Translation 就是英文原句(影片沒有中文字幕)。
+const lrTr = fromAnkiNote(LANGUAGE_REACTOR, lr)!;
+check("有中文時收下", lrTr.sentenceTranslation === "丹：好吧，所以我覺得我的外表很像 我媽。",
+	String(lrTr.sentenceTranslation));
+const englishTr = fromAnkiNote(LANGUAGE_REACTOR, {
+	...lr, Subtitle: "stop relying only on willpower.", Translation: "stop relying only on willpower." })!;
+check("翻譯欄等於英文原句時不收", englishTr.sentenceTranslation === undefined,
+	String(englishTr.sentenceTranslation));
+check("翻譯欄沒有中文也不收",
+	fromAnkiNote(LANGUAGE_REACTOR, { ...lr, Translation: "no chinese here" })!.sentenceTranslation === undefined);
 
 console.log("\n不認得的筆記類型");
 check("Wordwise 這次不匯,回 null", fromAnkiNote("Wordwise", { Word: "spreadsheet" }) === null);
