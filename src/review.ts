@@ -476,6 +476,9 @@ export class ReviewModal extends Modal {
 		// 顏色由紅到綠一路過去,對應「下次多久再問你」由短到長:
 		// Again 紅、Hard 橘、Good 黃、Easy 綠。用 class 而不是 :first-child——
 		// 靠位置決定顏色,順序一改就錯。
+		// 每顆的意思寫在 tooltip,不寫在卡片上:具體天數每張卡都不一樣,印在每張
+		// 卡上只是噪音——道哥:「這個規則不用再每張答案卡上寫出來,應該在計分
+		// 系統說明就好。」
 		const grades: [Grade, string, string, string][] = [
 			[Rating.Again, t("review_again"), "a", "again"],
 			[Rating.Hard, t("review_hard"), "h", "hard"],
@@ -484,6 +487,7 @@ export class ReviewModal extends Modal {
 		];
 		grades.forEach(([rating, label, key, tone], i) => {
 			const b = buttons.createEl("button", { cls: `wf-grade wf-grade-${tone}` });
+			b.setAttribute("aria-label", t(`review_${tone}_desc`));
 			b.createSpan({ text: label });
 			b.onclick = () => void this.grade(rating);
 			this.bind(b, key, () => void this.grade(rating));

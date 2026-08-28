@@ -519,25 +519,28 @@
    這是 Anki 的慣例,道哥要的:Again 紅、Hard 橘、Good 黃、Easy 綠。
 
    只染文字不染底:四塊實心色塊排在一起會比它們要傳達的資訊還吵,
-   而且會跟上方的訂正紅字搶。 */
-.wf-grade-again {
-	color: var(--color-red);
+   而且會跟上方的訂正紅字搶。
+
+   **選擇器要帶上容器**:單一 class(0,1,0)會被 Obsidian 自己的按鈕樣式壓過去,
+   顏色根本出不來。上一版把 `:first-child`(帶元素選擇器,特異性較高)換成單一
+   class,結果連 Again 原本就有的紅色也一起消失了。 */
+.wordfolio-review-buttons .wf-grade-again {
+	color: var(--color-red, var(--text-error));
 }
 
-.wf-grade-hard {
-	color: var(--color-orange);
+.wordfolio-review-buttons .wf-grade-hard {
+	color: var(--color-orange, #d9822b);
 }
 
-.wf-grade-good {
-	color: var(--color-yellow);
+.wordfolio-review-buttons .wf-grade-good {
+	color: var(--color-yellow, #d9b02b);
 }
 
-.wf-grade-easy {
-	color: var(--color-green);
+.wordfolio-review-buttons .wf-grade-easy {
+	color: var(--color-green, #4caf72);
 }
 
-/* hover 時補一層同色的淡底,按下去之前就看得出是哪一顆。 */
-.wf-grade:hover {
+.wordfolio-review-buttons .wf-grade:hover {
 	background: var(--background-modifier-hover);
 }
 

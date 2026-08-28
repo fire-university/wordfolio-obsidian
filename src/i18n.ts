@@ -86,6 +86,10 @@ const EN: Dict = {
 	// 複習
 	review_show_answer: "Show answer",
 	review_again: "Again",
+	review_again_desc: "Did not come back to me — ask again right now",
+	review_hard_desc: "Got there, but it was a struggle — comes back soon",
+	review_good_desc: "Remembered it — the gap grows as usual",
+	review_easy_desc: "Too easy — the gap grows much faster",
 	review_hard: "Hard",
 	review_good: "Good",
 	review_easy: "Easy",
@@ -320,6 +324,10 @@ const ZH: Dict = {
 	// 複習
 	review_show_answer: "看答案",
 	review_again: "重來",
+	review_again_desc: "沒想起來 —— 立刻再問一次同一個字",
+	review_hard_desc: "想起來了，但很吃力 —— 很快就會再問你",
+	review_good_desc: "記得 —— 間隔照常拉長",
+	review_easy_desc: "太簡單 —— 間隔拉得更長，之後很久才會再出現",
 	review_hard: "有點難",
 	review_good: "記得",
 	review_easy: "太簡單",
