@@ -171,25 +171,37 @@ export class ReviewModal extends Modal {
 		});
 	}
 
-	/** 英美兩套音標,各自一顆播放鍵。要聽哪一種是使用者的事,不幫他挑。 */
-	private renderPhonetics(parent: HTMLElement, note: ParsedNote, word: string): void {
-		const pairs: [Accent, string, string | undefined][] = [
-			["uk", t("accent_uk"), note.ukPhonetic],
-			["us", t("accent_us"), note.usPhonetic],
+	/**
+	 * 英美兩套音標,各自一顆播放鍵。要聽哪一種是使用者的事,不幫他挑。
+	 *
+	 * @param bindKeys 綁 K / S 兩個快捷鍵。**只有問題卡傳 true**——答案卡的 K
+	 *                 已經是「已學會」,兩邊都綁會撞在一起。
+	 */
+	private renderPhonetics(
+		parent: HTMLElement,
+		note: ParsedNote,
+		word: string,
+		bindKeys = false
+	): void {
+		const pairs: [Accent, string, string | undefined, string][] = [
+			["uk", t("accent_uk"), note.ukPhonetic, "k"],
+			["us", t("accent_us"), note.usPhonetic, "s"],
 		];
 		if (!pairs.some(([, , ipa]) => ipa)) return;
 
 		const row = parent.createDiv({ cls: "wordfolio-review-phonetics" });
-		for (const [accent, label, ipa] of pairs) {
+		for (const [accent, label, ipa, key] of pairs) {
 			if (!ipa) continue;
 			const b = row.createEl("button", { cls: "wordfolio-review-speak" });
 			b.createSpan({ cls: "wf-accent-label", text: label });
 			b.createSpan({ cls: "wf-ipa", text: ipa });
 			setIcon(b.createSpan({ cls: "wf-speak-icon" }), "volume-2");
+			const play = () => this.hooks.speak?.(word, accent);
 			b.onclick = (e) => {
 				e.stopPropagation();
-				this.hooks.speak?.(word, accent);
+				play();
 			};
+			if (bindKeys) this.bind(b, key, play);
 		}
 	}
 
@@ -260,7 +272,7 @@ export class ReviewModal extends Modal {
 			const reveal = hints.createEl("button", { cls: "wf-hint-btn", text: t("review_hint_ipa") });
 			const show = () => {
 				reveal.remove();
-				this.renderPhonetics(hints, note, word);
+				this.renderPhonetics(hints, note, word, true);
 			};
 			reveal.onclick = show;
 			this.bind(reveal, "p", show);
@@ -348,12 +360,18 @@ export class ReviewModal extends Modal {
 			onDone(done);
 		};
 
+		/** 全部填滿就放開焦點,字母快捷鍵立刻可用(鍵帽也會跟著亮起來)。 */
+		const releaseIfFull = () => {
+			if (inputs.every((i) => i.value)) inputs[inputs.length - 1].blur();
+		};
+
 		inputs.forEach((input, i) => {
 			input.oninput = () => {
 				// 只收字母;打了別的就當沒打,不要讓格子留著奇怪的東西。
 				input.value = input.value.replace(/[^A-Za-z]/g, "").slice(-1);
 				if (input.value && i + 1 < inputs.length) inputs[i + 1].focus();
 				check();
+				releaseIfFull();
 			};
 			input.onkeydown = (e) => {
 				if (e.key === "Backspace" && !input.value && i > 0) {
@@ -385,7 +403,17 @@ export class ReviewModal extends Modal {
 				}
 				inputs[Math.min(i + text.length, inputs.length - 1)].focus();
 				check();
+				releaseIfFull();
 			};
+		});
+
+		// 焦點放開之後想改字就沒地方按了,所以讓退格把它抓回最後一格。
+		// 這是自動放開焦點的必要配套——不然拼錯最後一個字母只能用滑鼠點回去。
+		this.bind(null, "Backspace", () => {
+			const last = inputs[inputs.length - 1];
+			last.value = "";
+			last.focus();
+			check();
 		});
 
 		// 打開就可以直接開始打,不用先點一下。
