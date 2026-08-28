@@ -12,7 +12,7 @@
 // (音標沒了)、`split("## 我遇到它的地方")[0]` 主動切掉例句。現在改成先把筆記
 // 解析成有名字的欄位,再一塊一塊畫。
 
-import { App, Modal, TFile, setIcon } from "obsidian";
+import { App, Modal, TFile, setIcon, type KeymapEventHandler } from "obsidian";
 import { t } from "./i18n";
 import { gradeCard, Rating, type Grade } from "./schedule";
 import {
@@ -57,6 +57,14 @@ export class ReviewModal extends Modal {
 	private reviewed = 0;
 	/** 這張卡他在拼寫格填了什麼。翻面後要拿來訂正,所以得跨過重畫存著。 */
 	private attempt: string | null = null;
+	/**
+	 * 這次重畫註冊的快捷鍵。
+	 *
+	 * 每次 render 都會重新註冊,不清掉的話會一路累積——翻面、按 Again、
+	 * 下一張都各疊一層,同一個鍵最後會觸發到早就被移除的舊按鈕。
+	 * 這是原本就有的問題,只是以前只註冊空白與 1–4,不容易看出來。
+	 */
+	private keys: KeymapEventHandler[] = [];
 
 	constructor(
 		app: App,
@@ -75,6 +83,7 @@ export class ReviewModal extends Modal {
 	}
 
 	onClose(): void {
+		this.clearKeys();
 		this.contentEl.empty();
 		this.hooks.onClose?.();
 	}
@@ -91,9 +100,43 @@ export class ReviewModal extends Modal {
 		void this.render();
 	}
 
+	/** 焦點正在拼寫格裡——這時字母鍵是拿來打字的,不是快捷鍵。 */
+	private typingInSlot(): boolean {
+		return !!document.activeElement?.classList.contains("wf-slot-input");
+	}
+
+	/**
+	 * 綁一個快捷鍵,並在按鈕上掛一個鍵帽圖示。
+	 *
+	 * @param whileTyping 在拼寫格裡打字時也要生效。只有空白與 Enter 用得上——
+	 *                    它們不是字母,拼一個英文字永遠不會按到。
+	 */
+	private bind(
+		button: HTMLElement | null,
+		key: string,
+		action: () => void,
+		whileTyping = false
+	): void {
+		if (button) button.createSpan({ cls: "wf-key", text: key.toUpperCase() });
+		this.keys.push(
+			this.scope.register([], key, (e) => {
+				if (!whileTyping && this.typingInSlot()) return;
+				e.preventDefault();
+				action();
+				return false;
+			})
+		);
+	}
+
+	private clearKeys(): void {
+		for (const h of this.keys) this.scope.unregister(h);
+		this.keys = [];
+	}
+
 	private async render(): Promise<void> {
 		const { contentEl } = this;
 		contentEl.empty();
+		this.clearKeys();
 		const entry = this.current!;
 
 		// 生詞本才是事實來源,不重查詞庫——使用者自己補在筆記裡的東西也要看得到。
@@ -213,27 +256,30 @@ export class ReviewModal extends Modal {
 
 		if (note.ukPhonetic || note.usPhonetic) {
 			const reveal = hints.createEl("button", { cls: "wf-hint-btn", text: t("review_hint_ipa") });
-			reveal.onclick = () => {
+			const show = () => {
 				reveal.remove();
 				this.renderPhonetics(hints, note, word);
 			};
+			reveal.onclick = show;
 		}
 
-		const show = parent.createEl("button", {
-			cls: "mod-cta wordfolio-review-show",
-			text: t("review_show_answer"),
-		});
+		const show = parent.createEl("button", { cls: "mod-cta wordfolio-review-show" });
+		const label = show.createSpan({ text: t("review_show_answer") });
 		show.onclick = () => this.flip();
 		onSpellingDone = (ok) => {
 			show.toggleClass("is-correct", ok);
-			show.setText(ok ? t("review_spelled_next") : t("review_show_answer"));
+			label.setText(ok ? t("review_spelled_next") : t("review_show_answer"));
 		};
-		// 空白鍵翻面,跟一般閃卡工具一致。
-		this.scope.register([], " ", (e) => {
-			e.preventDefault();
-			this.flip();
-			return false;
-		});
+		// **問題卡刻意沒有字母快捷鍵。** 這一面的鍵盤是拿來填拼寫格的,
+		// 任何字母鍵都會跟打字搶。道哥自己先想到:「在輸入答案的過程中可能會
+		// 觸發到快捷鍵,所以在問題卡這邊,可能就不適合使用快捷鍵。」
+		//
+		// 我原本的做法是「焦點在格子裡時字母鍵歸打字」——技術上不會誤觸,
+		// 但那是一條要去理解才知道何時生效的規則。不做比較好。
+		//
+		// 只留空白與 Enter:它們不是字母,拼一個英文字永遠用不到它們。
+		this.bind(null, " ", () => this.flip(), true);
+		this.bind(null, "Enter", () => this.flip(), true);
 	}
 
 	/**
@@ -317,11 +363,7 @@ export class ReviewModal extends Modal {
 					inputs[i + 1].focus();
 					return;
 				}
-				// 在格子裡按空白是想翻面(單字裡不會有空格),讓它冒泡給 scope。
-				if (e.key === "Enter") {
-					e.preventDefault();
-					this.flip();
-				}
+				// 空白與 Enter 翻面由 scope 統一處理(見 renderFront 的 bind)。
 			};
 			// 貼上整個字時一格一格分過去。
 			input.onpaste = (e) => {
@@ -375,21 +417,20 @@ export class ReviewModal extends Modal {
 
 		const buttons = parent.createDiv({ cls: "wordfolio-review-buttons" });
 		// Grade 是 Rating 去掉 Manual 的子集;複習只會用這四個。
-		const grades: [Grade, string][] = [
-			[Rating.Again, t("review_again")],
-			[Rating.Hard, t("review_hard")],
-			[Rating.Good, t("review_good")],
-			[Rating.Easy, t("review_easy")],
+		// 每顆的快捷鍵取自它自己的字首(Again→A、Hard→H、Good→G、Easy→E),
+		// 這樣不用背——看按鈕就知道按哪個鍵。1–4 也留著,舊的肌肉記憶不打斷。
+		const grades: [Grade, string, string][] = [
+			[Rating.Again, t("review_again"), "a"],
+			[Rating.Hard, t("review_hard"), "h"],
+			[Rating.Good, t("review_good"), "g"],
+			[Rating.Easy, t("review_easy"), "e"],
 		];
-		grades.forEach(([rating, label], i) => {
-			const b = buttons.createEl("button", { text: label });
+		grades.forEach(([rating, label, key], i) => {
+			const b = buttons.createEl("button");
+			b.createSpan({ text: label });
 			b.onclick = () => void this.grade(rating);
-			// 1–4 對應四個評分鍵。
-			this.scope.register([], String(i + 1), (e) => {
-				e.preventDefault();
-				b.click();
-				return false;
-			});
+			this.bind(b, key, () => void this.grade(rating));
+			this.bind(null, String(i + 1), () => void this.grade(rating));
 		});
 
 		// 次要動作跟評分鍵**同一排**。原本另起一排,兩排按鈕把答案面的重心往下拉,
@@ -398,24 +439,25 @@ export class ReviewModal extends Modal {
 
 		// 封存:匯進來兩百多個字,一定有一批本來就會的。Easy 只是把它推遠,
 		// 它還是會回來;這顆是「別再問我這個字了」。
-		const park = buttons.createEl("button", {
-			cls: "wf-secondary-action",
-			text: t("review_suspend"),
-		});
+		const park = buttons.createEl("button", { cls: "wf-secondary-action" });
+		park.createSpan({ text: t("review_suspend") });
 		park.setAttribute("aria-label", t("review_suspend_desc"));
 		park.onclick = () => void this.suspend();
+		this.bind(park, "k", () => void this.suspend());
 
 		// 開筆記用圖示就夠——它是最少用到的那顆,不值得佔掉一整個詞的寬度。
 		const open = buttons.createEl("button", {
 			cls: "wf-secondary-action wf-icon-action",
 		});
-		setIcon(open, "pencil");
+		setIcon(open.createSpan(), "pencil");
 		open.setAttribute("aria-label", t("review_open_note"));
-		open.onclick = () => {
+		const edit = () => {
 			const file = this.current!.file;
 			this.close();
 			this.hooks.openNote?.(file);
 		};
+		open.onclick = edit;
+		this.bind(open, "d", edit);
 	}
 
 	/**
