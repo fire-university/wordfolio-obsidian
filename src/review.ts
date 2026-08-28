@@ -15,7 +15,14 @@
 import { App, Modal, TFile, setIcon } from "obsidian";
 import { t } from "./i18n";
 import { gradeCard, Rating, type Grade } from "./schedule";
-import { parseNote, clozeSentence, focusSentence, hintFor, type ParsedNote } from "./note-parse";
+import {
+	parseNote,
+	clozeSentence,
+	focusSentence,
+	letterSlots,
+	slotsFilled,
+	type ParsedNote,
+} from "./note-parse";
 import type { Accent } from "./audio";
 import type { VocabStore } from "./vocab";
 import type { VocabCard } from "./types";
@@ -103,6 +110,17 @@ export class ReviewModal extends Modal {
 		this.renderBack(contentEl, note);
 	}
 
+	/** 翻到答案面。按鈕、空白鍵、拼寫格裡的 Enter 都走這裡。 */
+	private flip(): void {
+		if (this.answered) return;
+		const word = this.current!.card.word;
+		this.answered = true;
+		void this.render().then(() => {
+			// 翻面就念一次,不用多按一下。一次複習幾十張,每張都要手動點會懶得點。
+			if (this.hooks.autoSpeak?.()) this.hooks.speak?.(word, "uk");
+		});
+	}
+
 	/** 英美兩套音標,各自一顆播放鍵。要聽哪一種是使用者的事,不幫他挑。 */
 	private renderPhonetics(parent: HTMLElement, note: ParsedNote, word: string): void {
 		const pairs: [Accent, string, string | undefined][] = [
@@ -175,8 +193,7 @@ export class ReviewModal extends Modal {
 				parent.createDiv({ cls: "wordfolio-review-hint-zh", text: translation });
 			}
 		}
-		// 沒有句子可挖時至少給首尾字母,不然正面會是一片空白。
-		parent.createDiv({ cls: "wordfolio-review-shape", text: hintFor(word) });
+		this.renderSpelling(parent, word);
 
 		const hints = parent.createDiv({ cls: "wordfolio-review-hints" });
 
@@ -197,20 +214,108 @@ export class ReviewModal extends Modal {
 			cls: "mod-cta wordfolio-review-show",
 			text: t("review_show_answer"),
 		});
-		show.focus();
-		show.onclick = () => {
-			this.answered = true;
-			void this.render().then(() => {
-				// 翻面就念一次,不用多按一下。一次複習幾十張,每張都要手動點會懶得點。
-				if (this.hooks.autoSpeak?.()) this.hooks.speak?.(word, "uk");
-			});
-		};
+		show.onclick = () => this.flip();
 		// 空白鍵翻面,跟一般閃卡工具一致。
 		this.scope.register([], " ", (e) => {
 			e.preventDefault();
-			show.click();
+			this.flip();
 			return false;
 		});
+	}
+
+	/**
+	 * 可以真的打字填進去的拼寫格。
+	 *
+	 * 原本這裡是一行靜態的 `w_________e`。道哥:「既然你已經有格子、空格出來了,
+	 * 是不是可以讓我把中間的空白填進去呢?這樣是不是可以增加我動腦的機會?」
+	 *
+	 * 用打的會逼出**拼寫**,而心裡想「喔是 worthwhile」是可以含糊帶過的。
+	 * 首尾與連字號那格直接給(它們是線索不是題目),其餘一格一個輸入框。
+	 *
+	 * 不記分、不擋翻面:全部填對時格子轉綠當作一個確認,填錯不做任何事——
+	 * 他早就說過「答對幾題或答錯對我的學習完全沒有幫助」。
+	 */
+	private renderSpelling(parent: HTMLElement, word: string): void {
+		const slots = letterSlots(word);
+		if (!slots.length) return;
+
+		const row = parent.createDiv({ cls: "wordfolio-review-spelling" });
+		const inputs: HTMLInputElement[] = [];
+
+		for (const slot of slots) {
+			if (!slot.editable) {
+				row.createSpan({ cls: "wf-slot wf-slot-given", text: slot.char });
+				continue;
+			}
+			const input = row.createEl("input", {
+				cls: "wf-slot wf-slot-input",
+				attr: {
+					type: "text",
+					maxlength: "1",
+					// 拼字練習不需要這些幫忙,不然瀏覽器會直接把答案補上。
+					autocomplete: "off",
+					autocapitalize: "off",
+					autocorrect: "off",
+					spellcheck: "false",
+					"aria-label": t("review_spell_slot"),
+				},
+			});
+			inputs.push(input);
+		}
+		if (!inputs.length) return;
+
+		const typed = () => inputs.map((i) => i.value);
+		const check = () => {
+			const done = inputs.every((i) => i.value) && slotsFilled(slots, typed());
+			row.toggleClass("is-correct", done);
+		};
+
+		inputs.forEach((input, i) => {
+			input.oninput = () => {
+				// 只收字母;打了別的就當沒打,不要讓格子留著奇怪的東西。
+				input.value = input.value.replace(/[^A-Za-z]/g, "").slice(-1);
+				if (input.value && i + 1 < inputs.length) inputs[i + 1].focus();
+				check();
+			};
+			input.onkeydown = (e) => {
+				if (e.key === "Backspace" && !input.value && i > 0) {
+					// 空格上按退格要跳回前一格並清掉它,不然會卡在原地。
+					e.preventDefault();
+					inputs[i - 1].value = "";
+					inputs[i - 1].focus();
+					check();
+					return;
+				}
+				if (e.key === "ArrowLeft" && i > 0) {
+					e.preventDefault();
+					inputs[i - 1].focus();
+					return;
+				}
+				if (e.key === "ArrowRight" && i + 1 < inputs.length) {
+					e.preventDefault();
+					inputs[i + 1].focus();
+					return;
+				}
+				// 在格子裡按空白是想翻面(單字裡不會有空格),讓它冒泡給 scope。
+				if (e.key === "Enter") {
+					e.preventDefault();
+					this.flip();
+				}
+			};
+			// 貼上整個字時一格一格分過去。
+			input.onpaste = (e) => {
+				e.preventDefault();
+				const text = (e.clipboardData?.getData("text") ?? "").replace(/[^A-Za-z]/g, "");
+				for (let k = 0; k < text.length && i + k < inputs.length; k++) {
+					inputs[i + k].value = text[k];
+				}
+				inputs[Math.min(i + text.length, inputs.length - 1)].focus();
+				check();
+			};
+		});
+
+		// 打開就可以直接開始打,不用先點一下。
+		window.setTimeout(() => inputs[0].focus(), 0);
 	}
 
 	/** 答案面:一塊一塊畫,不再把 markdown 洗成一團純文字。 */

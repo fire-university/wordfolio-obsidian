@@ -3,7 +3,7 @@
 //
 //   npx tsx test/note-parse-check.ts
 
-import { parseNote, clozeSentence, focusSentence, hintFor, BLANK } from "../src/note-parse";
+import { parseNote, clozeSentence, focusSentence, letterSlots, slotsFilled, BLANK } from "../src/note-parse";
 
 let failures = 0;
 function check(label: string, ok: boolean, detail = "") {
@@ -124,14 +124,33 @@ check("哪一段都不含目標字時退回第一段",
 	focusSentence("Nothing here. >> Nor here.", "absent", []) === "Nothing here.",
 	focusSentence("Nothing here. >> Nor here.", "absent", []));
 
-console.log("\n首尾字母提示");
-check("willpower → w_______r", hintFor("willpower") === "w_______r", hintFor("willpower"));
-check("底線數 = 長度 - 2", hintFor("overrate").length === "overrate".length);
-check("連字號原樣保留(比一整排底線好讀)", hintFor("well-known") === "w___-____n", hintFor("well-known"));
-check("撇號原樣保留", hintFor("don't") === "d__'t", hintFor("don't"));
-check("三個字母的字", hintFor("cat") === "c_t", hintFor("cat"));
-check("兩個字母不動(給不出有意義的提示)", hintFor("ox") === "ox", hintFor("ox"));
-check("空字串不會爆", hintFor("") === "");
+console.log("\n拼寫格子(可以真的打字填進去的那排)");
+const slots = letterSlots("worthwhile");
+check("格數 = 字的長度", slots.length === 10, String(slots.length));
+check("首尾不可填", !slots[0].editable && !slots[9].editable);
+check("中間全部可填", slots.slice(1, 9).every((x) => x.editable));
+check("首尾字元對得上", slots[0].char === "w" && slots[9].char === "e");
+const dashed = letterSlots("well-known");
+check("連字號不可填(直接給,比留空好認)", !dashed[4].editable && dashed[4].char === "-");
+check("連字號兩側的字母仍可填", dashed[3].editable && dashed[5].editable);
+check("撇號不可填", letterSlots("don't")[3].char === "'" && !letterSlots("don't")[3].editable);
+const tiny = letterSlots("ox");
+check("兩個字母全部不可填(挖了就沒東西了)", tiny.every((x) => !x.editable));
+check("三個字母只挖中間一格",
+	letterSlots("cat").filter((x) => x.editable).length === 1);
+check("空字串不會爆", letterSlots("").length === 0);
+const shape = (w: string) => letterSlots(w).map((x) => (x.editable ? "_" : x.char)).join("");
+check("willpower 的形狀", shape("willpower") === "w_______r", shape("willpower"));
+check("形狀長度 = 原字長度", shape("overrate").length === "overrate".length);
+check("連字號原樣顯示(比一整排底線好讀)", shape("well-known") === "w___-____n", shape("well-known"));
+check("撇號原樣顯示", shape("don't") === "d__'t", shape("don't"));
+
+console.log("\n對答案(大小寫不計,不記分只給回饋)");
+check("全對", slotsFilled(slots, "orthwhil".split("")));
+check("大寫也算對", slotsFilled(slots, "ORTHWHIL".split("")));
+check("錯一個就不算", !slotsFilled(slots, "orthwhix".split("")));
+check("還沒填完不算", !slotsFilled(slots, "ort".split("")));
+check("沒有可填格時視為已完成", slotsFilled(letterSlots("ox"), []));
 
 console.log(failures ? `\n${failures} 項失敗` : "\n全部通過");
 process.exit(failures ? 1 : 0);

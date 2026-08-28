@@ -923,16 +923,6 @@
 	text-align: center;
 }
 
-/* 首尾字母。等寬字讓底線對得整齊,一眼數得出中間幾個字母。 */
-.wordfolio-review-shape {
-	font-family: var(--font-monospace);
-	font-size: 1.5em;
-	letter-spacing: 0.12em;
-	color: var(--text-accent);
-	text-align: center;
-	margin-bottom: 1.4em;
-}
-
 .wordfolio-review-hints {
 	display: flex;
 	justify-content: center;
@@ -994,4 +984,59 @@
 	align-items: center;
 	justify-content: center;
 	padding: 0.4em 0.6em;
+}
+
+/* ── 拼寫格 ─────────────────────────────────────────────────────
+   原本是一行靜態的 w_________e。改成真的能打字填——用打的會逼出拼寫,
+   心裡想「喔是 worthwhile」可以含糊帶過。 */
+
+.wordfolio-review-spelling {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 0.25em;
+	flex-wrap: wrap;
+	margin-bottom: 1.4em;
+}
+
+.wf-slot {
+	width: 1.5em;
+	height: 2em;
+	font-family: var(--font-monospace);
+	font-size: 1.3em;
+	line-height: 2em;
+	text-align: center;
+}
+
+/* 首尾與連字號:直接給的線索,所以看起來不像可以打字的地方。 */
+.wf-slot-given {
+	color: var(--text-accent);
+	font-weight: 600;
+}
+
+.wf-slot-input {
+	padding: 0;
+	border: none;
+	border-bottom: 2px solid var(--background-modifier-border);
+	border-radius: 0;
+	background: transparent;
+	color: var(--text-normal);
+	transition: border-color 0.15s ease;
+}
+
+.wf-slot-input:focus {
+	border-bottom-color: var(--interactive-accent);
+	box-shadow: none;
+	outline: none;
+}
+
+/* 全部填對時整排轉綠。只是一個確認,不記分也不擋翻面——
+   「答對幾題或答錯對我的學習完全沒有幫助」。 */
+.wordfolio-review-spelling.is-correct .wf-slot-input {
+	color: var(--color-green);
+	border-bottom-color: var(--color-green);
+}
+
+.wordfolio-review-spelling.is-correct .wf-slot-given {
+	color: var(--color-green);
 }

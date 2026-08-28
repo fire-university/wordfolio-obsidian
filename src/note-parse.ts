@@ -192,19 +192,41 @@ export function focusSentence(sentence: string, word: string, forms: string[] = 
 	return (hit ?? parts[0]).trim();
 }
 
+
+
+/** 拼寫格子裡的一格。 */
+export interface LetterSlot {
+	/** 這一格該是什麼字元 */
+	char: string;
+	/** 要不要讓使用者填。首尾與非字母(連字號、撇號)直接給,其餘留空 */
+	editable: boolean;
+}
+
 /**
- * 首尾字母提示:`willpower` → `w_______r`。
+ * 把一個字拆成一排拼寫格子。
  *
- * 道哥要的是「回想的過程」,不是答對答錯——首尾字母把搜尋範圍縮小到他真的想得
- * 起來的程度,又不至於直接給答案。非字母(連字號、撇號)原樣保留,
- * `well-known` → `w___-____n` 比一整排底線好讀。
+ * 道哥:「既然你已經有格子、空格出來了,是不是可以讓我把中間的空白填進去呢?
+ * 這樣是不是可以增加我動腦的機會?」——對,而且不只是「多一點動腦」:
+ * 用打的會逼出**拼寫**,而光是心裡想「喔是 worthwhile」是可以含糊帶過的。
+ *
+ * 首尾與非字母(連字號、撇號)直接給——它們是線索不是題目;其餘留空等他填。
  */
-export function hintFor(word: string): string {
+export function letterSlots(word: string): LetterSlot[] {
 	const w = word.trim();
-	if (w.length <= 2) return w;
-	return [...w]
-		.map((c, i) =>
-			i === 0 || i === w.length - 1 || !/[A-Za-z]/.test(c) ? c : "_"
-		)
-		.join("");
+	return [...w].map((char, i) => ({
+		char,
+		editable:
+			i !== 0 && i !== w.length - 1 && /[A-Za-z]/.test(char) && w.length > 2,
+	}));
+}
+
+/** 使用者填的字母跟正確答案對不對得上(大小寫不計)。 */
+export function slotsFilled(slots: LetterSlot[], typed: string[]): boolean {
+	let k = 0;
+	for (const slot of slots) {
+		if (!slot.editable) continue;
+		if ((typed[k] ?? "").toLowerCase() !== slot.char.toLowerCase()) return false;
+		k++;
+	}
+	return true;
 }
