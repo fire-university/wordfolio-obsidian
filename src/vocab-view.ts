@@ -67,6 +67,7 @@ export class VocabView extends ItemView {
 
 	// 重畫表格時只換這幾塊,不整頁重建——不然打字打到一半焦點就沒了。
 	private statsEl!: HTMLElement;
+	private breakdownEl!: HTMLElement;
 	private hardestEl!: HTMLElement;
 	private tableEl!: HTMLElement;
 	private reviewBtn!: HTMLButtonElement;
@@ -115,7 +116,7 @@ export class VocabView extends ItemView {
 		root.addClass("wordfolio-vocab-view");
 
 		const header = root.createDiv({ cls: "wf-vocab-header" });
-		header.createEl("h2", { text: t("list_title") });
+		this.breakdownEl = header.createDiv({ cls: "wf-breakdown" });
 
 		const actions = header.createDiv({ cls: "wf-vocab-actions" });
 		this.reviewBtn = actions.createEl("button", { cls: "mod-cta" });
@@ -163,6 +164,7 @@ export class VocabView extends ItemView {
 	private paintStats(): void {
 		const s = this.stats;
 		this.statsEl.empty();
+		this.breakdownEl.empty();
 		this.hardestEl.empty();
 		if (!s) return;
 
@@ -187,8 +189,7 @@ export class VocabView extends ItemView {
 			tile.createDiv({ cls: "wf-stat-label", text: label });
 		}
 
-		const breakdown = this.hardestEl.createDiv({ cls: "wf-breakdown" });
-		breakdown.setText(
+		this.breakdownEl.setText(
 			t("list_breakdown", {
 				new: s.newCount,
 				learning: s.learningCount,

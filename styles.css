@@ -493,7 +493,9 @@
    顏色一律走 Obsidian 的主題變數,不寫死色碼——不然換深色/淺色主題就爛掉。 */
 
 .wordfolio-vocab-view {
-	padding: 0 1.5em 2em;
+	/* 底部留多一點:Obsidian 的狀態列(字數統計)浮在內容上面,
+	   留太少的話捲到底時最後一列會被蓋掉半截。 */
+	padding: 0 1.5em 4em;
 }
 
 .wf-vocab-header {
@@ -522,12 +524,25 @@
 	padding: 0.4em;
 }
 
-/* 數據卡片。自動換行,窄視窗會排成兩列而不是被擠扁。 */
+/* 數據卡片。六張,所以欄數只用 6 / 3 / 2 這三個 6 的因數——
+   用 auto-fit 讓瀏覽器自己算會在某些寬度排出 5 欄,變成 5 + 1 的孤兒列。 */
 .wf-stats {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+	grid-template-columns: repeat(6, minmax(0, 1fr));
 	gap: 0.6em;
-	margin: 1.2em 0 0.8em;
+	margin: 0.8em 0;
+}
+
+@media (max-width: 900px) {
+	.wf-stats {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 520px) {
+	.wf-stats {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
 }
 
 .wf-stat {
@@ -559,7 +574,6 @@
 .wf-breakdown {
 	font-size: 0.85em;
 	color: var(--text-muted);
-	margin-bottom: 0.4em;
 }
 
 .wf-hardest-line {
@@ -582,7 +596,7 @@
 	gap: 0.3em;
 	padding: 0.15em 0.55em;
 	border-radius: 999px;
-	background: var(--background-modifier-error-hover);
+	background: var(--background-secondary);
 	color: var(--text-normal);
 	font-size: 0.85em;
 	cursor: pointer;
@@ -590,12 +604,13 @@
 }
 
 .wf-chip:hover {
-	background: var(--background-modifier-error);
+	background: var(--background-modifier-hover);
 }
 
 .wf-chip-count {
 	font-size: 0.85em;
-	color: var(--text-muted);
+	/* 忘記次數:紅色留給這裡,不要拿去染整顆標籤的底 */
+	color: var(--text-error);
 }
 
 .wf-toolbar {
@@ -718,19 +733,16 @@
 }
 
 .wf-state-new {
-	background: var(--background-modifier-border);
-	color: var(--text-normal);
+	color: var(--text-muted);
 }
 
 .wf-state-learning,
 .wf-state-relearning {
-	background: var(--background-modifier-error-hover);
-	color: var(--text-normal);
+	color: var(--color-yellow);
 }
 
 .wf-state-review {
-	background: var(--background-modifier-success);
-	color: var(--text-normal);
+	color: var(--color-green);
 }
 
 .wf-col-due.is-due {
