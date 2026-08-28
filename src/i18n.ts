@@ -258,6 +258,15 @@ const EN: Dict = {
 	section_move_down: "Move down",
 
 	heading_audio: "Pronunciation",
+	set_accent_name: "Accent",
+	set_accent_desc:
+		"Which pronunciation to show and play — in the hover popup, on review cards, and for every automatic playback. If you are learning one accent, the other one is just taking up space.",
+	accent_both: "British and American",
+	accent_us_only: "American only",
+	accent_uk_only: "British only",
+	set_speak_front_name: "Say the word when the question appears",
+	set_speak_front_desc:
+		"Plays the word as soon as a question card opens. Good for listening practice — but note it also tells you the pronunciation before you try to recall the word, which makes the question easier. Only plays the first time you see a card, not when you press Again.",
 	set_audio_source_name: "Audio source",
 	set_audio_source_desc:
 		"Online recordings sound better; the system voice always works offline. Downloaded audio is cached, so a word you have heard once stays available offline.",
@@ -493,6 +502,15 @@ const ZH: Dict = {
 	section_move_down: "往下移",
 
 	heading_audio: "發音",
+	set_accent_name: "發音口音",
+	set_accent_desc:
+		"要顯示與播放哪一套發音——浮窗、複習卡的音標按鈕、以及所有自動發音都跟著這裡走。只學一種口音的話，另一種就只是佔版面。",
+	accent_both: "英式與美式都要",
+	accent_us_only: "只要美式",
+	accent_uk_only: "只要英式",
+	set_speak_front_name: "問題卡出現時先念一次",
+	set_speak_front_desc:
+		"問題卡一打開就把那個字念出來。練聽力有幫助，但要知道它也等於在你回想之前先把讀音告訴你，題目會變簡單。只在第一次看到那張卡時念，按「重來」重問同一個字時不會再念。",
 	set_audio_source_name: "發音來源",
 	set_audio_source_desc:
 		"線上真人錄音比較好聽,系統語音則是永遠都能用。抓過的音檔會快取,所以聽過一次的字之後離線也聽得到。",

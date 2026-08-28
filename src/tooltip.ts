@@ -258,6 +258,8 @@ export class SelectionIcon {
 export interface TooltipCallbacks {
 	/** 點喇叭 */
 	onSpeak: (word: string, accent: "uk" | "us") => void;
+	/** 要顯示哪一套口音。沒接就兩套都給。 */
+	accentPref?: () => "us" | "uk" | "both";
 	/** 點「加入生詞本」 */
 	onAdd: (lookup: Lookup, sentence: string) => void;
 	/** 點「在這句話裡是什麼意思」;回傳解釋文字 */

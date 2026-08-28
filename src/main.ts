@@ -7,6 +7,7 @@ import {
 	WordFolioSettings,
 	DEFAULT_SETTINGS,
 	AudioSource,
+	AccentPref,
 } from "./settings";
 import { t, setLang, LangSetting, currentLang } from "./i18n";
 import { Dictionary } from "./dict";
@@ -113,6 +114,7 @@ export default class WordFolioPlugin extends Plugin {
 
 		this.tooltip = new WordTooltip({
 			onSpeak: (word, accent) => void this.audio.speak(word, accent),
+			accentPref: () => this.settings.accent,
 			onAdd: (lookup, sentence) => void this.addToVocab(lookup, sentence),
 			onAsk: (lookup, sentence, gen) => this.llm.explain(lookup, sentence, gen),
 			onUsage: (lookup, gen) =>
@@ -263,6 +265,8 @@ export default class WordFolioPlugin extends Plugin {
 		new ReviewModal(this.app, this.vocab, due, {
 			speak: (word, accent) => void this.audio.speak(word, accent),
 			autoSpeak: () => this.settings.reviewAutoSpeak,
+			speakFront: () => this.settings.reviewSpeakFront,
+			accent: () => this.settings.accent,
 			openNote: (file) => void this.app.workspace.getLeaf(true).openFile(file),
 			// 每評一張就寫進 _review-log.md。複習到一半關掉視窗是常態,
 			// 那幾張不該憑空消失。
@@ -757,6 +761,21 @@ class WordFolioSettingTab extends PluginSettingTab {
 		new Setting(containerEl).setName(t("heading_audio")).setHeading();
 
 		new Setting(containerEl)
+			.setName(t("set_accent_name"))
+			.setDesc(t("set_accent_desc"))
+			.addDropdown((d) =>
+				d
+					.addOption("both", t("accent_both"))
+					.addOption("us", t("accent_us_only"))
+					.addOption("uk", t("accent_uk_only"))
+					.setValue(s.accent)
+					.onChange(async (v) => {
+						s.accent = v as AccentPref;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
 			.setName(t("set_audio_source_name"))
 			.setDesc(t("set_audio_source_desc"))
 			.addDropdown((d) =>
@@ -799,6 +818,16 @@ class WordFolioSettingTab extends PluginSettingTab {
 			},
 			t("set_new_per_day_unit")
 		);
+
+		new Setting(containerEl)
+			.setName(t("set_speak_front_name"))
+			.setDesc(t("set_speak_front_desc"))
+			.addToggle((tg) =>
+				tg.setValue(s.reviewSpeakFront).onChange(async (v) => {
+					s.reviewSpeakFront = v;
+					await this.plugin.saveSettings();
+				})
+			);
 
 		new Setting(containerEl)
 			.setName(t("set_auto_speak_name"))

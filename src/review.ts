@@ -27,6 +27,7 @@ import {
 	type ParsedNote,
 } from "./note-parse";
 import type { Accent } from "./audio";
+import type { AccentPref } from "./settings";
 import type { VocabStore } from "./vocab";
 import type { VocabCard } from "./types";
 
@@ -45,6 +46,10 @@ export interface ReviewHooks {
 	speak?: (word: string, accent: Accent) => void;
 	/** 翻面時要不要自動念一次。 */
 	autoSpeak?: () => boolean;
+	/** 問題卡一出現就先念一次。 */
+	speakFront?: () => boolean;
+	/** 要哪一套口音。 */
+	accent?: () => AccentPref;
 	/** 開啟這張卡的筆記(複習到一半想改釋義)。 */
 	openNote?: (file: TFile) => void;
 }
@@ -57,6 +62,8 @@ export class ReviewModal extends Modal {
 	private reviewed = 0;
 	/** 這張卡他在拼寫格填了什麼。翻面後要拿來訂正,所以得跨過重畫存著。 */
 	private attempt: string | null = null;
+	/** 這張卡的問題面已經自動念過了。重畫(按 Again、切回正面)不再念。 */
+	private spokeFront = false;
 	/**
 	 * 這次重畫註冊的快捷鍵。
 	 *
@@ -93,11 +100,27 @@ export class ReviewModal extends Modal {
 		this.answered = false;
 		this.note = null;
 		this.attempt = null;
+		this.spokeFront = false;
 		if (!this.current) {
 			this.renderDone();
 			return;
 		}
 		void this.render();
+	}
+
+	/** 目前偏好的口音設定。沒接就當兩套都要(既有行為)。 */
+	private accentPref(): AccentPref {
+		return this.hooks.accent?.() ?? "both";
+	}
+
+	/**
+	 * 自動發音要用哪一套。
+	 *
+	 * 只選一種時當然用那一種;兩種都要時用美式——它是多數學習者的目標,
+	 * 而且想聽英式的人隨時可以按旁邊那顆。
+	 */
+	private mainAccent(): Accent {
+		return this.accentPref() === "uk" ? "uk" : "us";
 	}
 
 	/** 焦點正在拼寫格裡——這時字母鍵是拿來打字的,不是快捷鍵。 */
@@ -164,6 +187,12 @@ export class ReviewModal extends Modal {
 		});
 		if (!this.answered) {
 			this.renderFront(contentEl, note, entry.card.word);
+			// 問題卡一出現就先念一次。刻意只在**第一次**看到這張卡時念——
+			// 按 Again 重問同一個字時不再念,不然同一個字會被念到煩。
+			if (this.hooks.speakFront?.() && !this.spokeFront) {
+				this.spokeFront = true;
+				this.hooks.speak?.(entry.card.word, this.mainAccent());
+			}
 			return;
 		}
 
@@ -179,7 +208,7 @@ export class ReviewModal extends Modal {
 		this.answered = true;
 		void this.render().then(() => {
 			// 翻面就念一次,不用多按一下。一次複習幾十張,每張都要手動點會懶得點。
-			if (this.hooks.autoSpeak?.()) this.hooks.speak?.(word, "uk");
+			if (this.hooks.autoSpeak?.()) this.hooks.speak?.(word, this.mainAccent());
 		});
 	}
 
@@ -202,10 +231,12 @@ export class ReviewModal extends Modal {
 			["uk", t("accent_uk"), note.ukPhonetic, "u"],
 			["us", t("accent_us"), note.usPhonetic, "s"],
 		];
-		if (!pairs.some(([, , ipa]) => ipa)) return;
+		const pref = this.accentPref();
+		const wanted = pairs.filter(([a]) => pref === "both" || pref === a);
+		if (!wanted.some(([, , ipa]) => ipa)) return;
 
 		const row = parent.createDiv({ cls: "wordfolio-review-phonetics" });
-		for (const [accent, label, ipa, key] of pairs) {
+		for (const [accent, label, ipa, key] of wanted) {
 			if (!ipa) continue;
 			const b = row.createEl("button", { cls: "wordfolio-review-speak" });
 			b.createSpan({ cls: "wf-accent-label", text: label });
@@ -280,8 +311,9 @@ export class ReviewModal extends Modal {
 		const listen = hints.createEl("button", { cls: "wf-hint-btn" });
 		setIcon(listen.createSpan(), "volume-2");
 		listen.createSpan({ text: t("review_hint_listen") });
-		listen.onclick = () => this.hooks.speak?.(word, "uk");
-		this.bind(listen, "h", () => this.hooks.speak?.(word, "uk"));
+		const hear = () => this.hooks.speak?.(word, this.mainAccent());
+		listen.onclick = hear;
+		this.bind(listen, "h", hear);
 
 		if (note.ukPhonetic || note.usPhonetic) {
 			const reveal = hints.createEl("button", { cls: "wf-hint-btn", text: t("review_hint_ipa") });

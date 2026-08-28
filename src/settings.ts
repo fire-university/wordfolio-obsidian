@@ -6,6 +6,13 @@ import { ALL_SECTIONS, DEFAULT_ENABLED, type SectionId } from "./sections";
 import type { IconMode } from "./tooltip";
 
 export type AudioSource = "online_first" | "system_only";
+/**
+ * 要哪一套發音。
+ *
+ * 學英式的人看美式音標、學美式的人看英式音標,都只是佔位置——道哥:「我就是
+ * 美式發音的學習者,那英式發音對我來說就是佔一個版面,不需要。」
+ */
+export type AccentPref = "us" | "uk" | "both";
 export type TriggerMode = "hover" | "select" | "both";
 
 export interface WordFolioSettings {
@@ -36,6 +43,8 @@ export interface WordFolioSettings {
 
 	// --- 發音 ---
 	audioSource: AudioSource;
+	// 顯示與播放哪一套口音。影響浮窗、複習卡的音標按鈕與所有自動發音。
+	accent: AccentPref;
 
 	// --- 生詞本 ---
 	// vault 相對路徑;外掛只碰這個資料夾。
@@ -50,6 +59,9 @@ export interface WordFolioSettings {
 	newPerDay: number;
 	// 複習翻到答案面時自動念一次。一次複習幾十張,每張都手動點會懶得點。
 	reviewAutoSpeak: boolean;
+	// 問題卡一出現就先念一次。**這等於先把讀音告訴你**,對練聽力有幫助,
+	// 但也讓「想不想得起來」變簡單,所以做成可關的。
+	reviewSpeakFront: boolean;
 
 	// --- 本地 AI(選用) ---
 	// OpenAI 相容端點(預設 Ollama)。不用 API key、不把查的字送出電腦。
@@ -77,12 +89,15 @@ export const DEFAULT_SETTINGS: WordFolioSettings = {
 	sectionOrder: [...ALL_SECTIONS],
 	sectionsEnabled: { ...DEFAULT_ENABLED },
 	audioSource: "online_first",
+	// 預設兩套都給:不知道使用者學哪一種之前,少給不如多給。
+	accent: "both",
 	vocabFolder: "英文生詞本",
 	captureSentence: true,
 	ankiDeck: "WordFolio",
 	// 跟 Anki 的預設一樣。兩百多個字大約兩週消化完。
 	newPerDay: 20,
 	reviewAutoSpeak: true,
+	reviewSpeakFront: true,
 	llmEndpoint: "http://localhost:11434/v1",
 	// 預設用 3b 而不是 7b:實測暖機後 3b 約 2 秒、7b 明顯更久。
 	// 這幾個任務(挑義項、拆字根、造例句)不需要大模型,速度比較重要。
