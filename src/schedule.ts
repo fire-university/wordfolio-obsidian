@@ -84,10 +84,10 @@ export function newCard(word: string, now = new Date()): VocabCard {
 	};
 }
 
-/** 今天(含之前)到期的卡片。 */
+/** 今天(含之前)到期的卡片。封存的一律不算——那正是封存的意思。 */
 export function dueCards<T extends { card: VocabCard }>(all: T[], now = new Date()): T[] {
 	const today = isoDate(now);
-	return all.filter(({ card }) => !card.due || card.due <= today);
+	return all.filter(({ card }) => !card.suspended && (!card.due || card.due <= today));
 }
 
 /**

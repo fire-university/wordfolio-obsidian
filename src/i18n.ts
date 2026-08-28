@@ -91,6 +91,19 @@ const EN: Dict = {
 	review_easy: "Easy",
 	review_done: "WordFolio: review finished — {count} cards.",
 	review_nothing_due: "WordFolio: nothing due today.",
+	accent_uk: "UK",
+	accent_us: "US",
+	review_sec_english: "In English",
+	review_sec_forms: "Forms",
+	review_sec_sentence: "Where you met it",
+	review_suspend: "I already know this",
+	review_suspend_desc: "Stop scheduling this word. The note stays, and you can bring it back from the vocabulary list.",
+	review_open_note: "Open note",
+	set_auto_speak_name: "Say the word when the card flips",
+	set_auto_speak_desc:
+		"Plays the British recording as soon as you reveal the answer, so you do not have to click every time. Both accents stay clickable next to the phonetics either way.",
+	list_filter_suspended: "Suspended",
+	state_suspended: "Suspended",
 
 	// 清單視圖與練習數據
 	command_vocab_list: "Open the vocabulary list",
@@ -305,6 +318,19 @@ const ZH: Dict = {
 	review_easy: "太簡單",
 	review_done: "WordFolio:複習完成,共 {count} 張。",
 	review_nothing_due: "WordFolio:今天沒有要複習的。",
+	accent_uk: "英",
+	accent_us: "美",
+	review_sec_english: "英英釋義",
+	review_sec_forms: "變化",
+	review_sec_sentence: "我遇到它的地方",
+	review_suspend: "這個我會了",
+	review_suspend_desc: "不再排這個字進複習。筆記不會刪，之後在生詞清單的「已封存」裡隨時可以放回來。",
+	review_open_note: "開啟筆記",
+	set_auto_speak_name: "翻到答案面時自動念一次",
+	set_auto_speak_desc:
+		"翻面就播英式真人錄音，不用每張都手動點。不管開或關，音標旁邊的英美兩顆播放鍵都在。",
+	list_filter_suspended: "已封存",
+	state_suspended: "已封存",
 
 	// 清單視圖與練習數據
 	command_vocab_list: "開啟生詞清單",

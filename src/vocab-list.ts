@@ -13,7 +13,7 @@ export interface VocabRow {
 	path: string;
 }
 
-export type ListFilter = "all" | "due" | "leech" | "new" | "learning";
+export type ListFilter = "all" | "due" | "leech" | "new" | "learning" | "suspended";
 export type SortKey = "word" | "meaning" | "state" | "due" | "reps" | "lapses";
 export type SortDir = "asc" | "desc";
 
@@ -49,7 +49,11 @@ export function meaningOf(markdown: string): string {
 export function applyFilter(rows: VocabRow[], filter: ListFilter, today: string): VocabRow[] {
 	switch (filter) {
 		case "due":
-			return rows.filter((r) => !r.card.due || r.card.due <= today);
+			return rows.filter(
+				(r) => !r.card.suspended && (!r.card.due || r.card.due <= today)
+			);
+		case "suspended":
+			return rows.filter((r) => r.card.suspended);
 		case "leech":
 			return rows.filter((r) => r.card.lapses >= LEECH_LAPSES);
 		case "new":
@@ -59,6 +63,8 @@ export function applyFilter(rows: VocabRow[], filter: ListFilter, today: string)
 				(r) => r.card.state === "learning" || r.card.state === "relearning"
 			);
 		default:
+			// 「全部」真的是全部,封存的也列出來——這個視圖存在的理由就是
+			// 「看得到全部的字」,把封存的藏起來等於又製造一批看不到的字。
 			return rows;
 	}
 }

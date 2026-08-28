@@ -42,6 +42,7 @@ const FILTERS: { id: ListFilter; key: string }[] = [
 	{ id: "leech", key: "list_filter_leech" },
 	{ id: "new", key: "list_filter_new" },
 	{ id: "learning", key: "list_filter_learning" },
+	{ id: "suspended", key: "list_filter_suspended" },
 ];
 
 const COLUMNS: { key: SortKey; label: string; cls: string }[] = [
@@ -286,14 +287,16 @@ export class VocabView extends ItemView {
 			tr.createEl("td", { cls: "wf-col-meaning", text: r.meaning });
 
 			const state = tr.createEl("td", { cls: "wf-col-state" });
+			// 封存蓋過學習階段:那個字現在不會被排,狀態欄該講的是這件事。
 			state.createSpan({
-				cls: `wf-state wf-state-${r.card.state}`,
-				text: t(STATE_KEY[r.card.state]),
+				cls: r.card.suspended ? "wf-state wf-state-suspended" : `wf-state wf-state-${r.card.state}`,
+				text: r.card.suspended ? t("state_suspended") : t(STATE_KEY[r.card.state]),
 			});
 
 			const due = tr.createEl("td", { cls: "wf-col-due" });
-			due.setText(this.dueLabel(r.card.due, today));
-			if (!r.card.due || r.card.due <= today) due.addClass("is-due");
+			// 封存的字沒有「下次到期」可言,顯示日期只會讓人以為它還會回來。
+			due.setText(r.card.suspended ? "—" : this.dueLabel(r.card.due, today));
+			if (!r.card.suspended && (!r.card.due || r.card.due <= today)) due.addClass("is-due");
 
 			tr.createEl("td", { cls: "wf-col-num", text: String(r.card.reps) });
 			const lapses = tr.createEl("td", { cls: "wf-col-num", text: String(r.card.lapses) });

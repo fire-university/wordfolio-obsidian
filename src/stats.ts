@@ -145,6 +145,7 @@ export interface StatCard {
 	lapses: number;
 	state: "new" | "learning" | "review" | "relearning";
 	due: string;
+	suspended?: boolean;
 }
 
 export interface Stats {
@@ -153,8 +154,10 @@ export interface Stats {
 	newCount: number;
 	learningCount: number;
 	reviewCount: number;
-	/** 今天(含逾期)到期幾張 */
+	/** 今天(含逾期)到期幾張。封存的不算。 */
 	dueToday: number;
+	/** 已封存幾個 */
+	suspendedCount: number;
 	/** 今天複習了幾張 */
 	todayReviewed: number;
 	/** 今天已經上了幾個新字(給每日新字上限用) */
@@ -196,7 +199,8 @@ export function summarize(cards: StatCard[], days: DayLog[], today: string): Sta
 		learningCount: cards.filter((c) => c.state === "learning" || c.state === "relearning")
 			.length,
 		reviewCount: cards.filter((c) => c.state === "review").length,
-		dueToday: cards.filter((c) => !c.due || c.due <= today).length,
+		dueToday: cards.filter((c) => !c.suspended && (!c.due || c.due <= today)).length,
+		suspendedCount: cards.filter((c) => c.suspended).length,
 		todayReviewed: byDate.get(today)?.reviewed ?? 0,
 		todayNew: byDate.get(today)?.fresh ?? 0,
 		weekReviewed: week.reduce((s, d) => s + d.reviewed, 0),

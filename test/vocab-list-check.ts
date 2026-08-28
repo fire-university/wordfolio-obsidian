@@ -77,6 +77,21 @@ check("新字", words(applyFilter(rows, "new", TODAY)) === "alpha");
 check("學習中含重新學習", words(applyFilter(rows, "learning", TODAY)) === "charlie,delta");
 check(`記不牢(忘記 >= ${LEECH_LAPSES})`, words(applyFilter(rows, "leech", TODAY)) === "bravo,delta", words(applyFilter(rows, "leech", TODAY)));
 
+console.log("\n封存");
+const withParked: VocabRow[] = [
+	...rows,
+	{ word: "echo", meaning: "已經會了", path: "v/echo.md",
+	  card: card({ word: "echo", state: "review", due: TODAY, reps: 2, suspended: true }) },
+];
+check("「全部」含封存的(這個視圖就是要看得到全部)",
+	words(applyFilter(withParked, "all", TODAY)).includes("echo"));
+check("「今天到期」不含封存的",
+	!words(applyFilter(withParked, "due", TODAY)).includes("echo"),
+	words(applyFilter(withParked, "due", TODAY)));
+check("「已封存」只列封存的",
+	words(applyFilter(withParked, "suspended", TODAY)) === "echo",
+	words(applyFilter(withParked, "suspended", TODAY)));
+
 console.log("\n搜尋");
 check("比對單字", words(applySearch(rows, "brav")) === "bravo");
 check("比對釋義", words(applySearch(rows, "第三")) === "charlie");

@@ -100,6 +100,16 @@ check("過期與今天到期都算", due.includes("a") && due.includes("b"), due
 check("明天到期不算", !due.includes("c"), due.join(","));
 check("沒有到期日的當成要複習", due.includes("d"), due.join(","));
 
+console.log("\n封存的字不排進複習");
+const withSuspended = [
+	{ card: { ...newCard("live", DAY0), due: "2026-07-20" } },
+	{ card: { ...newCard("parked", DAY0), due: "2026-07-20", suspended: true } },
+];
+const live = dueCards(withSuspended, DAY0).map((x) => x.card.word);
+check("到期但封存的不算", live.join(",") === "live", live.join(","));
+check("封存的到期日再早也不會回來",
+	!reviewQueue(withSuspended, 99, 0, DAY0).map((x) => x.card.word).includes("parked"));
+
 console.log("\n每日新字上限");
 // 從 Anki 匯入之後生詞本會一次多兩百多個新字。到期的舊字一定要複習完
 // (排程算出來該複習的),新字才受上限管。

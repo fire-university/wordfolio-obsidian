@@ -784,3 +784,114 @@
 	justify-content: flex-end;
 	gap: 0.5em;
 }
+
+/* ── 複習卡 ─────────────────────────────────────────────────────
+   2026-08-28 重做:正面加音標、發音鍵與挖空例句;答案面改成一塊一塊畫,
+   不再把 markdown 洗成一團純文字。 */
+
+.wordfolio-review-phonetics {
+	display: flex;
+	justify-content: center;
+	gap: 0.5em;
+	flex-wrap: wrap;
+	margin: 0.2em 0 1.2em;
+}
+
+.wordfolio-review-speak {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45em;
+	padding: 0.3em 0.8em;
+	background: var(--background-secondary);
+	box-shadow: none;
+	cursor: pointer;
+}
+
+.wordfolio-review-speak:hover {
+	background: var(--background-modifier-hover);
+}
+
+.wordfolio-review-speak .wf-accent-label {
+	font-size: 0.75em;
+	color: var(--text-faint);
+	letter-spacing: 0.04em;
+}
+
+.wordfolio-review-speak .wf-ipa {
+	font-size: 0.9em;
+	color: var(--text-muted);
+}
+
+.wordfolio-review-speak .wf-speak-icon {
+	display: inline-flex;
+	color: var(--text-accent);
+}
+
+/* 挖空的例句。空格用底線顯著一點,一眼看得出要填什麼。 */
+.wordfolio-review-cloze {
+	margin: 0.6em auto 1.6em;
+	max-width: 34em;
+	font-size: 1.05em;
+	line-height: 1.7;
+	color: var(--text-muted);
+	text-align: center;
+}
+
+.wf-review-meaning {
+	font-size: 1.15em;
+	line-height: 1.7;
+	color: var(--text-normal);
+	margin-bottom: 1em;
+}
+
+.wf-review-section {
+	margin-bottom: 0.9em;
+}
+
+.wf-review-heading {
+	font-size: 0.75em;
+	letter-spacing: 0.06em;
+	color: var(--text-faint);
+	margin-bottom: 0.2em;
+}
+
+.wf-review-body {
+	color: var(--text-muted);
+	line-height: 1.65;
+}
+
+.wf-review-eg {
+	color: var(--text-normal);
+}
+
+.wf-review-source {
+	font-size: 0.85em;
+	color: var(--text-faint);
+	margin-top: 0.2em;
+}
+
+/* 封存與開筆記:比四顆評分鍵低調,不要跟主要動作搶。 */
+.wordfolio-review-extra-actions {
+	display: flex;
+	justify-content: center;
+	gap: 0.5em;
+	margin-top: 0.9em;
+}
+
+.wordfolio-review-extra-actions button {
+	background: transparent;
+	box-shadow: none;
+	font-size: 0.85em;
+	color: var(--text-faint);
+	padding: 0.25em 0.7em;
+}
+
+.wordfolio-review-extra-actions button:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+}
+
+.wf-state-suspended {
+	color: var(--text-faint);
+	text-decoration: line-through;
+}

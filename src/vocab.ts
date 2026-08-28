@@ -274,6 +274,7 @@ export class VocabStore {
 					lapses: Number(fm.fsrs_lapses ?? 0),
 					state: (fm.fsrs_state ?? "new") as VocabCard["state"],
 					lastReview: fm.fsrs_last_review ? String(fm.fsrs_last_review) : undefined,
+					suspended: fm.fsrs_suspended === true,
 				},
 			});
 		}
@@ -290,6 +291,20 @@ export class VocabStore {
 			fm.fsrs_lapses = card.lapses;
 			fm.fsrs_state = card.state;
 			if (card.lastReview) fm.fsrs_last_review = card.lastReview;
+		});
+	}
+
+	/**
+	 * 封存／解除封存。
+	 *
+	 * 只動 `fsrs_suspended` 這一個欄位,FSRS 的進度一律不碰——解除封存時
+	 * 原本學到哪就接回哪,不會因為封存過就被當成新字重來。
+	 * 解除時直接把欄位刪掉,而不是寫 false,免得每篇筆記都多一行沒用的資訊。
+	 */
+	async setSuspended(file: TFile, suspended: boolean): Promise<void> {
+		await this.app.fileManager.processFrontMatter(file, (fm) => {
+			if (suspended) fm.fsrs_suspended = true;
+			else delete fm.fsrs_suspended;
 		});
 	}
 }

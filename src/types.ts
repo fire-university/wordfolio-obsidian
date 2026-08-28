@@ -90,6 +90,14 @@ export interface VocabCard {
 	lapses: number;
 	state: "new" | "learning" | "review" | "relearning";
 	lastReview?: string;
+	/**
+	 * 封存:不再排進複習,但筆記還在、清單裡看得到、隨時可以還原。
+	 *
+	 * 刻意做成獨立欄位而不是多一種 state:封存是「暫時別問我這個」,
+	 * 不是一種學習階段。解除封存時 FSRS 的進度原封不動接回去,
+	 * 不會因為封存過就被當成新字重來。
+	 */
+	suspended?: boolean;
 }
 
 /**

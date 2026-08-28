@@ -261,6 +261,9 @@ export default class WordFolioPlugin extends Plugin {
 			return;
 		}
 		new ReviewModal(this.app, this.vocab, due, {
+			speak: (word, accent) => void this.audio.speak(word, accent),
+			autoSpeak: () => this.settings.reviewAutoSpeak,
+			openNote: (file) => void this.app.workspace.getLeaf(true).openFile(file),
 			// 每評一張就寫進 _review-log.md。複習到一半關掉視窗是常態,
 			// 那幾張不該憑空消失。
 			onGraded: (rating, wasNew) => this.log.record(RATING_NAME[rating], wasNew),
@@ -786,6 +789,16 @@ class WordFolioSettingTab extends PluginSettingTab {
 			},
 			t("set_new_per_day_unit")
 		);
+
+		new Setting(containerEl)
+			.setName(t("set_auto_speak_name"))
+			.setDesc(t("set_auto_speak_desc"))
+			.addToggle((tg) =>
+				tg.setValue(s.reviewAutoSpeak).onChange(async (v) => {
+					s.reviewAutoSpeak = v;
+					await this.plugin.saveSettings();
+				})
+			);
 
 		new Setting(containerEl)
 			.setName(t("set_import_anki_name"))

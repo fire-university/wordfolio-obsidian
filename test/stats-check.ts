@@ -125,6 +125,13 @@ check("超過七天的不算進本週", older.weekReviewed === 0, String(older.w
 check("本週沒複習過 → 正確率 null(不是 0)", older.weekAccuracy === null);
 check("但累計正確率還在", older.allAccuracy !== null);
 
+const parked = summarize(
+	[...cards, { stability: 9, reps: 4, lapses: 0, state: "review", due: "2026-08-01", suspended: true }],
+	days, "2026-08-27");
+check("封存的算進總數", parked.total === 6, String(parked.total));
+check("封存的不算到期(雖然它逾期很久)", parked.dueToday === 4, String(parked.dueToday));
+check("封存數單獨算", parked.suspendedCount === 1, String(parked.suspendedCount));
+
 const empty = summarize([], [], "2026-08-27");
 check("空生詞本不會爆", empty.total === 0 && empty.allAccuracy === null && empty.avgStability === 0);
 
