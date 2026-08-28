@@ -89,6 +89,14 @@ async function main() {
 		["better", "good"],
 		["mice", "mouse"],
 		["was", "be"],
+		// 專有名詞劫走一般字的變化形:ECDICT 的 Sharpe(夏普指數)在 exchange 欄
+		// 宣告了 r:sharper / t:sharpest,而 sharp 自己的 exchange 只有 s:sharps。
+		// 先寫先贏的話,滑過任何筆記裡的 sharpest 都會跳出「夏普指數」。
+		["sharpest", "sharp"],
+		["sharper", "sharp"],
+		// 同一族的其他受害者:ACH(自動清算所)劫走 aches、AP 劫走 aped。
+		["aches", "ache"],
+		["aped", "ape"],
 	];
 	for (const [surface, lemma] of inflections) {
 		const r = await dict.lookup(surface);
@@ -97,6 +105,12 @@ async function main() {
 			r?.entry.w.toLowerCase() === lemma,
 			r ? `得到 ${r.entry.w}（${r.inflection ?? "原形"}）` : "查無"
 		);
+	}
+
+	// 變化類型也要對:sharpest 是最高級,不是別的。
+	for (const [surface, kind] of [["sharpest", "superlative"], ["sharper", "comparative"]] as const) {
+		const r = await dict.lookup(surface);
+		check(`${surface} 標成 ${kind}`, r?.inflection === kind, r?.inflection ?? "無");
 	}
 
 	// unnerving 是這條規則的來由:它自己的釋義是「[醫] 除神經法」,沒用。

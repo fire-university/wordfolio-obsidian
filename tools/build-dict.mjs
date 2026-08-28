@@ -265,6 +265,98 @@ function parseExchange(exch) {
 	return parts;
 }
 
+// ------------------------------------------------------ 詞形還原的消歧
+
+// 同一個變化形常常有好幾個原形來搶,而且搶贏的多半是專有名詞或縮寫:
+//
+//   Sharpe(夏普指數)  exchange 寫 r:sharper/t:sharpest,而 sharp 自己只寫 s:sharps
+//   ACH(自動清算所)   把 aches 從 ache 手上搶走
+//   AP                把 aped 從 ape 手上搶走
+//
+// 原本是「先寫先贏」,而 ECDICT 大致按 ASCII 排序、大寫排在小寫前面,
+// 於是專有名詞穩定地贏——滑過筆記裡的 "sharpest" 會跳出「夏普指數」。
+//
+// 改成:把所有宣稱都收下來,全部掃完(含 lemma.en.txt)再一次裁決。
+// 排序鍵由高到低,前三條都是「排除不可能」,詞頻只在剩下的候選之間做取捨:
+//
+//   1. 原形是不是一個「普通英文字」:有小寫拼法(排掉 Sharpe / ACH / AP / ABL /
+//      BLU),而且釋義不是清一色 abbr.(排掉 rve「雷達影片訊號析取器」——它宣稱
+//      riven 是自己的過去分詞,而它只是個小寫拼的縮寫,躲得過大小寫那關)。
+//      縮寫與專有名詞不會是英文變化形的原形,這條解掉整個 Sharpe 家族。
+//   2. 原形自己是不是變化形(它的 exchange 有 0: 指向另一個存在的字)。變化形不能當原形——
+//      ground 是 grind 的過去式,卻在 exchange 裡宣稱 grinds/grinding 是它的;
+//      number 是 numb 的比較級,卻來搶 numbs;canter 之於 cants 也一樣。
+//   3. 原形自己有沒有「否認」這個變化形:它的 exchange 在同一個類型欄位上填的是
+//      別的字。con 的過去式明寫 conned,所以 coned 不可能是 con 的;kit 的 ing
+//      明寫 kitting,所以 kiting 不是 kit 的。注意「沒填」不算否認——ECDICT 的
+//      exchange 欄很多是空的(cookie 就完全沒填),空的要留給第 4 條去比。
+//   4. 詞頻排名(bnc / frq 取較前者,數字越小越常用;0 代表沒資料,視為最後)。
+//      解掉一整批被切爛的假原形:bon→bone、clon→clone、emphase→emphasis、
+//      cooky→cookie 這種 -y/-ie 變體也靠這條。
+//   5. 先宣稱的贏——維持舊行為,讓沒有訊號可比時的結果穩定。
+//
+// 這條規則只在「有人搶」時才動用。變化形若只有一個原形候選(例如
+// Frenchmen → Frenchman 這種本來就該是專有名詞的),照收不誤。
+//
+// 剩下解不掉的是 ECDICT 兩邊都言之成理的同形字:skied 可以是 ski 也可以是 sky、
+// leaves 可以是 leaf 也可以是 leave、bathing 可以是 bath 也可以是 bathe。
+// 那種只能由詞頻定,結果不算錯,只是選了另一個義項。
+
+const CODE_BY_KIND = Object.fromEntries(Object.entries(KIND_BY_CODE).map(([c, k]) => [k, c]));
+
+/** 詞頻排名:bnc 與 frq 取較前者;沒資料回 Infinity(排最後)。 */
+function freqRank(bnc, frq) {
+	return Math.min(bnc > 0 ? bnc : Infinity, frq > 0 ? frq : Infinity);
+}
+
+/** 是不是普通英文字:有小寫拼法,且釋義不是清一色 abbr.(見上方第 1 條)。 */
+function isOrdinaryWord(facts) {
+	return facts?.hasLower && facts.hasPlainSense ? 0 : 1;
+}
+
+/**
+ * 候選原形的兩個減分項(見上方第 2、3 條)。只有爭議的變化形才會走到這裡,
+ * 所以 exchange 留原始字串、要用時才 parse,不必為 77 萬個詞條都存一份物件。
+ */
+function lemmaDemerits(candidate, key, wordFacts) {
+	const facts = wordFacts.get(candidate.lemma);
+	if (!facts?.exch) return { isForm: 0, denies: 0 };
+	const ex = parseExchange(facts.exch);
+	const code = CODE_BY_KIND[candidate.kind];
+	const declared = code ? ex[code] : undefined;
+	const denies =
+		declared && !declared.split(",").some((f) => f.trim().toLowerCase() === key) ? 1 : 0;
+
+	// 0: 要指向「另一個普通英文字」才算「我是變化形」。ECDICT 有兩種寫法會誤判:
+	// put 寫 0:put(過去式就是自己)、sled 寫 0:sle(SLE 是紅斑狼瘡的縮寫)。
+	// 把這兩種算成變化形的話,putting 會被 putt 搶走、sleds 會被 sledge 搶走。
+	const base = ex["0"]?.toLowerCase();
+	const isForm =
+		base && base !== candidate.lemma && isOrdinaryWord(wordFacts.get(base)) === 0 ? 1 : 0;
+	return { isForm, denies };
+}
+
+/** 比較兩個原形候選,回傳負數表示 a 較好。wordFacts:小寫字 → { rank, hasLower, … }。 */
+function compareLemmaCandidates(a, b, key, wordFacts) {
+	const fa = wordFacts.get(a.lemma);
+	const fb = wordFacts.get(b.lemma);
+
+	const ordinaryA = isOrdinaryWord(fa);
+	const ordinaryB = isOrdinaryWord(fb);
+	if (ordinaryA !== ordinaryB) return ordinaryA - ordinaryB;
+
+	const da = lemmaDemerits(a, key, wordFacts);
+	const db = lemmaDemerits(b, key, wordFacts);
+	if (da.isForm !== db.isForm) return da.isForm - db.isForm;
+	if (da.denies !== db.denies) return da.denies - db.denies;
+
+	const rankA = fa ? fa.rank : Infinity;
+	const rankB = fb ? fb.rank : Infinity;
+	if (rankA !== rankB) return rankA - rankB;
+
+	return a.seq - b.seq;
+}
+
 // ------------------------------------------------------------- 主流程
 
 function shardKey(word) {
@@ -288,7 +380,17 @@ function main() {
 
 	const shards = new Map(); // shardKey → { word: entry }
 	const phraseShards = new Map(); // p{letter} → { phrase: entry };單字與片語分開存
-	const inflect = new Map(); // 變化形 → [原形, 類型]
+	const inflect = new Map(); // 變化形 → [原形, 類型];所有來源掃完才裁決(見上方消歧說明)
+	const claims = new Map(); // 變化形 → [{ lemma, kind, seq }, …],同一個原形只收第一次
+	const wordFacts = new Map(); // 小寫字 → { rank, hasLower, hasPlainSense, exch };裁決用的證據,涵蓋全部 ECDICT 詞條
+	let claimSeq = 0;
+	const claim = (key, lemma, kind) => {
+		if (!key || !lemma || key === lemma) return;
+		let list = claims.get(key);
+		if (!list) claims.set(key, (list = []));
+		if (list.some((c) => c.lemma === lemma)) return;
+		list.push({ lemma, kind, seq: claimSeq++ });
+	};
 	const keptWords = new Set(); // 通過篩選的單字(小寫),片語篩選要用
 	const phraseCandidates = []; // 含空格的詞條,單字全掃完才知道哪些留
 
@@ -332,22 +434,36 @@ function main() {
 		const exch = parseExchange(exchange);
 		const lower = w.toLowerCase();
 
+		// 裁決消歧要用的證據:每個詞條都記,不受下面的釋義篩選影響。
+		// hasLower 是「這個字在 ECDICT 裡有沒有小寫拼法」——Sharpe / ACH / AP 都沒有。
+		const facts = wordFacts.get(lower);
+		const rank = freqRank(bnc, frq);
+		const isLower = !/^[A-Z]/.test(w);
+		const exchRaw = exchange.trim();
+		// 「有一般義項」= 至少有一行不是 abbr. 開頭的釋義。整條都是 abbr. 的詞條
+		// (rve、adr 之類)不該當別人的原形。
+		const plainSense = translation
+			.split("\\n")
+			.some((line) => line.trim() && !/^abbr\./i.test(line.trim()));
+		if (facts) {
+			if (rank < facts.rank) facts.rank = rank;
+			if (isLower) facts.hasLower = true;
+			if (plainSense) facts.hasPlainSense = true;
+			if (!facts.exch) facts.exch = exchRaw;
+		} else {
+			wordFacts.set(lower, { rank, hasLower: isLower, hasPlainSense: plainSense, exch: exchRaw });
+		}
+
 		// 詞形還原表要涵蓋所有詞條,不受下面的釋義篩選影響——
 		// 罕見字的變化形一樣要能還原回原形,才查得到。
 		if (exch["0"]) {
-			const lemma = exch["0"].toLowerCase();
-			if (lemma !== lower && !inflect.has(lower)) {
-				inflect.set(lower, [lemma, KIND_BY_CODE[exch["1"]] || "lemma"]);
-			}
+			claim(lower, exch["0"].toLowerCase(), KIND_BY_CODE[exch["1"]] || "lemma");
 		}
 		for (const [code, kind] of Object.entries(KIND_BY_CODE)) {
 			const form = exch[code];
 			if (!form) continue;
 			for (const f of form.split(",")) {
-				const key = f.trim().toLowerCase();
-				if (key && key !== lower && !inflect.has(key)) {
-					inflect.set(key, [lower, kind]);
-				}
+				claim(f.trim().toLowerCase(), lower, kind);
 			}
 		}
 
@@ -447,7 +563,7 @@ function main() {
 
 	// lemma.en.txt 補不規則變化(be → is/was/are/were …),ECDICT 的 exchange 欄漏掉的。
 	console.log("\nMerging lemma.en.txt …");
-	let lemmaAdded = 0;
+	const fromEcdict = new Set(claims.keys());
 	const lemmaText = fs.readFileSync(path.join(VENDOR, "lemma.en.txt"), "utf8");
 	for (const line of lemmaText.split("\n")) {
 		if (!line || line.startsWith(";")) continue;
@@ -455,13 +571,35 @@ function main() {
 		if (!right) continue;
 		const lemma = left.split("/")[0].trim().toLowerCase();
 		for (const f of right.split(",")) {
-			const key = f.trim().toLowerCase();
-			if (key && key !== lemma && !inflect.has(key)) {
-				inflect.set(key, [lemma, "lemma"]);
-				lemmaAdded++;
-			}
+			claim(f.trim().toLowerCase(), lemma, "lemma");
 		}
 	}
+	let lemmaAdded = 0;
+	for (const key of claims.keys()) if (!fromEcdict.has(key)) lemmaAdded++;
+
+	// 裁決:每個變化形挑一個原形(見上方消歧說明)。
+	let contested = 0;
+	let flipped = 0;
+	for (const [key, list] of claims) {
+		if (list.length > 1) contested++;
+		let best = list[0];
+		for (let i = 1; i < list.length; i++) {
+			if (compareLemmaCandidates(list[i], best, key, wordFacts) < 0) best = list[i];
+		}
+		if (best !== list[0]) flipped++;
+		// lemma.en.txt 只知道「這是某個字的變化形」,不分類型。贏家若來自那邊,
+		// 就把落選者身上的具體類型撿回來——ECDICT 認得出 sharpest 是最高級,
+		// 只是把它掛錯原形;類型跟掛給誰無關,不該一起賠掉。
+		let kind = best.kind;
+		if (kind === "lemma") {
+			const specific = list.find((c) => c.kind !== "lemma");
+			if (specific) kind = specific.kind;
+		}
+		inflect.set(key, [best.lemma, kind]);
+	}
+	console.log(
+		`  ${contested.toLocaleString()} 個變化形有多個原形候選,其中 ${flipped.toLocaleString()} 個改判給非「先宣稱」的原形`
+	);
 
 	console.log(`\nTotal rows      ${total.toLocaleString()}`);
 	console.log(`Kept entries    ${kept.toLocaleString()}  (${((kept / total) * 100).toFixed(1)}%)`);
