@@ -11,6 +11,7 @@
 import { App, TFile, normalizePath } from "obsidian";
 import { formsFor, meaningfulLines } from "./lemma";
 import { meaningOf, type VocabRow } from "./vocab-list";
+import { yamlString } from "./frontmatter";
 import type { ImportedWord } from "./anki-import";
 import type { DictEntry, Lookup, VocabCard } from "./types";
 
@@ -173,8 +174,9 @@ export class VocabStore {
 			"type: 生詞",
 			`word: ${entry.w}`,
 		];
-		if (entry.uk ?? entry.ph) fm.push(`音標_英: "${entry.uk ?? entry.ph}"`);
-		if (entry.us) fm.push(`音標_美: "${entry.us}"`);
+		const uk = entry.uk ?? entry.ph;
+		if (uk) fm.push(`音標_英: ${yamlString(uk)}`);
+		if (entry.us) fm.push(`音標_美: ${yamlString(entry.us)}`);
 
 		const freq: string[] = [];
 		if (entry.bnc) freq.push(`BNC ${entry.bnc}`);
@@ -183,8 +185,9 @@ export class VocabStore {
 		if (entry.collins) fm.push(`柯林斯: ${entry.collins}`);
 		if (entry.tag?.length) fm.push(`考試: ${entry.tag.join(", ")}`);
 
-		if (source) fm.push(`來源: ${source}`);
-		if (url) fm.push(`來源連結: ${url}`);
+		// 來源是外部標題,含冒號、引號都很正常,一定要包起來——不包的下場見 frontmatter.ts。
+		if (source) fm.push(`來源: ${yamlString(source)}`);
+		if (url) fm.push(`來源連結: ${yamlString(url)}`);
 
 		fm.push(
 			`date: ${today}`,

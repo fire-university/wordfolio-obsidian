@@ -25,7 +25,12 @@ import {
 export const VIEW_TYPE_VOCAB = "wordfolio-vocab";
 
 export interface VocabViewDeps {
-	data: () => Promise<{ rows: VocabRow[]; days: DayLog[]; queueSize: number }>;
+	data: () => Promise<{
+		rows: VocabRow[];
+		days: DayLog[];
+		queueSize: number;
+		newLimit: number;
+	}>;
 	startReview: () => void;
 	importFromAnki: () => Promise<void>;
 	openNote: (path: string) => void;
@@ -64,6 +69,7 @@ export class VocabView extends ItemView {
 	private rows: VocabRow[] = [];
 	private stats: Stats | null = null;
 	private queueSize = 0;
+	private newLimit = 0;
 
 	// 重畫表格時只換這幾塊,不整頁重建——不然打字打到一半焦點就沒了。
 	private statsEl!: HTMLElement;
@@ -96,9 +102,10 @@ export class VocabView extends ItemView {
 
 	/** 生詞本或複習紀錄變動時由 main.ts 叫。 */
 	async refresh(): Promise<void> {
-		const { rows, days, queueSize } = await this.deps.data();
+		const { rows, days, queueSize, newLimit } = await this.deps.data();
 		this.rows = rows;
 		this.queueSize = queueSize;
+		this.newLimit = newLimit;
 		this.stats = summarize(
 			rows.map((r) => r.card),
 			days,
@@ -197,6 +204,13 @@ export class VocabView extends ItemView {
 				due: s.dueToday,
 			})
 		);
+		// 「今天到期 209」旁邊卻是一顆「複習 24」,不解釋的話那看起來就像壞了。
+		if (this.queueSize < s.dueToday) {
+			this.breakdownEl.createSpan({
+				cls: "wf-limit-note",
+				text: t("list_new_limit_note", { n: this.queueSize, limit: this.newLimit }),
+			});
+		}
 
 		const worst = hardest(this.rows, 8);
 		if (!worst.length) return;

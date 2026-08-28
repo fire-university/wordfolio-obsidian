@@ -291,6 +291,7 @@ export default class WordFolioPlugin extends Plugin {
 			rows,
 			days: this.log.all(),
 			queueSize: (await this.queue()).length,
+			newLimit: this.settings.newPerDay,
 		};
 	}
 
