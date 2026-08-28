@@ -156,7 +156,7 @@ export class ReviewModal extends Modal {
 		}
 
 		contentEl.createDiv({ cls: "wordfolio-review-word", text: entry.card.word });
-		this.renderPhonetics(contentEl, note, entry.card.word);
+		this.renderPhonetics(contentEl, note, entry.card.word, true);
 		this.renderBack(contentEl, note);
 	}
 
@@ -174,17 +174,20 @@ export class ReviewModal extends Modal {
 	/**
 	 * 英美兩套音標,各自一顆播放鍵。要聽哪一種是使用者的事,不幫他挑。
 	 *
-	 * @param bindKeys 綁 K / S 兩個快捷鍵。**只有問題卡傳 true**——答案卡的 K
-	 *                 已經是「已學會」,兩邊都綁會撞在一起。
+	 * 快捷鍵是 U(UK)與 S(US),兩面一致。
+	 *
+	 * 原本問題卡用的是 K,但答案卡的 K 已經給了「已學會」——同一個鍵在兩面
+	 * 做不同的事,等於要記兩套。改成 U / S 之後兩面一樣,而且 U 對 UK、S 對 US
+	 * 本身就好記。
 	 */
 	private renderPhonetics(
 		parent: HTMLElement,
 		note: ParsedNote,
 		word: string,
-		bindKeys = false
+		bindKeys = true
 	): void {
 		const pairs: [Accent, string, string | undefined, string][] = [
-			["uk", t("accent_uk"), note.ukPhonetic, "k"],
+			["uk", t("accent_uk"), note.ukPhonetic, "u"],
 			["us", t("accent_us"), note.usPhonetic, "s"],
 		];
 		if (!pairs.some(([, , ipa]) => ipa)) return;
@@ -458,14 +461,17 @@ export class ReviewModal extends Modal {
 		// Grade 是 Rating 去掉 Manual 的子集;複習只會用這四個。
 		// 每顆的快捷鍵取自它自己的字首(Again→A、Hard→H、Good→G、Easy→E),
 		// 這樣不用背——看按鈕就知道按哪個鍵。1–4 也留著,舊的肌肉記憶不打斷。
-		const grades: [Grade, string, string][] = [
-			[Rating.Again, t("review_again"), "a"],
-			[Rating.Hard, t("review_hard"), "h"],
-			[Rating.Good, t("review_good"), "g"],
-			[Rating.Easy, t("review_easy"), "e"],
+		// 顏色由紅到綠一路過去,對應「下次多久再問你」由短到長:
+		// Again 紅、Hard 橘、Good 黃、Easy 綠。用 class 而不是 :first-child——
+		// 靠位置決定顏色,順序一改就錯。
+		const grades: [Grade, string, string, string][] = [
+			[Rating.Again, t("review_again"), "a", "again"],
+			[Rating.Hard, t("review_hard"), "h", "hard"],
+			[Rating.Good, t("review_good"), "g", "good"],
+			[Rating.Easy, t("review_easy"), "e", "easy"],
 		];
-		grades.forEach(([rating, label, key], i) => {
-			const b = buttons.createEl("button");
+		grades.forEach(([rating, label, key, tone], i) => {
+			const b = buttons.createEl("button", { cls: `wf-grade wf-grade-${tone}` });
 			b.createSpan({ text: label });
 			b.onclick = () => void this.grade(rating);
 			this.bind(b, key, () => void this.grade(rating));
