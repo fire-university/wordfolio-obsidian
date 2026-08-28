@@ -133,11 +133,17 @@ export class ReviewModal extends Modal {
 	 *
 	 * 線索由淺到深排,前三樣免費、後兩樣要自己按:
 	 *
-	 *   1. 那句話的中文翻譯    知道要表達什麼,才有辦法想那個字
-	 *   2. 挖空的原句          看得到它在句子裡的位置與詞性
-	 *   3. 首尾字母            w_______r,把範圍縮到想得起來的程度
-	 *   4. 聽發音(要按)       音檔本身就是很強的提示,不主動播
-	 *   5. 看音標(要按)       IPA 幾乎等於答案,所以收起來
+	 *   1. **那個字的中文釋義**  要猜的東西是什麼意思
+	 *   2. 挖空的原句            看得到它在句子裡的位置與詞性
+	 *   3. 那句話的中譯          情境參考,小字
+	 *   4. 首尾字母              s______t,把範圍縮到想得起來的程度
+	 *   5. 聽發音(要按)         音檔本身就是很強的提示,不主動播
+	 *   6. 看音標(要按)         IPA 幾乎等於答案,所以收起來
+	 *
+	 * 第 1 層是二改補上的。原本只給句子中譯,但**字幕的翻譯常常跟原句一樣是
+	 * 斷的**——`enabled them to subsist` 的中譯是「使他們能夠」,`subsist`
+	 * 那半截根本沒翻到。道哥:「連那個答案空缺的也沒給,我怎麼知道我要猜的字是
+	 * 什麼?」句子中譯給的是情境,**要猜的東西是什麼意思得由釋義來講**。
 	 *
 	 * 他說得很清楚:「重點是在我思考的過程,你要給我線索去思考」——所以這裡的
 	 * 設計目標不是「讓他答對」,是**讓他想得動**。
@@ -156,11 +162,18 @@ export class ReviewModal extends Modal {
 			}
 		}
 
-		if (translation) {
-			parent.createDiv({ cls: "wordfolio-review-hint-zh", text: translation });
+		// 第一層線索:這個字的中文意思。一定要有,不然根本不知道要猜什麼。
+		if (note.meaning.length) {
+			const gloss = parent.createDiv({ cls: "wordfolio-review-gloss" });
+			for (const line of note.meaning) gloss.createDiv({ text: line });
 		}
+
 		if (cloze) {
 			parent.createDiv({ cls: "wordfolio-review-cloze", text: cloze });
+			// 句子中譯降級成情境參考:字幕的翻譯常常是半截的,拿它當主線索會害人。
+			if (translation) {
+				parent.createDiv({ cls: "wordfolio-review-hint-zh", text: translation });
+			}
 		}
 		// 沒有句子可挖時至少給首尾字母,不然正面會是一片空白。
 		parent.createDiv({ cls: "wordfolio-review-shape", text: hintFor(word) });
@@ -251,16 +264,25 @@ export class ReviewModal extends Modal {
 			});
 		});
 
-		const extras = parent.createDiv({ cls: "wordfolio-review-extra-actions" });
-		// 這兩顆上一版做成淡淡的純文字,道哥說「應該要給我一個按鈕,而不是只有
-		// 一行字」——看起來不能按的東西,就等於不存在。
+		// 次要動作跟評分鍵**同一排**。原本另起一排,兩排按鈕把答案面的重心往下拉,
+		// 而且看起來像四顆同等重要的選項又多了兩顆。用一條分隔線分主次,只佔一行。
+		buttons.createSpan({ cls: "wf-btn-separator" });
+
 		// 封存:匯進來兩百多個字,一定有一批本來就會的。Easy 只是把它推遠,
 		// 它還是會回來;這顆是「別再問我這個字了」。
-		const park = extras.createEl("button", { text: t("review_suspend") });
+		const park = buttons.createEl("button", {
+			cls: "wf-secondary-action",
+			text: t("review_suspend"),
+		});
 		park.setAttribute("aria-label", t("review_suspend_desc"));
 		park.onclick = () => void this.suspend();
 
-		const open = extras.createEl("button", { text: t("review_open_note") });
+		// 開筆記用圖示就夠——它是最少用到的那顆,不值得佔掉一整個詞的寬度。
+		const open = buttons.createEl("button", {
+			cls: "wf-secondary-action wf-icon-action",
+		});
+		setIcon(open, "pencil");
+		open.setAttribute("aria-label", t("review_open_note"));
 		open.onclick = () => {
 			const file = this.current!.file;
 			this.close();

@@ -871,13 +871,6 @@
 }
 
 /* 封存與開筆記:比四顆評分鍵低調,不要跟主要動作搶。 */
-.wordfolio-review-extra-actions {
-	display: flex;
-	justify-content: center;
-	gap: 0.5em;
-	margin-top: 0.9em;
-}
-
 .wordfolio-review-extra-actions button {
 	background: transparent;
 	box-shadow: none;
@@ -900,17 +893,29 @@
    2026-08-28 二改:正面不再顯示那個字(上一版把答案印在標題上,挖空等於白做)。
    線索由淺到深:中譯 → 挖空句 → 首尾字母 → 聽發音/看音標(要自己按)。 */
 
-.wordfolio-review-hint-zh {
-	margin: 1.5em auto 0.8em;
+/* 第一層線索:這個字的中文意思。正面最大的字——要猜什麼全靠它。 */
+.wordfolio-review-gloss {
+	margin: 1.5em auto 1em;
 	max-width: 32em;
-	font-size: 1.25em;
+	font-size: 1.35em;
 	line-height: 1.7;
 	color: var(--text-normal);
 	text-align: center;
 }
 
+/* 句子中譯只是情境參考。字幕的翻譯常常是半截的(「使他們能夠」翻不到
+   subsist),所以刻意做小、做淡,不要讓人以為它是主要線索。 */
+.wordfolio-review-hint-zh {
+	margin: 0 auto 1.2em;
+	max-width: 32em;
+	font-size: 0.92em;
+	line-height: 1.6;
+	color: var(--text-faint);
+	text-align: center;
+}
+
 .wordfolio-review-cloze {
-	margin: 0 auto 0.8em;
+	margin: 0 auto 0.4em;
 	max-width: 34em;
 	font-size: 1.05em;
 	line-height: 1.8;
@@ -960,20 +965,33 @@
 	margin-bottom: 0.4em;
 }
 
-/* 封存與開啟筆記:上一版做成淡淡的純文字,看起來不能按就等於不存在。
-   給它們真正的按鈕外觀,但仍比四顆評分鍵低調。 */
-.wordfolio-review-extra-actions button {
-	background: var(--background-secondary);
+/* 次要動作跟評分鍵同一排(原本另起一排,把答案面的重心往下拉)。
+   靠分隔線與較淡的樣式分主次,不靠換行。 */
+.wf-btn-separator {
+	width: 1px;
+	align-self: stretch;
+	margin: 0.2em 0.35em;
+	background: var(--background-modifier-border);
+}
+
+.wordfolio-review-buttons .wf-secondary-action {
+	background: transparent;
 	border: 1px solid var(--background-modifier-border);
 	box-shadow: none;
 	font-size: 0.88em;
 	color: var(--text-muted);
-	padding: 0.4em 1em;
 	cursor: pointer;
 }
 
-.wordfolio-review-extra-actions button:hover {
+.wordfolio-review-buttons .wf-secondary-action:hover {
 	color: var(--text-normal);
 	background: var(--background-modifier-hover);
 	border-color: var(--background-modifier-border-hover);
+}
+
+.wordfolio-review-buttons .wf-icon-action {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0.4em 0.6em;
 }
