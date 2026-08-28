@@ -10,7 +10,9 @@ import {
 	move,
 	type SectionId,
 	setSectionEnabled,
+	defaultEnabledFor,
 } from "../src/sections";
+import { migrateContentLang } from "../src/settings";
 
 let failures = 0;
 
@@ -152,6 +154,35 @@ check("關得掉", off.cambridge === false);
 off = setSectionEnabled(off, "oxford", true);
 check("關掉的維持關掉", off.cambridge === false && off.oxford === true);
 check("其他區塊維持預設", off.zh === normalizeEnabled({}).zh);
+
+console.log("\n英文的區塊預設值");
+const zhDefaults = defaultEnabledFor("zh-TW");
+const enDefaults = defaultEnabledFor("en");
+check("繁中預設開繁中釋義", zhDefaults.translation === true);
+check("英文預設關掉繁中釋義", enDefaults.translation === false);
+check("英文預設關掉劍橋(那是英漢詞典)", enDefaults.cambridge === false);
+check("英文預設開牛津學習者(純英文,有 CEFR)", enDefaults.oxford === true);
+check("英文預設開英英釋義", enDefaults.english === true);
+check("兩份都不是同一個物件(改一份不會動到另一份)", zhDefaults !== enDefaults);
+{
+	const mine = defaultEnabledFor("en");
+	mine.oxford = false;
+	check("回傳的是副本", defaultEnabledFor("en").oxford === true);
+}
+
+console.log("\n釋義語言的遷移(錯了會讓既有使用者的筆記格式突然改變)");
+check("全新安裝 → auto", migrateContentLang(null) === "auto", migrateContentLang(null));
+check(
+	"既有使用者沒有這個欄位 → 釘成 zh-TW",
+	migrateContentLang({ language: "en" }) === "zh-TW",
+	migrateContentLang({ language: "en" })
+);
+check(
+	"介面設英文的既有使用者也一樣釘成 zh-TW",
+	migrateContentLang({ language: "en", vocabFolder: "英文生詞本" }) === "zh-TW"
+);
+check("已經選過就尊重他的選擇", migrateContentLang({ contentLang: "en" }) === "en");
+check("已經選過 auto 也尊重", migrateContentLang({ contentLang: "auto" }) === "auto");
 
 console.log(failures === 0 ? "\n全部通過。" : `\n${failures} 項失敗。`);
 process.exit(failures === 0 ? 0 : 1);

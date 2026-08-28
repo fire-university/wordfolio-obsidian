@@ -13,6 +13,7 @@ import {
 	DICT_ENTRIES,
 	DICT_BYTES,
 	FUNDING_URL,
+	migrateContentLang,
 } from "./settings";
 import {
 	installDictionary,
@@ -20,7 +21,8 @@ import {
 	DictDownloadError,
 	type DownloadIO,
 } from "./dict-download";
-import { t, setLang, LangSetting, currentLang } from "./i18n";
+import { t, setLang, LangSetting, currentLang, resolveLang } from "./i18n";
+import type { NoteLang } from "./note-schema";
 import { Dictionary } from "./dict";
 import { WordTooltip } from "./tooltip";
 import { HoverController, type TriggerMode } from "./hover";
@@ -104,8 +106,10 @@ export default class WordFolioPlugin extends Plugin {
 			() => this.settings.audioSource === "online_first"
 		);
 
-		this.vocab = new VocabStore(this.app, () => this.settings.vocabFolder);
-		this.log = new ReviewLog(this.app, () => this.settings.vocabFolder);
+		this.vocab = new VocabStore(this.app, () => this.settings.vocabFolder, () =>
+			this.contentLang()
+		);
+		this.log = new ReviewLog(this.app, () => this.settings.vocabFolder, () => this.contentLang());
 
 		// 線上詞典查過的字寫進外掛資料夾,離線與重開之後都還在。
 		const store: SourceStore = {
@@ -126,7 +130,7 @@ export default class WordFolioPlugin extends Plugin {
 		this.llm = new LocalLLM(() => ({
 			endpoint: this.settings.llmEndpoint,
 			model: this.settings.llmModel,
-			traditional: currentLang() === "zh-TW",
+			traditional: this.contentLang() === "zh-TW",
 		}));
 
 		this.tooltip = new WordTooltip({
@@ -590,7 +594,7 @@ export default class WordFolioPlugin extends Plugin {
 			// 中文介面拿到的是翻譯,放繁中釋義那格;英文介面拿到的是白話改寫,
 			// 要放英英釋義那格——放錯格子的話,該語言預設關掉的區塊會把它藏起來,
 			// 使用者只會看到一個空浮窗。
-			return currentLang() === "en"
+			return this.contentLang() === "en"
 				? { entry: { w: text, tr: "", def: answer }, surface: text }
 				: { entry: { w: text, tr: answer }, surface: text };
 		} catch {
@@ -671,6 +675,17 @@ export default class WordFolioPlugin extends Plugin {
 		await this.refreshViews();
 	}
 
+	/**
+	 * 釋義與生詞筆記要用哪種語言。
+	 *
+	 * 跟介面語言分開:道哥的 Obsidian 介面是英文,要的釋義卻是繁中。auto 才
+	 * 跟著介面走,那是給沒特別指定的人用的預設。
+	 */
+	contentLang(): NoteLang {
+		if (this.settings.contentLang !== "auto") return this.settings.contentLang;
+		return currentLang();
+	}
+
 	applyLang(): void {
 		// Obsidian 的顯示語言;官方 API 沒有公開 getter,用 localStorage 的 language 鍵。
 		const locale = window.localStorage.getItem("language") || "";
@@ -689,10 +704,20 @@ export default class WordFolioPlugin extends Plugin {
 		// 只在**沒有存過設定**時做一次。之後切換介面語言不會再動這些——已經
 		// 建好的生詞本資料夾不會自己搬家,使用者調過的區塊也不該被重置。
 		if (!data) {
-			const lang = currentLang();
+			const lang = this.contentLang();
 			this.settings.sectionsEnabled = defaultEnabledFor(lang);
 			this.settings.vocabFolder = t("default_vocab_folder");
 			this.settings.migratedCambridge = true; // 全新安裝不需要那次遷移
+			await this.saveSettings();
+		}
+
+		// 遷移:釋義語言從介面語言拆出來之前,內容永遠是繁中。已經存過設定的人
+		// 一律釘成 zh-TW——不釘的話,介面設英文的既有使用者(道哥就是)會突然
+		// 開始拿到英文釋義、而且新的生詞筆記會用英文格式寫,跟他既有的兩百多篇
+		// 對不上。新安裝才走 auto。
+		const migrated = migrateContentLang(data);
+		if (this.settings.contentLang !== migrated) {
+			this.settings.contentLang = migrated;
 			await this.saveSettings();
 		}
 
@@ -834,6 +859,25 @@ class WordFolioSettingTab extends PluginSettingTab {
 						s.language = v as LangSetting;
 						await this.plugin.saveSettings();
 						this.plugin.applyLang();
+						this.display();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName(t("set_content_lang_name"))
+			.setDesc(t("set_content_lang_desc"))
+			.addDropdown((d) =>
+				d
+					.addOption("auto", t("content_lang_auto"))
+					.addOption("en", "English")
+					.addOption("zh-TW", "繁體中文")
+					.setValue(s.contentLang)
+					.onChange(async (v) => {
+						s.contentLang = v as LangSetting;
+						// 換釋義語言就換該語言的區塊預設值。不換的話,切成英文的人
+						// 浮窗裡照樣是繁中釋義配英漢劍橋,他會以為這個設定沒作用。
+						s.sectionsEnabled = defaultEnabledFor(this.plugin.contentLang());
+						await this.plugin.saveSettings();
 						this.display();
 					})
 			);

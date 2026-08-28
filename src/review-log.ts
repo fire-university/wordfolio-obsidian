@@ -9,8 +9,8 @@
 // stats.ts 的解析器認日期不認表頭,所以換語言不會讓舊資料讀不出來。
 
 import { App, TFile, normalizePath } from "obsidian";
-import { t, currentLang } from "./i18n";
-import { schemaFor } from "./note-schema";
+import { t } from "./i18n";
+import { schemaFor, type NoteLang } from "./note-schema";
 import { isoDate } from "./schedule";
 import {
 	parseLog,
@@ -26,7 +26,12 @@ export const LOG_FILE = "_review-log.md";
 export class ReviewLog {
 	private days: DayLog[] = [];
 
-	constructor(private app: App, private folder: () => string) {}
+	constructor(
+		private app: App,
+		private folder: () => string,
+		/** 紀錄檔的 frontmatter 用哪種語言。跟生詞筆記同一個來源。 */
+		private lang: () => NoteLang
+	) {}
 
 	private path(): string {
 		return normalizePath(`${this.folder()}/${LOG_FILE}`);
@@ -34,7 +39,7 @@ export class ReviewLog {
 
 	/** 界線裡那句提醒,以及新檔案的 frontmatter type。都跟介面語言走。 */
 	private labels(): { note: string; type: string } {
-		return { note: t("log_sentinel_note"), type: schemaFor(currentLang()).logType };
+		return { note: t("log_sentinel_note"), type: schemaFor(this.lang()).logType };
 	}
 
 	private headers(): string[] {

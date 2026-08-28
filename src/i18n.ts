@@ -210,6 +210,10 @@ const EN: Dict = {
 	lang_auto: "Auto",
 	// --- 詞庫(設定頁) ---
 	default_vocab_folder: "Vocabulary",
+	set_content_lang_name: "Definition language",
+	set_content_lang_desc:
+		"What language definitions and new vocabulary notes are written in — separate from the interface language above, so you can read an English interface and still get Chinese definitions. Changing this resets which tooltip sections are shown to that language's defaults; notes you already have are left as they are and stay readable either way.",
+	content_lang_auto: "Same as the interface",
 	heading_dict: "Offline dictionary",
 	set_dict_status_name: "Dictionary files",
 	set_dict_installed: "Installed — version {version}, {entries} entries, {size} on disk.",
@@ -497,6 +501,10 @@ const ZH: Dict = {
 	lang_auto: "自動",
 	// --- 詞庫(設定頁) ---
 	default_vocab_folder: "英文生詞本",
+	set_content_lang_name: "釋義語言",
+	set_content_lang_desc:
+		"釋義與新生詞筆記要用哪種語言寫。**跟上面的介面語言分開**,所以介面用英文、釋義用繁中是可以的。改這個會把浮窗要顯示哪些區塊重設成該語言的預設值;已經寫好的筆記不會被動到,兩種語言的筆記都讀得出來。",
+	content_lang_auto: "跟介面語言一致",
 	heading_dict: "離線詞庫",
 	set_dict_status_name: "詞庫檔案",
 	set_dict_installed: "已安裝——版本 {version},{entries} 個詞條,佔用 {size}。",

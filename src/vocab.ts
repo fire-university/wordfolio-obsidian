@@ -14,7 +14,6 @@ import { meaningOf, type VocabRow } from "./vocab-list";
 import { yamlString } from "./frontmatter";
 import { TRANSLATION_MARK, parseNote } from "./note-parse";
 import { schemaFor, HEADING_ALIASES, type NoteLang } from "./note-schema";
-import { currentLang } from "./i18n";
 import type { ImportedWord } from "./anki-import";
 import type { DictEntry, Lookup, VocabCard } from "./types";
 
@@ -56,7 +55,12 @@ export class VocabStore {
 	/** 資料夾裡已有哪些字。浮窗每次都要問「這個字存過沒」,不能每次都打檔案系統。 */
 	private index = new Set<string>();
 
-	constructor(private app: App, private folder: () => string) {}
+	constructor(
+		private app: App,
+		private folder: () => string,
+		/** 筆記要用哪種語言寫。跟「釋義語言」走,不是介面語言。 */
+		private lang: () => NoteLang
+	) {}
 
 	/** 掃一次資料夾建索引。外掛啟動與設定改資料夾時各呼叫一次。 */
 	async refresh(): Promise<void> {
@@ -189,11 +193,6 @@ export class VocabStore {
 	}
 
 	// ------------------------------------------------------------ 內容
-
-	/** 這篇筆記要用哪種語言寫。跟介面語言走,不另外開設定。 */
-	private lang(): NoteLang {
-		return currentLang();
-	}
 
 	/**
 	 * 產生一篇生詞筆記。

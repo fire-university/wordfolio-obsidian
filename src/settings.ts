@@ -16,8 +16,17 @@ export type AccentPref = "us" | "uk" | "both";
 export type TriggerMode = "hover" | "select" | "both";
 
 export interface WordFolioSettings {
-	// 介面語言:auto 跟 Obsidian、en、zh-TW
+	// 介面語言:auto 跟 Obsidian、en、zh-TW。管的是按鈕、標籤、設定頁那些「外框」。
 	language: LangSetting;
+	/**
+	 * 釋義與生詞筆記的語言。auto = 跟介面語言走。
+	 *
+	 * **跟介面語言分開是必要的,不是多此一舉。** 道哥的 Obsidian 介面是英文,
+	 * 但他要的是繁中釋義——外框的語言跟內容的語言本來就是兩件事,合成一個
+	 * 設定就等於逼他二選一。已經存過設定的人一律遷移成 zh-TW,因為在這之前
+	 * 內容永遠是中文的。
+	 */
+	contentLang: LangSetting;
 
 	// --- 查詢 ---
 	// 怎麼觸發查詢:hover(滑過去)/ select(選取放開)/ both。
@@ -79,6 +88,7 @@ export interface WordFolioSettings {
 
 export const DEFAULT_SETTINGS: WordFolioSettings = {
 	language: "auto",
+	contentLang: "auto",
 	triggerMode: "hover",
 	iconMode: "both",
 	iconDwell: 1000,
@@ -105,6 +115,22 @@ export const DEFAULT_SETTINGS: WordFolioSettings = {
 	llmModel: "qwen2.5:3b",
 	dictVersion: "",
 };
+
+/**
+ * 讀進來的 data.json 該用哪個釋義語言。
+ *
+ * 抽成純函式是因為這條規則錯了會很難發現:既有使用者突然拿到英文釋義、新的
+ * 生詞筆記用英文格式寫,而他既有的兩百多篇是中文格式——畫面上不會報錯。
+ *
+ *   - 沒有 data.json(全新安裝)→ auto,跟介面語言走
+ *   - 有 data.json 但沒有 contentLang(這個欄位之前不存在)→ zh-TW,
+ *     因為在這個欄位出現之前,內容永遠是繁中的
+ *   - 已經有 contentLang → 尊重他選的
+ */
+export function migrateContentLang(saved: Partial<WordFolioSettings> | null): LangSetting {
+	if (!saved) return "auto";
+	return saved.contentLang ?? "zh-TW";
+}
 
 // 詞庫 shard 下載來源(GitHub Release)。build-dict.mjs 產出的檔案上傳到這裡。
 export const DICT_RELEASE_BASE =
