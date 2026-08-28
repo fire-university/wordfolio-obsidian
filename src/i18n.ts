@@ -102,6 +102,9 @@ const EN: Dict = {
 	review_hint_listen: "Hear it",
 	review_hint_ipa: "Show phonetics",
 	review_spell_slot: "Missing letter",
+	review_spell_right: "You spelled it right",
+	review_spell_wrong: "What you typed",
+	review_spell_should_be: "should be {letter}",
 	set_auto_speak_name: "Say the word when the card flips",
 	set_auto_speak_desc:
 		"Plays the British recording as soon as you reveal the answer, so you do not have to click every time. Both accents stay clickable next to the phonetics either way.",
@@ -332,6 +335,9 @@ const ZH: Dict = {
 	review_hint_listen: "聽發音",
 	review_hint_ipa: "顯示音標",
 	review_spell_slot: "缺的字母",
+	review_spell_right: "拼對了",
+	review_spell_wrong: "你剛才拼的",
+	review_spell_should_be: "應該是 {letter}",
 	set_auto_speak_name: "翻到答案面時自動念一次",
 	set_auto_speak_desc:
 		"翻面就播英式真人錄音，不用每張都手動點。不管開或關，音標旁邊的英美兩顆播放鍵都在。",

@@ -21,6 +21,9 @@ import {
 	focusSentence,
 	letterSlots,
 	slotsFilled,
+	spellingAttempt,
+	diffLetters,
+	hasAttempt,
 	type ParsedNote,
 } from "./note-parse";
 import type { Accent } from "./audio";
@@ -52,6 +55,8 @@ export class ReviewModal extends Modal {
 	private note: ParsedNote | null = null;
 	private answered = false;
 	private reviewed = 0;
+	/** 這張卡他在拼寫格填了什麼。翻面後要拿來訂正,所以得跨過重畫存著。 */
+	private attempt: string | null = null;
 
 	constructor(
 		app: App,
@@ -78,6 +83,7 @@ export class ReviewModal extends Modal {
 		this.current = this.queue.shift() ?? null;
 		this.answered = false;
 		this.note = null;
+		this.attempt = null;
 		if (!this.current) {
 			this.renderDone();
 			return;
@@ -266,7 +272,10 @@ export class ReviewModal extends Modal {
 
 		const typed = () => inputs.map((i) => i.value);
 		const check = () => {
-			const done = inputs.every((i) => i.value) && slotsFilled(slots, typed());
+			const values = typed();
+			// 翻面之後畫面會重建,所以每次輸入就把作答存起來,翻面時才訂正得出來。
+			this.attempt = hasAttempt(values) ? spellingAttempt(slots, values) : null;
+			const done = inputs.every((i) => i.value) && slotsFilled(slots, values);
 			row.toggleClass("is-correct", done);
 		};
 
@@ -320,6 +329,8 @@ export class ReviewModal extends Modal {
 
 	/** 答案面:一塊一塊畫,不再把 markdown 洗成一團純文字。 */
 	private renderBack(parent: HTMLElement, note: ParsedNote): void {
+		this.renderCorrection(parent, note.word);
+
 		const body = parent.createDiv({ cls: "wordfolio-review-answer" });
 
 		if (note.meaning.length) {
@@ -393,6 +404,44 @@ export class ReviewModal extends Modal {
 			this.close();
 			this.hooks.openNote?.(file);
 		};
+	}
+
+	/**
+	 * 訂正:他填了什麼、哪一個字母錯了。
+	 *
+	 * 道哥:「系統並沒有告訴我答對或答錯。那我錯在哪裡?我原本輸入的答案在哪裡?」
+	 *
+	 * **不記分不等於不訂正。** 上一版我把兩件事混成一件,以為「答對答錯不重要」
+	 * 就代表什麼都不用給——但他要的是不要計分板,不是不要回饋。錯在哪一個字母
+	 * 正是這一刻最該看到的東西。
+	 *
+	 * 沒作答就完全不顯示:那代表他只是想直接看答案,這時跳出一排紅字是在責備他。
+	 */
+	private renderCorrection(parent: HTMLElement, word: string): void {
+		if (!this.attempt) return;
+
+		const diff = diffLetters(this.attempt, word);
+		const correct = diff.every((d) => d.ok);
+
+		const box = parent.createDiv({ cls: "wordfolio-review-correction" });
+		box.toggleClass("is-correct", correct);
+		box.createDiv({
+			cls: "wf-correction-label",
+			text: correct ? t("review_spell_right") : t("review_spell_wrong"),
+		});
+
+		// 全對就不用再把他打的字重播一次,那跟上面的答案一模一樣。
+		if (correct) return;
+
+		const row = box.createDiv({ cls: "wf-correction-letters" });
+		for (const d of diff) {
+			const cell = row.createSpan({
+				cls: d.ok ? "wf-correction-letter" : "wf-correction-letter is-wrong",
+				// 沒填的格子顯示底線,比一片空白看得出「這裡漏了」。
+				text: d.typed.trim() || "_",
+			});
+			if (!d.ok) cell.setAttribute("aria-label", t("review_spell_should_be", { letter: d.answer }));
+		}
 	}
 
 	private section(parent: HTMLElement, heading: string): HTMLElement {

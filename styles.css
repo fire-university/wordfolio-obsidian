@@ -800,8 +800,10 @@
 .wordfolio-review-speak {
 	display: inline-flex;
 	align-items: center;
+	justify-content: center;
 	gap: 0.45em;
 	padding: 0.3em 0.8em;
+	min-height: 2.4em;
 	background: var(--background-secondary);
 	box-shadow: none;
 	cursor: pointer;
@@ -923,20 +925,29 @@
 	text-align: center;
 }
 
+/* 「聽發音」跟英美音標那兩顆並排時高度要一致。它們裡面的字級不同
+   (標籤 0.75em、音標 0.9em、還有圖示),各自撐出來的高度就會差一截,
+   看起來像沒對齊。用 stretch + 統一 min-height 壓平。 */
 .wordfolio-review-hints {
 	display: flex;
 	justify-content: center;
-	align-items: center;
+	align-items: stretch;
 	gap: 0.5em;
 	flex-wrap: wrap;
 	margin-bottom: 1.6em;
 }
 
+.wordfolio-review-hints > button {
+	min-height: 2.4em;
+}
+
 .wf-hint-btn {
 	display: inline-flex;
 	align-items: center;
+	justify-content: center;
 	gap: 0.4em;
 	padding: 0.3em 0.9em;
+	min-height: 2.4em;
 	font-size: 0.9em;
 	background: var(--background-secondary);
 	color: var(--text-muted);
@@ -1000,12 +1011,16 @@
 }
 
 .wf-slot {
-	width: 1.5em;
-	height: 2em;
+	/* 原本 1.5em 寬 / 1.3em 字,道哥回報「輸入進去的字母看不清楚方向跟樣子」。
+	   格子要放得下一個字母還有餘裕,不然 b / d / p 這種只差方向的會分不出來。 */
+	box-sizing: border-box;
+	width: 2.2em;
+	height: 2.8em;
 	font-family: var(--font-monospace);
-	font-size: 1.3em;
-	line-height: 2em;
+	font-size: 1.45em;
+	line-height: 2.8em;
 	text-align: center;
+	padding: 0;
 }
 
 /* 首尾與連字號:直接給的線索,所以看起來不像可以打字的地方。 */
@@ -1014,19 +1029,20 @@
 	font-weight: 600;
 }
 
+/* 完整邊框的格子(像填字遊戲),比底線清楚——Obsidian 的 input 預設樣式
+   帶背景與圓角,只設 border-bottom 會被它蓋掉,變成看不出是格子的深色小方塊。 */
 .wf-slot-input {
-	padding: 0;
-	border: none;
-	border-bottom: 2px solid var(--background-modifier-border);
-	border-radius: 0;
-	background: transparent;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background: var(--background-primary-alt);
 	color: var(--text-normal);
+	font-weight: 600;
 	transition: border-color 0.15s ease;
 }
 
 .wf-slot-input:focus {
-	border-bottom-color: var(--interactive-accent);
-	box-shadow: none;
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 1px var(--interactive-accent);
 	outline: none;
 }
 
@@ -1034,9 +1050,49 @@
    「答對幾題或答錯對我的學習完全沒有幫助」。 */
 .wordfolio-review-spelling.is-correct .wf-slot-input {
 	color: var(--color-green);
-	border-bottom-color: var(--color-green);
+	border-color: var(--color-green);
+	box-shadow: none;
 }
 
 .wordfolio-review-spelling.is-correct .wf-slot-given {
 	color: var(--color-green);
+}
+
+/* ── 訂正 ───────────────────────────────────────────────────────
+   不記分不等於不訂正:不記分是不要把學習變成計分遊戲,訂正是學習本身。
+   錯在哪一個字母,是翻面這一刻他最需要看到的東西。 */
+
+.wordfolio-review-correction {
+	text-align: center;
+	margin: 0.2em 0 1.2em;
+}
+
+.wf-correction-label {
+	font-size: 0.8em;
+	letter-spacing: 0.06em;
+	color: var(--text-faint);
+	margin-bottom: 0.35em;
+}
+
+.wordfolio-review-correction.is-correct .wf-correction-label {
+	color: var(--color-green);
+}
+
+.wf-correction-letters {
+	display: inline-flex;
+	gap: 0.15em;
+	font-family: var(--font-monospace);
+	font-size: 1.2em;
+}
+
+.wf-correction-letter {
+	min-width: 1.1em;
+	color: var(--text-muted);
+}
+
+/* 錯的那一格才標紅。整個字標紅看不出錯在哪,而錯在哪正是重點。 */
+.wf-correction-letter.is-wrong {
+	color: var(--text-error);
+	border-bottom: 2px solid var(--text-error);
+	font-weight: 700;
 }

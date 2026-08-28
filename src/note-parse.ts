@@ -230,3 +230,54 @@ export function slotsFilled(slots: LetterSlot[], typed: string[]): boolean {
 	}
 	return true;
 }
+
+
+/**
+ * 把使用者填在格子裡的字母,跟直接給的首尾組回一個完整的字。
+ *
+ * 沒填的格子留空——這樣 `v_brant` 看得出他漏了哪一格,比補一個底線好認。
+ */
+export function spellingAttempt(slots: LetterSlot[], typed: string[]): string {
+	let k = 0;
+	return slots
+		.map((slot) => (slot.editable ? typed[k++] || " " : slot.char))
+		.join("");
+}
+
+/** 訂正時逐格的比對結果。 */
+export interface LetterDiff {
+	/** 使用者填的(空白代表沒填) */
+	typed: string;
+	/** 正確答案 */
+	answer: string;
+	ok: boolean;
+	/** 這一格本來就是給他的線索,不是他答的 */
+	given: boolean;
+}
+
+/**
+ * 逐個字母訂正。
+ *
+ * 道哥:「我輸入答案並按下 Enter 之後,系統並沒有告訴我答對或答錯。那我錯在哪裡?
+ * 我原本輸入的答案在哪裡?」——**不記分不等於不訂正**。不記分是不要把學習變成
+ * 計分遊戲;訂正則是學習本身,錯在哪一個字母是他最需要看到的東西。
+ *
+ * 長度以正確答案為準:填多了的部分丟掉,填少了的補空白。
+ */
+export function diffLetters(attempt: string, answer: string): LetterDiff[] {
+	const a = [...attempt];
+	return [...answer].map((char, i) => {
+		const typed = a[i] ?? "";
+		return {
+			typed,
+			answer: char,
+			ok: typed.toLowerCase() === char.toLowerCase(),
+			given: false,
+		};
+	});
+}
+
+/** 這次作答有沒有真的填過東西。完全沒填就不用訂正,他只是想直接看答案。 */
+export function hasAttempt(typed: string[]): boolean {
+	return typed.some((t) => t.trim());
+}

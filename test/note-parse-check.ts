@@ -3,7 +3,10 @@
 //
 //   npx tsx test/note-parse-check.ts
 
-import { parseNote, clozeSentence, focusSentence, letterSlots, slotsFilled, BLANK } from "../src/note-parse";
+import {
+	parseNote, clozeSentence, focusSentence, letterSlots, slotsFilled,
+	spellingAttempt, diffLetters, hasAttempt, BLANK,
+} from "../src/note-parse";
 
 let failures = 0;
 function check(label: string, ok: boolean, detail = "") {
@@ -151,6 +154,37 @@ check("大寫也算對", slotsFilled(slots, "ORTHWHIL".split("")));
 check("錯一個就不算", !slotsFilled(slots, "orthwhix".split("")));
 check("還沒填完不算", !slotsFilled(slots, "ort".split("")));
 check("沒有可填格時視為已完成", slotsFilled(letterSlots("ox"), []));
+
+console.log("\n訂正:把填的字組回來");
+const vs = letterSlots("vibrant");
+check("全填對組回原字", spellingAttempt(vs, "ibran".split("")) === "vibrant",
+	spellingAttempt(vs, "ibran".split("")));
+check("填錯也照組(要看得到他填了什麼)", spellingAttempt(vs, "ibren".split("")) === "vibrent",
+	spellingAttempt(vs, "ibren".split("")));
+check("沒填的格子留空白,看得出漏了哪一格",
+	spellingAttempt(vs, ["i", "", "r", "a", "n"]) === "vi rant",
+	JSON.stringify(spellingAttempt(vs, ["i", "", "r", "a", "n"])));
+check("首尾一定來自答案不是使用者", spellingAttempt(vs, [])[0] === "v");
+
+console.log("\n訂正:逐個字母比對");
+const right = diffLetters("vibrant", "vibrant");
+check("全對時每一格都 ok", right.every((d) => d.ok));
+const wrong = diffLetters("vibrent", "vibrant");
+check("只有錯的那格 ok=false", wrong.filter((d) => !d.ok).length === 1);
+check("指出是第 5 個字母", !wrong[4].ok && wrong[4].typed === "e" && wrong[4].answer === "a",
+	JSON.stringify(wrong[4]));
+check("大小寫不計較", diffLetters("VIBRANT", "vibrant").every((d) => d.ok));
+const short = diffLetters("vib", "vibrant");
+check("填不夠時後面算錯", short.filter((d) => d.ok).length === 3, String(short.filter((d) => d.ok).length));
+check("填不夠時 typed 是空字串", short[5].typed === "");
+check("長度一律以答案為準", diffLetters("vibrantxyz", "vibrant").length === 7);
+check("空作答不會爆", diffLetters("", "vibrant").every((d) => !d.ok));
+
+console.log("\n有沒有真的作答(完全沒填就不用訂正,他只是想直接看答案)");
+check("填了東西", hasAttempt(["i", "b"]));
+check("全空 = 沒作答", !hasAttempt(["", "", ""]));
+check("只有空白 = 沒作答", !hasAttempt([" ", "  "]));
+check("空陣列 = 沒作答", !hasAttempt([]));
 
 console.log(failures ? `\n${failures} 項失敗` : "\n全部通過");
 process.exit(failures ? 1 : 0);
