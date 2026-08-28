@@ -122,10 +122,22 @@ export class ReviewModal extends Modal {
 			this.scope.register([], key, (e) => {
 				if (!whileTyping && this.typingInSlot()) return;
 				e.preventDefault();
+				// 按鍵按下要看得見有反應。多數快捷鍵按下去畫面本來就會變(翻面、
+				// 評分、換卡),那個變化自己就是回饋;真正需要這個的是**不改變畫面**
+				// 的那幾顆——聽發音、UK、US 按了只有聲音,沒有這一下就不知道
+				// 到底有沒有按到。
+				this.flash(button);
 				action();
 				return false;
 			})
 		);
+	}
+
+	/** 讓按鈕閃一下,表示這個鍵真的被接住了。 */
+	private flash(button: HTMLElement | null): void {
+		if (!button) return;
+		button.addClass("wf-pressed");
+		window.setTimeout(() => button.removeClass("wf-pressed"), 220);
 	}
 
 	private clearKeys(): void {

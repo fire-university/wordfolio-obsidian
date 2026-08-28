@@ -1215,3 +1215,36 @@
 	color: var(--text-muted);
 	border-color: var(--background-modifier-border-hover);
 }
+
+/* ── 按下快捷鍵的回饋 ───────────────────────────────────────────
+   「按下快捷鍵之後,希望相對應的框框會有反應……不然我不知道有沒有成功。」
+
+   瞬間亮起、再慢慢淡掉:加 class 時 transition: none 所以是即時的,
+   移掉 class 之後回到基準的 0.35s,自然淡出。 */
+
+.wordfolio-review-hints button,
+.wordfolio-review-show,
+.wordfolio-review-buttons button {
+	transition: box-shadow 0.35s ease, background-color 0.35s ease;
+}
+
+.wf-pressed {
+	box-shadow: 0 0 0 2px var(--text-muted);
+	background: var(--background-modifier-hover);
+	transition: none;
+}
+
+/* 鍵帽本身也一起亮,視線在哪一顆就看得到哪一顆。 */
+.wf-pressed .wf-key {
+	color: var(--text-normal);
+	border-color: var(--text-muted);
+	opacity: 1;
+}
+
+/* 滑鼠點擊給同一種回饋,不然鍵盤與滑鼠的手感會不一致。 */
+.wordfolio-review-hints button:active,
+.wordfolio-review-show:active,
+.wordfolio-review-buttons button:active {
+	box-shadow: 0 0 0 2px var(--text-muted);
+	transition: none;
+}
