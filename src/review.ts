@@ -136,6 +136,7 @@ export class ReviewModal extends Modal {
 	private async render(): Promise<void> {
 		const { contentEl } = this;
 		contentEl.empty();
+		contentEl.removeClass("wf-typing");
 		this.clearKeys();
 		const entry = this.current!;
 
@@ -253,6 +254,7 @@ export class ReviewModal extends Modal {
 		setIcon(listen.createSpan(), "volume-2");
 		listen.createSpan({ text: t("review_hint_listen") });
 		listen.onclick = () => this.hooks.speak?.(word, "uk");
+		this.bind(listen, "h", () => this.hooks.speak?.(word, "uk"));
 
 		if (note.ukPhonetic || note.usPhonetic) {
 			const reveal = hints.createEl("button", { cls: "wf-hint-btn", text: t("review_hint_ipa") });
@@ -261,23 +263,25 @@ export class ReviewModal extends Modal {
 				this.renderPhonetics(hints, note, word);
 			};
 			reveal.onclick = show;
+			this.bind(reveal, "p", show);
 		}
 
 		const show = parent.createEl("button", { cls: "mod-cta wordfolio-review-show" });
 		const label = show.createSpan({ text: t("review_show_answer") });
 		show.onclick = () => this.flip();
+		this.bind(show, "a", () => this.flip());
 		onSpellingDone = (ok) => {
 			show.toggleClass("is-correct", ok);
 			label.setText(ok ? t("review_spelled_next") : t("review_show_answer"));
 		};
-		// **問題卡刻意沒有字母快捷鍵。** 這一面的鍵盤是拿來填拼寫格的,
-		// 任何字母鍵都會跟打字搶。道哥自己先想到:「在輸入答案的過程中可能會
-		// 觸發到快捷鍵,所以在問題卡這邊,可能就不適合使用快捷鍵。」
+		// 問題卡的字母快捷鍵只在**焦點不在拼寫格**時生效——那一面的鍵盤主要是
+		// 拿來填格子的,不保護就會邊打字邊誤觸。
 		//
-		// 我原本的做法是「焦點在格子裡時字母鍵歸打字」——技術上不會誤觸,
-		// 但那是一條要去理解才知道何時生效的規則。不做比較好。
+		// 光是這樣還不夠:焦點預設就在第一格,所以快捷鍵幾乎永遠不會生效,
+		// 而鍵帽卻一直亮著,等於騙人。所以**鍵帽跟著狀態走**——打字時淡掉,
+		// 焦點離開格子(按 Tab)就亮起來。「現在能不能按」變成看得見的。
 		//
-		// 只留空白與 Enter:它們不是字母,拼一個英文字永遠用不到它們。
+		// 空白與 Enter 不受這個限制:它們不是字母,拼一個英文字永遠按不到。
 		this.bind(null, " ", () => this.flip(), true);
 		this.bind(null, "Enter", () => this.flip(), true);
 	}
@@ -323,6 +327,13 @@ export class ReviewModal extends Modal {
 					"aria-label": t("review_spell_slot"),
 				},
 			});
+			// 焦點在格子裡 = 打字模式,這時字母快捷鍵停用、鍵帽淡掉。
+			input.onfocus = () => this.contentEl.addClass("wf-typing");
+			input.onblur = () =>
+				// 格子之間移動時會短暫失焦,等一拍再判斷才不會閃。
+				window.setTimeout(() => {
+					if (!this.typingInSlot()) this.contentEl.removeClass("wf-typing");
+				}, 0);
 			inputs.push(input);
 		}
 		if (!inputs.length) return;

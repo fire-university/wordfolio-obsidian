@@ -1148,8 +1148,7 @@
 	color: var(--text-on-accent);
 }
 
-/* ── 快捷鍵鍵帽 ─────────────────────────────────────────────────
-   只出現在答案卡。問題卡那一面的鍵盤是拿來填拼寫格的,不放字母快捷鍵。 */
+/* ── 快捷鍵鍵帽 ───────────────────────────────────────────────── */
 
 .wordfolio-review-buttons button {
 	display: inline-flex;
@@ -1173,6 +1172,22 @@
 	font-size: 0.7em;
 	line-height: 1;
 	color: var(--text-faint);
+	transition: opacity 0.15s ease;
+}
+
+/* 問題卡的按鈕也掛鍵帽,樣式一致。 */
+.wordfolio-review-hints button,
+.wordfolio-review-show {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5em;
+}
+
+/* 焦點在拼寫格裡時字母鍵歸打字,所以鍵帽淡掉——不能按的東西不該看起來能按。
+   用 opacity 而不是 display:none,版面才不會跟著跳。 */
+.wordfolio-review-modal .modal-content.wf-typing .wordfolio-review-hints .wf-key,
+.wordfolio-review-modal .modal-content.wf-typing .wordfolio-review-show .wf-key {
+	opacity: 0.2;
 }
 
 .wordfolio-review-buttons button:hover .wf-key {
