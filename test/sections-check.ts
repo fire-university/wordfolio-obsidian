@@ -9,6 +9,7 @@ import {
 	normalizeEnabled,
 	move,
 	type SectionId,
+	setSectionEnabled,
 } from "../src/sections";
 
 let failures = 0;
@@ -130,6 +131,27 @@ check("最上面再往上搬不動", eq(move(base, "phonetics", -1), base));
 check("最下面再往下搬不動", eq(move(base, "english", 1), base));
 check("不在清單裡的原樣回傳", eq(move(base, "claude", 1), base));
 check("搬移不改動原陣列", eq(base, ["phonetics", "translation", "english"]));
+
+console.log("\n連續開關多個區塊,每一個都要留住");
+// 2026-08-28 的真實 bug:設定頁拿 display() 當下的快照去展開,
+// 切 toggle 又不重繪,於是每切一個就把其他的蓋回舊值——道哥的症狀是
+// 「只要開啟了 Wiktionary,牛津跟朗文都會被取消掉」。
+let e = normalizeEnabled({});
+e = setSectionEnabled(e, "oxford", true);
+e = setSectionEnabled(e, "longman", true);
+e = setSectionEnabled(e, "wiktionary", true);
+check("三個都還開著", e.oxford && e.longman && e.wiktionary,
+	JSON.stringify({ oxford: e.oxford, longman: e.longman, wiktionary: e.wiktionary }));
+
+const before = normalizeEnabled({});
+setSectionEnabled(before, "oxford", true);
+check("不會改到傳進去的物件", before.oxford === normalizeEnabled({}).oxford);
+
+let off = setSectionEnabled(normalizeEnabled({}), "cambridge", false);
+check("關得掉", off.cambridge === false);
+off = setSectionEnabled(off, "oxford", true);
+check("關掉的維持關掉", off.cambridge === false && off.oxford === true);
+check("其他區塊維持預設", off.zh === normalizeEnabled({}).zh);
 
 console.log(failures === 0 ? "\n全部通過。" : `\n${failures} 項失敗。`);
 process.exit(failures === 0 ? 0 : 1);

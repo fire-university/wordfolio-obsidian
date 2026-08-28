@@ -154,3 +154,28 @@ export function move(order: SectionId[], id: SectionId, delta: -1 | 1): SectionI
 	[next[i], next[j]] = [next[j], next[i]];
 	return next;
 }
+
+
+/**
+ * 開/關一個區塊,回傳新的啟用表。
+ *
+ * 抽成函式是為了**強迫呼叫端把「目前的值」傳進來**。原本設定頁是這樣寫的:
+ *
+ *     const enabled = normalizeEnabled(s.sectionsEnabled);   // 畫面繪製當下的快照
+ *     ...
+ *     s.sectionsEnabled = { ...enabled, [id]: v };           // 永遠基於那個快照
+ *
+ * `enabled` 在 display() 執行時算一次就不再更新,而切換 toggle 不會重繪,
+ * 所以每切一個開關都是「舊快照 + 這一個改動」,把中間的其他改動全部蓋回去——
+ * 連續切換多個區塊,只有最後一個會生效。
+ *
+ * 2026-08-28 道哥回報:「只要開啟了 Wiktionary,那牛津學習者跟朗文當代都會被
+ * 取消掉,是因為它們有衝突嗎?」不是衝突,就是這個。
+ */
+export function setSectionEnabled(
+	current: Partial<Record<SectionId, boolean>>,
+	id: SectionId,
+	value: boolean
+): Record<SectionId, boolean> {
+	return { ...normalizeEnabled(current), [id]: value };
+}

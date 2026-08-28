@@ -35,6 +35,7 @@ import {
 	ALL_SECTIONS,
 	normalizeOrder,
 	normalizeEnabled,
+	setSectionEnabled,
 	move,
 	sectionLabelKey,
 	sectionDescKey,
@@ -751,7 +752,10 @@ class WordFolioSettingTab extends PluginSettingTab {
 			);
 			row.addToggle((tg) =>
 				tg.setValue(enabled[id]).onChange(async (v) => {
-					s.sectionsEnabled = { ...enabled, [id]: v };
+					// 一定要從 s.sectionsEnabled 當場讀,不能用上面那個 enabled 快照:
+					// 切 toggle 不會重繪,快照永遠停在打開設定頁那一刻,
+					// 於是每切一個開關就把其他開關蓋回舊值。
+					s.sectionsEnabled = setSectionEnabled(s.sectionsEnabled, id, v);
 					await this.plugin.saveSettings();
 				})
 			);
