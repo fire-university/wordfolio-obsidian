@@ -437,8 +437,37 @@
 	align-items: center;
 	gap: 1em;
 	min-height: 14em;
+	max-height: 78vh;
+	overflow-y: auto;
 	padding: 1.5em 1em;
 	text-align: center;
+	/* Firefox。Chromium 走下面的 ::-webkit-scrollbar。 */
+	scrollbar-width: thin;
+	scrollbar-color: var(--background-modifier-border) transparent;
+}
+
+/* macOS 預設把捲軸藏起來,只在滑動時浮現一下——內容比視窗長的時候,
+   畫面上沒有任何線索說「下面還有東西」。道哥:「我看不到最底下那一排按鈕,
+   而且右邊也沒有捲軸的圖示……使用者可能會覺得根本沒有按鈕。」
+   所以這裡強制讓捲軸一直看得見。 */
+.wordfolio-review-modal .modal-content::-webkit-scrollbar {
+	width: 12px;
+}
+
+.wordfolio-review-modal .modal-content::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.wordfolio-review-modal .modal-content::-webkit-scrollbar-thumb {
+	background: var(--background-modifier-border);
+	border-radius: 6px;
+	border: 3px solid transparent;
+	background-clip: content-box;
+}
+
+.wordfolio-review-modal .modal-content::-webkit-scrollbar-thumb:hover {
+	background: var(--background-modifier-border-hover);
+	background-clip: content-box;
 }
 
 .wordfolio-review-progress {
@@ -465,12 +494,20 @@
 	margin-top: auto;
 }
 
+/* 評分鍵黏在底部。捲軸只解決「知道下面還有東西」,黏住才是真的隨時按得到——
+   答案面內容一長(釋義＋英英＋變化＋例句＋來源),按鈕就被推到看不見的地方。 */
 .wordfolio-review-buttons {
+	position: sticky;
+	bottom: -1.5em;
+	z-index: 1;
 	display: flex;
 	gap: 0.5em;
 	margin-top: auto;
 	flex-wrap: wrap;
 	justify-content: center;
+	align-self: stretch;
+	padding: 0.8em 0 1.5em;
+	background: var(--background-primary);
 }
 
 .wordfolio-review-buttons button {
@@ -803,7 +840,6 @@
 	justify-content: center;
 	gap: 0.45em;
 	padding: 0.3em 0.8em;
-	min-height: 2.4em;
 	background: var(--background-secondary);
 	box-shadow: none;
 	cursor: pointer;
@@ -925,9 +961,12 @@
 	text-align: center;
 }
 
-/* 「聽發音」跟英美音標那兩顆並排時高度要一致。它們裡面的字級不同
-   (標籤 0.75em、音標 0.9em、還有圖示),各自撐出來的高度就會差一截,
-   看起來像沒對齊。用 stretch + 統一 min-height 壓平。 */
+/* 「聽發音」跟英美音標那兩顆並排時高度要一致。上一版沒修好,兩個原因疊在一起:
+   (a) min-height 用 em,而兩種按鈕的 font-size 不同(0.9 vs 1),
+       2.4em 算出來一個是 2.16、一個是 2.4;
+   (b) 音標那兩顆包在 .wordfolio-review-phonetics 這層 div 裡,
+       **那層才是 flex item**,裡面的 button 根本沒參與這排的對齊。
+   所以:字級統一、高度統一,並讓那層 div 用 display: contents 消失掉。 */
 .wordfolio-review-hints {
 	display: flex;
 	justify-content: center;
@@ -937,8 +976,15 @@
 	margin-bottom: 1.6em;
 }
 
-.wordfolio-review-hints > button {
-	min-height: 2.4em;
+/* 讓包在裡面的音標按鈕直接成為這排的 flex item。 */
+.wordfolio-review-hints .wordfolio-review-phonetics {
+	display: contents;
+}
+
+.wordfolio-review-hints button {
+	font-size: 0.9em;
+	min-height: 2.6em;
+	padding: 0.35em 0.9em;
 }
 
 .wf-hint-btn {
@@ -947,8 +993,6 @@
 	justify-content: center;
 	gap: 0.4em;
 	padding: 0.3em 0.9em;
-	min-height: 2.4em;
-	font-size: 0.9em;
 	background: var(--background-secondary);
 	color: var(--text-muted);
 	box-shadow: none;
@@ -1095,4 +1139,11 @@
 	color: var(--text-error);
 	border-bottom: 2px solid var(--text-error);
 	font-weight: 700;
+}
+
+/* 拼對之後主按鈕換字換色。光是格子變綠不會告訴人下一步該做什麼,
+   而且不是每個人都知道可以按 Enter。 */
+.wordfolio-review-show.is-correct {
+	background: var(--color-green);
+	color: var(--text-on-accent);
 }

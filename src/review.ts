@@ -199,7 +199,10 @@ export class ReviewModal extends Modal {
 				parent.createDiv({ cls: "wordfolio-review-hint-zh", text: translation });
 			}
 		}
-		this.renderSpelling(parent, word);
+		// 拼對時主按鈕要換掉:光是格子變綠不會告訴人下一步該做什麼,
+		// 而「不是每一個人都知道要按 Enter 鍵才可以進到下一步」。
+		let onSpellingDone: (correct: boolean) => void = () => undefined;
+		this.renderSpelling(parent, word, (ok) => onSpellingDone(ok));
 
 		const hints = parent.createDiv({ cls: "wordfolio-review-hints" });
 
@@ -221,6 +224,10 @@ export class ReviewModal extends Modal {
 			text: t("review_show_answer"),
 		});
 		show.onclick = () => this.flip();
+		onSpellingDone = (ok) => {
+			show.toggleClass("is-correct", ok);
+			show.setText(ok ? t("review_spelled_next") : t("review_show_answer"));
+		};
 		// 空白鍵翻面,跟一般閃卡工具一致。
 		this.scope.register([], " ", (e) => {
 			e.preventDefault();
@@ -241,7 +248,11 @@ export class ReviewModal extends Modal {
 	 * 不記分、不擋翻面:全部填對時格子轉綠當作一個確認,填錯不做任何事——
 	 * 他早就說過「答對幾題或答錯對我的學習完全沒有幫助」。
 	 */
-	private renderSpelling(parent: HTMLElement, word: string): void {
+	private renderSpelling(
+		parent: HTMLElement,
+		word: string,
+		onDone: (correct: boolean) => void
+	): void {
 		const slots = letterSlots(word);
 		if (!slots.length) return;
 
@@ -277,6 +288,7 @@ export class ReviewModal extends Modal {
 			this.attempt = hasAttempt(values) ? spellingAttempt(slots, values) : null;
 			const done = inputs.every((i) => i.value) && slotsFilled(slots, values);
 			row.toggleClass("is-correct", done);
+			onDone(done);
 		};
 
 		inputs.forEach((input, i) => {
@@ -466,14 +478,25 @@ export class ReviewModal extends Modal {
 
 		await this.store.saveCard(entry.file, updated);
 		await this.hooks.onGraded?.(rating, wasNew);
-		this.reviewed++;
 
-		// 到期只存到「日」,所以 FSRS 的 learning step 在這裡補回來:
-		// 評「重來」的字排到佇列尾端,本次 session 內會再看到一次。
+		// 「重來」就是**立刻再問一次同一個字**。
+		//
+		// 原本是把卡片推到佇列尾端,結果按下去跳出來的是下一題,要等一整輪才會
+		// 再遇到它。道哥:「如果你要做 Again 這個按鈕,應該要重複同樣的問題,
+		// 讓我再有一次機會去回答,這樣才對。」——他是對的,那顆按鈕上面寫的就是
+		// 「再一次」,跳到別題完全違反它的字面意思。
+		//
+		// 進度不前進(還是 2 / 24):同一個字重答不該算成又過了一張。
+		// 但排程與複習紀錄照記——他確實又看了一次。
 		if (rating === Rating.Again) {
-			this.queue.push({ file: entry.file, card: updated });
+			this.current = { file: entry.file, card: updated };
+			this.answered = false;
+			this.attempt = null;
+			void this.render();
+			return;
 		}
 
+		this.reviewed++;
 		this.next();
 	}
 
