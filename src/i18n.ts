@@ -334,7 +334,6 @@ const EN: Dict = {
 	tier_learning_why: "Too few reviews to judge. Keep going.",
 	tier_solid_why: "Reliable so far, but not yet held over a long gap.",
 	tier_mastered_why: "Right almost every time, and still remembered after weeks.",
-	review_speak_sentence: "Read the whole sentence",
 	review_eg_from_dict: "Example from the dictionary",
 	set_spelling_hint_name: "Letters given in spelling practice",
 	set_spelling_hint_desc:
@@ -657,7 +656,6 @@ const ZH: Dict = {
 	tier_learning_why: "複習次數還太少,判斷不了,繼續練。",
 	tier_solid_why: "目前都答得出來,但還沒經過長時間的間隔考驗。",
 	tier_mastered_why: "幾乎每次都對,而且隔了幾週還記得。",
-	review_speak_sentence: "念整句",
 	review_eg_from_dict: "詞庫例句",
 	set_spelling_hint_name: "拼寫練習先給幾個字母",
 	set_spelling_hint_desc:

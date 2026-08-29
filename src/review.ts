@@ -56,8 +56,6 @@ export interface ReviewHooks {
 	accent?: () => AccentPref;
 	/** 拼寫練習先給哪幾個字母。 */
 	spellingHint?: () => SpellingHint;
-	/** 念一整句(走系統語音)。 */
-	speakSentence?: (text: string) => void;
 	/** 筆記裡沒有出處例句時,從詞庫撈一句來墊。 */
 	fallbackExample?: (word: string) => string | null;
 	/** 開啟這張卡的筆記(複習到一半想改釋義)。 */
@@ -577,21 +575,15 @@ export class ReviewModal extends Modal {
 			const lines = note.sentences.length
 				? note.sentences
 				: [{ text: fallback as string, translation: undefined }];
+			// 例句**沒有發音鍵**。做過又拿掉了:整句只能走 speechSynthesis
+			// (有道那個端點是給單字用的),而道哥實際聽過的評語是「太生硬、
+			// 太難聽了,乾脆不要」。單字的真人錄音好聽是因為那是錄的,不是合成的;
+			// 句子沒有等價的免費真人來源,硬上只會讓人不想按第二次。
 			for (const s of lines) {
-				const line = box.createDiv({ cls: "wf-review-eg" });
-				line.createSpan({
+				box.createDiv({
+					cls: "wf-review-eg",
 					text: focusSentence(s.text, note.word, note.forms),
 				});
-				// 整句發音。走系統語音,所以沒有波形——那是拿不到時間軸的必然結果。
-				const play = line.createEl("button", {
-					cls: "wf-eg-speak",
-					attr: { "aria-label": t("review_speak_sentence"), title: t("review_speak_sentence") },
-				});
-				setIcon(play.createSpan(), "volume-2");
-				play.onclick = (e) => {
-					e.stopPropagation();
-					this.hooks.speakSentence?.(s.text);
-				};
 				if (s.translation) box.createDiv({ cls: "wf-review-eg-zh", text: s.translation });
 			}
 			box.createDiv({

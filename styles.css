@@ -1354,24 +1354,3 @@
 	color: var(--text-faint);
 	cursor: help;
 }
-
-/* --- 答案卡例句的整句發音鍵 --- */
-.wf-review-eg {
-	display: flex;
-	align-items: baseline;
-	gap: 0.4em;
-}
-
-.wf-eg-speak {
-	flex: 0 0 auto;
-	padding: 0 0.25em;
-	border: none;
-	background: transparent;
-	color: var(--text-faint);
-	cursor: pointer;
-	line-height: 1;
-}
-
-.wf-eg-speak:hover {
-	color: var(--text-accent);
-}
