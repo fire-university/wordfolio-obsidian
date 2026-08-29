@@ -2,7 +2,17 @@
 // 滑鼠滑過英文字 → 浮窗顯示英美音標、發音、繁中釋義 → 一鍵加進生詞本 → FSRS 排程複習。
 // 釋義走離線詞庫(ECDICT 轉繁 + ipa-dict 英美音標),只有「在這句話裡是什麼意思」才呼叫 Claude。
 
-import { App, Notice, Platform, Plugin, PluginSettingTab, Setting, TFile, requestUrl } from "obsidian";
+import {
+	App,
+	Editor,
+	Notice,
+	Platform,
+	Plugin,
+	PluginSettingTab,
+	Setting,
+	TFile,
+	requestUrl,
+} from "obsidian";
 import {
 	WordFolioSettings,
 	DEFAULT_SETTINGS,
@@ -188,7 +198,11 @@ export default class WordFolioPlugin extends Plugin {
 		this.addCommand({
 			id: "lookup-word",
 			name: t("command_lookup"),
-			callback: () => void this.lookupAtCursor(),
+			// **`editorCallback` 而不是 `callback`。** 手機版的工具列只列得出
+			// 編輯器命令——道哥翻遍整份清單找不到這個命令,原因就是這個。
+			// 註冊成編輯器命令之後,他才能到「設定 → 行動裝置 → 管理工具列選項」
+			// 把它加成一顆按鈕。
+			editorCallback: (editor: Editor) => void this.lookupAtCursor(editor),
 		});
 
 		this.addCommand({
@@ -584,26 +598,49 @@ export default class WordFolioPlugin extends Plugin {
 	}
 
 	/** 命令面板／快捷鍵的入口:對選取的字(沒選取就用游標位置)查詢。 */
-	private async lookupAtCursor(): Promise<void> {
+	/**
+	 * 查目前選取(或游標所在)的單字。
+	 *
+	 * **選取優先問 editor,不是 window.getSelection()。** 在手機上這是關鍵:
+	 * 按下工具列按鈕的瞬間,DOM 的選取常常已經被收掉或轉移到別的元素,而
+	 * CodeMirror 自己的選取模型還留著——那才是使用者眼睛看到的那一段。
+	 */
+	private async lookupAtCursor(editor?: Editor): Promise<void> {
 		if (!this.dict.installed) {
 			new Notice(t("notice_dict_missing"), 8000);
 			return;
 		}
 
-		const sel = window.getSelection();
-		const word = sel?.toString().trim() ?? "";
+		const domSel = window.getSelection();
+		const word = (editor?.getSelection() || domSel?.toString() || "").trim();
 		if (!word) {
-			new Notice(t("notice_not_found", { word: "" }));
+			new Notice(t("notice_no_selection"), 5000);
 			return;
 		}
 
-		const range = sel!.getRangeAt(0);
-		const shown = await this.hover.showFor({
-			word,
-			sentence: range.startContainer.nodeValue ?? word,
-			rect: range.getBoundingClientRect(),
-		});
+		// 例句取整行:游標那一行就是這個字出現的地方,比 DOM 節點的片段完整。
+		const sentence = editor
+			? editor.getLine(editor.getCursor("from").line) || word
+			: domSel?.anchorNode?.nodeValue ?? word;
+
+		const shown = await this.hover.showFor({ word, sentence, rect: this.anchorRect(domSel) });
 		if (!shown) new Notice(t("notice_not_found", { word }));
+	}
+
+	/**
+	 * 浮窗要貼在哪裡。
+	 *
+	 * DOM 選取還在就貼著它;不在了(手機上按工具列常常就是這樣)就退到畫面
+	 * 底部中央——**寧可位置不完美,也不要因為算不出座標就不顯示**。
+	 */
+	private anchorRect(sel: Selection | null): DOMRect {
+		if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+			const r = sel.getRangeAt(0).getBoundingClientRect();
+			if (r.width || r.height) return r;
+		}
+		const x = window.innerWidth / 2;
+		const y = window.innerHeight * 0.45;
+		return new DOMRect(x, y, 0, 0);
 	}
 
 	/**
