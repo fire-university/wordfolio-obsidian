@@ -2,7 +2,7 @@
 // 滑鼠滑過英文字 → 浮窗顯示英美音標、發音、繁中釋義 → 一鍵加進生詞本 → FSRS 排程複習。
 // 釋義走離線詞庫(ECDICT 轉繁 + ipa-dict 英美音標),只有「在這句話裡是什麼意思」才呼叫 Claude。
 
-import { App, Notice, Plugin, PluginSettingTab, Setting, TFile, requestUrl } from "obsidian";
+import { App, Notice, Platform, Plugin, PluginSettingTab, Setting, TFile, requestUrl } from "obsidian";
 import {
 	WordFolioSettings,
 	DEFAULT_SETTINGS,
@@ -164,6 +164,9 @@ export default class WordFolioPlugin extends Plugin {
 
 		this.hover = new HoverController({
 			triggerMode: () => this.settings.triggerMode,
+			// 觸控裝置一律走選字。hover 在手機上不存在,把判斷交給 hover.ts,
+			// 它會據此忽略設定裡那三個為滑鼠設計的選項。
+			touch: () => Platform.isMobile,
 			delay: () => this.settings.hoverDelay,
 			closeDelay: () => this.settings.closeDelay,
 			enabled: () => this.dict.installed,

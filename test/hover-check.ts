@@ -220,6 +220,80 @@ async function main() {
 		check("再次還原", lit() === 0, String(lit()));
 	}
 
+	// ---------------------------------------------------------- 觸控
+	// 手機上完全沒反應的那個 bug:選字觸發掛在 mouseup 上,而觸控拖選取控點時
+	// WebView 不保證送出 mouseup。實機驗證過——iPhone 上選了字什麼都不會發生。
+	console.log("\n觸控裝置走 selectionchange,不是 mouseup");
+	{
+		selectionCollapsed = false;
+		const { HoverController: HC } = await import("../src/hover");
+		let shown = 0;
+		const icon = {
+			show: () => shown++,
+			hide: () => undefined,
+			contains: () => false,
+			destroy: () => undefined,
+		};
+
+		// 選取必須落在「筆記內容」裡才算數(白名單,見 tooltip.ts 的 CONTENT_SELECTOR),
+		// 所以要真的造一個在 .markdown-preview-view 底下的節點。
+		const host = document.createElement("div");
+		host.className = "markdown-preview-view";
+		const inner = document.createElement("p");
+		inner.textContent = "effective";
+		host.appendChild(inner);
+		document.body.appendChild(host);
+		dom.window.getSelection = (() => ({
+			isCollapsed: false,
+			toString: () => "effective",
+			anchorNode: inner,
+			getRangeAt: () => ({ getBoundingClientRect: () => new dom.window.DOMRect() }),
+		})) as never;
+		const make = (touch: boolean) => {
+			const c = new HC({
+				triggerMode: () => "hover", // 刻意設 hover:觸控上必須照樣走選字
+				delay: () => 10,
+				closeDelay: () => 10,
+				enabled: () => true,
+				touch: () => touch,
+				lookup: async () => ENTRY,
+				lookupSelection: async () => ENTRY,
+				iconMode: () => "click",
+				iconDwell: () => 1000,
+				tooltip: { contains: () => false, hide: () => undefined } as unknown as WordTooltip,
+				view: () => ({ order: [], enabled: {} }),
+			} as never);
+			// 換掉私有的 icon,才數得到「圖示有沒有被放出來」。
+			(c as unknown as { icon: unknown }).icon = icon;
+			return c;
+		};
+
+		const touchCtl = make(true);
+		touchCtl.attach();
+		shown = 0;
+		document.dispatchEvent(new dom.window.Event("selectionchange"));
+		await new Promise((r) => setTimeout(r, 500));
+		check("觸控:selectionchange 之後圖示會出來", shown === 1, String(shown));
+
+		// 去抖動:拖曳控點時 selectionchange 會連續觸發,不可以連續跳圖示。
+		shown = 0;
+		for (let i = 0; i < 8; i++) {
+			document.dispatchEvent(new dom.window.Event("selectionchange"));
+			await new Promise((r) => setTimeout(r, 40));
+		}
+		await new Promise((r) => setTimeout(r, 500));
+		check("觸控:連續變動只出來一次(去抖動)", shown === 1, String(shown));
+		touchCtl.detach();
+
+		const mouseCtl = make(false);
+		mouseCtl.attach();
+		shown = 0;
+		document.dispatchEvent(new dom.window.Event("selectionchange"));
+		await new Promise((r) => setTimeout(r, 500));
+		check("桌面:selectionchange 不觸發(維持走 mouseup)", shown === 0, String(shown));
+		mouseCtl.detach();
+	}
+
 	console.log(failures === 0 ? "\n全部通過。" : `\n${failures} 項失敗。`);
 	process.exit(failures === 0 ? 0 : 1);
 }

@@ -31,8 +31,24 @@ export type TriggerMode = "hover" | "select" | "both";
 /** 安全區的寬度。浮窗定位時跟單字之間留 6px,這裡給足餘裕。 */
 const SAFE_MARGIN = 24;
 
+/**
+ * selectionchange 去抖動:最後一次變動之後等多久才動作。
+ *
+ * 350ms 是「拖選取控點時手指的停頓」與「選完之後的等待感」之間的取捨。
+ * 太短會在拖曳中途一直跳圖示,太長會覺得外掛慢半拍。
+ */
+const SELECTION_SETTLE_MS = 350;
+
 export interface HoverOptions {
 	triggerMode: () => TriggerMode;
+	/**
+	 * 這台裝置是不是觸控裝置(手機／平板)。
+	 *
+	 * **不在這裡自己判斷。** 這個檔刻意不 import obsidian(它要在 JSDOM 測試裡
+	 * 跑),所以 `Platform.isMobile` 由 main.ts 注入進來。預設 false,舊呼叫端
+	 * 不受影響。
+	 */
+	touch?: () => boolean;
 	/** 停在單字上多久才跳浮窗(hover) */
 	delay: () => number;
 	/** 離開之後多久才關(hover 的寬限期) */
@@ -91,12 +107,21 @@ export class HoverController {
 		});
 	}
 
+	private isTouch(): boolean {
+		return this.opts.touch?.() ?? false;
+	}
+
 	private hoverOn(): boolean {
+		// 觸控裝置上沒有 hover 這回事。就算設定寫 hover,也不該讓它擋掉選字——
+		// 那會變成「兩種觸發方式都不通」,使用者只看得到一個完全不動的外掛。
+		if (this.isTouch()) return false;
 		const m = this.opts.triggerMode();
 		return m === "hover" || m === "both";
 	}
 
 	private selectOn(): boolean {
+		// 同上:觸控裝置一律走選字,不看設定。設定裡那三個選項是為滑鼠設計的。
+		if (this.isTouch()) return true;
 		const m = this.opts.triggerMode();
 		return m === "select" || m === "both";
 	}
@@ -162,32 +187,72 @@ export class HoverController {
 	};
 
 	/** select:框一段文字放開滑鼠 → 浮現小 Logo(還不查)。 */
+	/**
+	 * 觸控裝置的選字訊號。
+	 *
+	 * **手機上不能用 `mouseup`。** 用手指拖選取控點時,WebView 不保證在選取結束
+	 * 時送出 `mouseup`——實測 iPhone 上選了字完全沒有反應,就是卡在這裡。
+	 * `selectionchange` 是唯一可靠的,代價是它在拖曳過程中會一直觸發,所以要
+	 * 去抖動:等使用者的手指停下來(最後一次變動後 350ms)才動作。
+	 *
+	 * 桌面維持 `mouseup`:它更精準,而且不會在拖曳中途就跳出圖示打擾人。
+	 */
+	private onSelectionChange = () => {
+		if (!this.opts.enabled() || !this.isTouch()) return;
+		if (this.selectionTimer) window.clearTimeout(this.selectionTimer);
+		this.selectionTimer = window.setTimeout(() => {
+			this.selectionTimer = 0;
+			this.pickUpSelection();
+		}, SELECTION_SETTLE_MS);
+	};
+
+	/** selectionchange 的去抖動計時器。0 = 沒有排程中。 */
+	private selectionTimer = 0;
+
 	private onMouseUp = (e: MouseEvent) => {
 		if (!this.opts.enabled() || !this.selectOn()) return;
+		if (this.isTouch()) return; // 觸控走 selectionchange,不要兩條路一起跑
 		if (this.opts.tooltip.contains(e.target) || this.icon.contains(e.target)) return;
 
 		// mouseup 後 selection 才穩定,延一個 tick 再讀。
-		window.setTimeout(() => {
-			const sel = window.getSelection();
-			if (!sel || sel.isCollapsed) return;
-
-			const text = sel.toString().trim();
-			// 太長的多半是整段誤選,不是要查詞;放行 1–6 個字。
-			if (!text || text.length > 80) return;
-			if (text.split(/\s+/).length > 6) return;
-			if (!/[A-Za-z]/.test(text)) return;
-
-			const anchor = sel.anchorNode;
-			const el =
-				anchor?.nodeType === Node.ELEMENT_NODE
-					? (anchor as Element)
-					: anchor?.parentElement ?? null;
-			if (!inNoteContent(el)) return;
-
-			this.pending = { text, rect: sel.getRangeAt(0).getBoundingClientRect() };
-			this.icon.show(this.pending.rect);
-		}, 0);
+		window.setTimeout(() => this.pickUpSelection(), 0);
 	};
+
+	/**
+	 * 讀目前的選取,合格就把書本圖示放出來。
+	 *
+	 * 滑鼠(mouseup)與觸控(selectionchange)兩條路共用這一份——**選取合不合格
+	 * 的規則只能有一份**,分兩份寫的話兩個平台遲早會長出不一樣的行為,
+	 * 而且只有其中一個平台的使用者會遇到。
+	 */
+	private pickUpSelection(): void {
+		const sel = window.getSelection();
+		if (!sel || sel.isCollapsed) {
+			// 觸控上點一下就會把選取收掉,那時要順手把圖示收起來,
+			// 不然它會孤零零地留在畫面上,點下去查的還是上一個字。
+			if (this.isTouch()) {
+				this.pending = null;
+				this.icon.hide();
+			}
+			return;
+		}
+
+		const text = sel.toString().trim();
+		// 太長的多半是整段誤選,不是要查詞;放行 1–6 個字。
+		if (!text || text.length > 80) return;
+		if (text.split(/\s+/).length > 6) return;
+		if (!/[A-Za-z]/.test(text)) return;
+
+		const anchor = sel.anchorNode;
+		const el =
+			anchor?.nodeType === Node.ELEMENT_NODE
+				? (anchor as Element)
+				: anchor?.parentElement ?? null;
+		if (!inNoteContent(el)) return;
+
+		this.pending = { text, rect: sel.getRangeAt(0).getBoundingClientRect() };
+		this.icon.show(this.pending.rect);
+	}
 
 	// 點一下、或停留展開,都走這裡。
 	private onIconOpen(): void {
@@ -224,6 +289,9 @@ export class HoverController {
 		document.addEventListener("mousemove", this.onMouseMove, { passive: true });
 		document.addEventListener("mousedown", this.onPointerDown, { capture: true });
 		document.addEventListener("mouseup", this.onMouseUp);
+		// 觸控裝置唯一可靠的選字訊號。桌面上也會觸發,但 onSelectionChange
+		// 自己會用 isTouch() 擋掉,不會兩條路重複。
+		document.addEventListener("selectionchange", this.onSelectionChange);
 		document.addEventListener("scroll", this.onScroll, { passive: true, capture: true });
 		document.addEventListener("keydown", this.onKeyDown);
 		window.addEventListener("blur", this.onBlur);
@@ -231,11 +299,14 @@ export class HoverController {
 
 	detach(): void {
 		this.clearOpenTimer();
+		if (this.selectionTimer) window.clearTimeout(this.selectionTimer);
+		this.selectionTimer = 0;
 		this.clearCloseTimer();
 		this.icon.destroy();
 		document.removeEventListener("mousemove", this.onMouseMove);
 		document.removeEventListener("mousedown", this.onPointerDown, { capture: true });
 		document.removeEventListener("mouseup", this.onMouseUp);
+		document.removeEventListener("selectionchange", this.onSelectionChange);
 		document.removeEventListener("scroll", this.onScroll, { capture: true });
 		document.removeEventListener("keydown", this.onKeyDown);
 		window.removeEventListener("blur", this.onBlur);

@@ -1354,3 +1354,33 @@
 	color: var(--text-faint);
 	cursor: help;
 }
+
+/* --- 觸控裝置(手機／平板) --- */
+/*
+ * Obsidian 手機版會在 body 上掛 .is-mobile,拿它當斷點比 max-width 準——
+ * 窄視窗的桌面版不該被當成手機(那裡還是有滑鼠)。
+ */
+.is-mobile .wordfolio-tooltip {
+	/* 26em ≈ 416px,比 iPhone 的 390px 還寬,不夾住會超出畫面。 */
+	max-width: min(26em, calc(100vw - 1.5em));
+	max-height: 55vh;
+}
+
+/* 44px 是 iOS 的最小可觸控尺寸。24px 的圖示是照滑鼠做的,手指按不準。
+   視覺大小維持不變(靠 padding 撐開點擊區),不然畫面上會多一塊突兀的方塊。 */
+.is-mobile .wordfolio-select-icon {
+	width: 44px;
+	height: 44px;
+	border-radius: var(--radius-m);
+}
+
+/* 評分鍵與音標鍵同理:手指比游標粗。 */
+.is-mobile .wf-grade,
+.is-mobile .wordfolio-review-speak {
+	min-height: 44px;
+}
+
+/* 快捷鍵鍵帽在手機上按不到,留著只是騙人。 */
+.is-mobile .wf-key {
+	display: none;
+}
