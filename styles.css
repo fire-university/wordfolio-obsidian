@@ -1355,10 +1355,15 @@
 }
 
 /* 只有「重點加強」用顏色。全部上色等於沒有重點,而這一級是唯一需要他採取
-   行動的——其他幾級都只是「繼續就好」。 */
+   行動的——其他幾級都只是「繼續就好」。
+
+   **只染文字不染底。** 原本連底色一起換成 --background-modifier-error,
+   在某些主題下那塊底色跟 --text-error 幾乎同一個紅,結果是一塊看不見字的
+   紅色方塊(道哥的手機上就是這樣)。跟評分鍵同一個道理:實心色塊比它要傳達的
+   資訊還吵,而且有撞色的風險。 */
 .wf-tier-shaky .wf-tier {
-	background: var(--background-modifier-error);
 	color: var(--text-error);
+	font-weight: 600;
 }
 
 .wf-tier-mastered .wf-tier {

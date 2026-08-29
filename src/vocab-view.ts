@@ -7,7 +7,7 @@
 // 做成全頁分頁而不是側欄:六個欄位(單字/釋義/狀態/到期/複習/忘記)在側欄的
 // 寬度下會擠成一團,釋義那欄會被壓到只剩兩三個字——那就等於還是看不到。
 
-import { ItemView, WorkspaceLeaf, setIcon } from "obsidian";
+import { Platform, ItemView, WorkspaceLeaf, setIcon } from "obsidian";
 import { t } from "./i18n";
 import { isoDate } from "./schedule";
 import { summarize, type DayLog, type Stats } from "./stats";
@@ -130,8 +130,14 @@ export class VocabView extends ItemView {
 		this.reviewBtn = actions.createEl("button", { cls: "mod-cta" });
 		this.reviewBtn.onclick = () => this.deps.startReview();
 
-		const importBtn = actions.createEl("button", { text: t("list_import") });
-		importBtn.onclick = () => void this.deps.importFromAnki();
+		// **手機上不放這顆。** AnkiConnect 是 Anki 桌面版的外掛,而這個功能連的是
+		// `localhost:8765`——在手機上那個 localhost 就是手機自己,那裡永遠不會有
+		// Anki。放一顆按了必定失敗的按鈕比不放更糟:道哥按了兩次,拿到兩則
+		// 「連不上 Anki」,而那則訊息聽起來像是他哪裡沒設定好。
+		if (!Platform.isMobile) {
+			const importBtn = actions.createEl("button", { text: t("list_import") });
+			importBtn.onclick = () => void this.deps.importFromAnki();
+		}
 
 		const reload = actions.createEl("button", { cls: "wf-icon-btn" });
 		setIcon(reload, "refresh-cw");
@@ -248,8 +254,13 @@ export class VocabView extends ItemView {
 		if (!this.rows.length) {
 			const empty = this.tableEl.createDiv({ cls: "wf-empty" });
 			empty.createDiv({ text: t("list_empty") });
-			const b = empty.createEl("button", { cls: "mod-cta", text: t("list_import") });
-			b.onclick = () => void this.deps.importFromAnki();
+			if (Platform.isMobile) {
+				// 空清單時更要講清楚下一步在哪,不然他只看到一個空白畫面。
+				empty.createDiv({ cls: "wf-empty-hint", text: t("list_import_desktop_only") });
+			} else {
+				const b = empty.createEl("button", { cls: "mod-cta", text: t("list_import") });
+				b.onclick = () => void this.deps.importFromAnki();
+			}
 			return;
 		}
 		if (!rows.length) {

@@ -139,8 +139,20 @@ export class ReviewModal extends Modal {
 	}
 
 	/** 焦點正在拼寫格裡——這時字母鍵是拿來打字的,不是快捷鍵。 */
+	/**
+	 * 焦點在不在輸入框裡。在的話,字母快捷鍵一律不生效。
+	 *
+	 * **認元素類型,不認 class。** 原本只認 `wf-slot-input`(桌面那排單字元格子),
+	 * 手機版加了一個叫 `wf-spell-input` 的單一輸入框之後就漏掉了——道哥回報
+	 * 「我只要輸入到 A,它就會自動跳到答案卡」,因為 A 是「顯示答案」的快捷鍵。
+	 *
+	 * 這種「新增一個輸入框就漏一次」的守衛本身就是錯的寫法,所以改成問
+	 * 「這是不是一個可以打字的元素」,以後再加輸入框都自動涵蓋。
+	 */
 	private typingInSlot(): boolean {
-		return !!document.activeElement?.classList.contains("wf-slot-input");
+		const el = document.activeElement as HTMLElement | null;
+		if (!el) return false;
+		return el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable;
 	}
 
 	/**
