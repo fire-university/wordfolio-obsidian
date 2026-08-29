@@ -589,7 +589,11 @@
 	justify-content: center;
 	align-self: stretch;
 	padding: 0.8em 0 1.5em;
-	background: var(--background-primary);
+	/* **跟 modal 同一塊底色,不是 --background-primary。**
+	   在道哥的手機主題下 modal 是深灰、primary 是純黑,寫死 primary 就會在
+	   按鈕後面拉出一條突兀的黑帶。sticky 需要一塊不透明的底(不然內容會從
+	   底下透出來),所以不能用 transparent。 */
+	background: var(--modal-background, var(--background-primary));
 }
 
 .wordfolio-review-buttons button {
@@ -1482,7 +1486,7 @@
 	color: var(--text-normal);
 }
 
-/* --- 手機的拼寫練習:一個輸入框整個字打完 --- */
+/* --- 手機的拼寫練習:格子在上,透明輸入框蓋在上面 --- */
 .is-mobile-spelling {
 	display: flex;
 	flex-direction: column;
@@ -1491,34 +1495,74 @@
 	margin: 1em 0;
 }
 
-/* 形狀提示。等寬字型才對得齊,不然底線長度看起來忽長忽短。 */
-.wf-spell-shape {
+/* 格子與輸入框疊在一起:看得到的是格子,收鍵盤輸入的是那個透明的 input。
+   這樣既有逐字回饋,又只有一個焦點、鍵盤只彈一次。 */
+.wf-spell-field {
+	position: relative;
+	width: 100%;
+}
+
+.wf-spell-cells {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.3em;
+}
+
+.wf-spell-cell {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 1.5em;
+	height: 2.1em;
+	border-bottom: 2px solid var(--background-modifier-border);
 	font-family: var(--font-monospace);
-	font-size: 1.2em;
-	letter-spacing: 0.15em;
+	font-size: 1.15em;
+	color: var(--text-normal);
+}
+
+/* 直接給的字母(首尾)不必填,底線也不用畫得那麼明顯。 */
+.wf-spell-cell.is-given {
+	border-bottom-color: transparent;
 	color: var(--text-muted);
 }
 
+.wf-spell-cell.is-typed {
+	border-bottom-color: var(--interactive-accent);
+}
+
+/* 下一個要填的格子。沒有這個記號就看不出游標在哪——輸入框是透明的。 */
+.wf-spell-cell.is-next {
+	border-bottom-color: var(--interactive-accent);
+	background: var(--background-modifier-hover);
+	border-radius: var(--radius-s) var(--radius-s) 0 0;
+}
+
+.is-mobile-spelling.is-correct .wf-spell-cell {
+	border-bottom-color: var(--text-success);
+	color: var(--text-success);
+}
+
+/* 透明地蓋滿整排格子。opacity 0 連游標一起藏掉,游標由 .is-next 那格代表。 */
 .wf-spell-input {
-	width: min(20ch, 90%);
-	padding: 0.55em 0.7em;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-m);
-	background: var(--background-primary);
-	color: var(--text-normal);
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	padding: 0;
+	border: none;
+	background: transparent;
+	color: transparent;
+	caret-color: transparent;
+	opacity: 0;
 	font-size: 1.15em;
 	text-align: center;
 }
 
 .wf-spell-input:focus {
-	border-color: var(--interactive-accent);
 	outline: none;
 }
 
-.is-mobile-spelling.is-correct .wf-spell-input {
-	border-color: var(--text-success);
-	color: var(--text-success);
-}
 
 /* --- 手機的生詞清單 --- */
 /*

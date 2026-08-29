@@ -547,33 +547,59 @@ export class ReviewModal extends Modal {
 		onDone: (correct: boolean) => void
 	): void {
 		const box = parent.createDiv({ cls: "wordfolio-review-spelling is-mobile-spelling" });
+		const field = box.createDiv({ cls: "wf-spell-field" });
+		const row = field.createDiv({ cls: "wf-spell-cells" });
 
-		// 形狀提示:給出來的字母照給,要填的用底線。跟桌面那排格子是同一份資料,
-		// 所以「先給幾個字母」那個設定在兩邊一致。
-		box.createDiv({
-			cls: "wf-spell-shape",
-			text: slots.map((x) => (x.editable ? "_" : x.char)).join(" "),
-		});
+		// 一格一個字母,跟桌面一樣看得到自己填到哪裡。
+		//
+		// 第一版做成一個自由輸入框,理由是「一個輸入框只彈一次鍵盤」——那個理由
+		// 是對的,但我順手把**逐字對應**也丟掉了,而那才是拼寫練習的回饋來源。
+		// 道哥:「我希望每輸入一個字,都能在虛線下面一個字一個字對應。」
+		//
+		// 正解是兩者兼顧:**畫面上是格子,底下只有一個輸入框**(透明地蓋在格子上)。
+		// 鍵盤只彈一次、焦點永遠不跳,而每打一個字母就填一格。
+		const cells: HTMLElement[] = [];
+		for (const slot of slots) {
+			cells.push(
+				row.createSpan({
+					cls: `wf-spell-cell${slot.editable ? "" : " is-given"}`,
+					text: slot.editable ? "" : slot.char,
+				})
+			);
+		}
 
-		const input = box.createEl("input", {
+		const input = field.createEl("input", {
 			cls: "wf-spell-input",
 			attr: {
 				type: "text",
 				inputmode: "text",
 				enterkeyhint: "done",
-				// 拼字練習不需要這些幫忙,不然鍵盤會直接把答案補上。
+				// **限制成這個字的長度。** 打得比答案長沒有任何意義,只會讓
+				// 訂正時多出一截對不到的字母。
+				maxlength: String(word.length),
 				autocomplete: "off",
 				autocapitalize: "off",
 				autocorrect: "off",
 				spellcheck: "false",
-				placeholder: t("review_spell_placeholder"),
 				"aria-label": t("review_spell_slot"),
 			},
 		});
 
+		const paint = () => {
+			const typed = input.value;
+			slots.forEach((slot, i) => {
+				const ch = typed[i];
+				cells[i].setText(ch ?? (slot.editable ? "" : slot.char));
+				cells[i].toggleClass("is-typed", !!ch);
+				// 下一格要填的位置加個記號,不然看不出游標在哪。
+				cells[i].toggleClass("is-next", i === typed.length);
+			});
+		};
+
 		const check = () => {
 			const typed = input.value.replace(/[^A-Za-z'’-]/g, "");
 			if (input.value !== typed) input.value = typed;
+			paint();
 			// 翻面之後畫面會重建,所以每次輸入就把作答存起來,翻面時才訂正得出來。
 			this.attempt = typed ? typed : null;
 			const done = typed.toLowerCase() === word.toLowerCase();
@@ -581,8 +607,12 @@ export class ReviewModal extends Modal {
 			onDone(done);
 		};
 
+		paint();
 		input.oninput = check;
-		input.onfocus = () => this.contentEl.addClass("wf-typing");
+		input.onfocus = () => {
+			this.contentEl.addClass("wf-typing");
+			paint();
+		};
 		input.onblur = () => this.contentEl.removeClass("wf-typing");
 		input.onkeydown = (e) => {
 			// Enter 直接翻面。手機鍵盤右下角那顆就是它,不用再去找「顯示答案」。
@@ -592,6 +622,8 @@ export class ReviewModal extends Modal {
 				this.flip();
 			}
 		};
+		// 點格子那一排就等於點輸入框(它本來就透明地蓋在上面,這只是保險)。
+		row.onclick = () => input.focus();
 	}
 
 	/** 答案面:一塊一塊畫,不再把 markdown 洗成一團純文字。 */
