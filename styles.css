@@ -1385,24 +1385,36 @@
 	display: none;
 }
 
-/* 手機上的關閉鍵。點擊區 44px,視覺上維持小字,不要跟「加入生詞本」搶注意力。 */
+/*
+ * 手機上的關閉鍵。尺寸跟右上角的「加入生詞本」同一組,左右對稱。
+ *
+ * 第一版給了它 44px 的灰底方塊,道哥:「太突兀了。」——**點擊區要 44px,
+ * 但那不代表看起來要 44px**。改用透明背景 + 負 margin 把可觸控範圍撐到
+ * 標題列外面,視覺上就只是一個跟 + 一樣大的字。
+ */
 .wordfolio-close {
 	flex: 0 0 auto;
-	min-width: 44px;
-	min-height: 44px;
-	margin-left: 0.2em;
-	padding: 0;
+	padding: 0 0.5em;
+	height: 1.6em;
+	margin: -0.6em 0 -0.6em -0.3em;
 	border: none;
 	border-radius: var(--radius-s);
 	background: transparent;
 	color: var(--text-muted);
 	cursor: pointer;
-	font-size: 1.3em;
-	line-height: 1;
+	font-size: 0.95em;
+	line-height: 1.6em;
 }
 
 .wordfolio-close:hover,
 .wordfolio-close:active {
 	background: var(--background-modifier-hover);
 	color: var(--text-normal);
+}
+
+/* 觸控範圍靠 padding 撐開,不動視覺大小。 */
+.is-mobile .wordfolio-close {
+	padding: 0.6em 0.9em;
+	height: auto;
+	margin: -0.6em 0 -0.6em -0.6em;
 }

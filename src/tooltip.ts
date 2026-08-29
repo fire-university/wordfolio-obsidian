@@ -522,6 +522,25 @@ export class WordTooltip {
 		const head = this.el.createDiv({ cls: "wordfolio-head" });
 
 		// 從同義詞點進來的話,左邊給一顆返回鍵(像瀏覽器的上一頁)。
+		// 關閉鍵擺在標題列**最前面**,跟右上角的「加入生詞本」左右對稱。
+		//
+		// 手機上這是必要的出口:浮窗置中蓋住畫面,而點外面在觸控上不一定送得到
+		// 事件。樣式跟 + 同一組尺寸——道哥回報第一版「太突兀了」,那版給了它
+		// 一塊 44px 的灰底方塊,結果比主角還顯眼。點擊區靠 padding 撐,
+		// 視覺大小跟 + 一樣。
+		if (this.cb.mobile?.()) {
+			const close = head.createEl("button", {
+				cls: "wordfolio-close",
+				text: "×",
+				attr: { "aria-label": t("tooltip_close") },
+			});
+			close.onclick = (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				this.hide();
+			};
+		}
+
 		if (this.cb.canGoBack?.()) {
 			const back = head.createEl("button", {
 				cls: "wordfolio-back",
@@ -536,24 +555,6 @@ export class WordTooltip {
 		}
 
 		head.createSpan({ cls: "wordfolio-word", text: entry.w });
-
-		// 關閉鍵。**手機上是必要的,不是裝飾。**
-		//
-		// 桌面上點浮窗外面就關掉了,滑鼠也隨時能移開;手機上浮窗置中蓋住半個
-		// 畫面,而點外面在觸控上不一定送得到那個事件——道哥回報「沒有辦法點關閉,
-		// 也沒有辦法移動它,擋住我整個視線」。看得到的關閉鍵是唯一保證有效的出口。
-		if (this.cb.mobile?.()) {
-			const close = head.createEl("button", {
-				cls: "wordfolio-close",
-				text: "×",
-				attr: { "aria-label": t("tooltip_close") },
-			});
-			close.onclick = (e) => {
-				e.preventDefault();
-				e.stopPropagation();
-				this.hide();
-			};
-		}
 
 		if (lookup.inflection) {
 			const zh = currentLang() === "zh-TW";
@@ -958,11 +959,17 @@ export class WordTooltip {
 			// 取整用 60,舊機型多留一點也不礙事。
 			const safeTop = 60;
 			const safeBottom = 12;
-			const avail = vh - safeTop - safeBottom;
+			// 上下都被佔滿很不舒服——道哥:「最多就是這麼大,不要再大了。」
+			// 七成高度剛好留得住上下文,看得出這個浮窗是浮在筆記上面,而不是
+			// 把筆記換掉。
+			const avail = Math.min(vh - safeTop - safeBottom, vh * 0.7);
 			this.el.style.maxHeight = `${Math.floor(avail)}px`;
 			const height = Math.min(this.el.getBoundingClientRect().height, avail);
 			this.el.style.left = `${Math.round(Math.max(gap, (vw - box.width) / 2))}px`;
-			this.el.style.top = `${Math.round(safeTop + (avail - height) / 2)}px`;
+			// 在「安全區的正中間」而不是「螢幕正中間」:上緣被狀態列吃掉一塊,
+			// 照螢幕算的話整個浮窗會偏低。
+			const top = safeTop + (vh - safeTop - safeBottom - height) / 2;
+			this.el.style.top = `${Math.round(top)}px`;
 			return;
 		}
 
