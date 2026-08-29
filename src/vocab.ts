@@ -237,6 +237,7 @@ export class VocabStore {
 			"fsrs_difficulty: 0",
 			"fsrs_reps: 0",
 			"fsrs_lapses: 0",
+			"fsrs_again: 0",
 			"fsrs_state: new",
 			`tags: [${sc.tags.join(", ")}]`,
 			"---",
@@ -330,6 +331,7 @@ export class VocabStore {
 					difficulty: Number(fm.fsrs_difficulty ?? 0),
 					reps: Number(fm.fsrs_reps ?? 0),
 					lapses: Number(fm.fsrs_lapses ?? 0),
+					again: fm.fsrs_again === undefined ? undefined : Number(fm.fsrs_again),
 					state: (fm.fsrs_state ?? "new") as VocabCard["state"],
 					lastReview: fm.fsrs_last_review ? String(fm.fsrs_last_review) : undefined,
 					suspended: fm.fsrs_suspended === true,
@@ -347,6 +349,7 @@ export class VocabStore {
 			fm.fsrs_difficulty = Number(card.difficulty.toFixed(4));
 			fm.fsrs_reps = card.reps;
 			fm.fsrs_lapses = card.lapses;
+			fm.fsrs_again = card.again ?? 0;
 			fm.fsrs_state = card.state;
 			if (card.lastReview) fm.fsrs_last_review = card.lastReview;
 		});

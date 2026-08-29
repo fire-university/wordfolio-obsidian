@@ -137,6 +137,21 @@ export class Dictionary {
 		return shard?.[phrase] ?? null;
 	}
 
+	/**
+	 * 這個字在詞庫裡的第一句例句(WordNet,覆蓋約 28%)。
+	 *
+	 * **同步,只看已經載入記憶體的 shard。** 複習卡是同步繪製的,而要複習的字
+	 * 剛剛才被查過釋義,它的 shard 一定已經在記憶體裡;沒有就回 null,
+	 * 答案卡少一段而已,不值得為了一句例句讓整張卡變成非同步繪製。
+	 */
+	cachedExample(word: string): string | null {
+		const lower = word.trim().toLowerCase();
+		if (!lower) return null;
+		const shard = this.shards.get(shardKey(lower));
+		const ex = shard?.[lower]?.ex;
+		return ex?.length ? ex[0] : null;
+	}
+
 	/** 測試與除錯用:清掉已載入的 shard。 */
 	unloadShards(): void {
 		this.shards.clear();

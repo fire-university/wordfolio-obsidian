@@ -1307,3 +1307,71 @@
 	box-shadow: 0 0 0 2px var(--text-muted);
 	transition: none;
 }
+
+/* --- 單字的練習數據與熟練度(問題卡與答案卡都畫) --- */
+.wordfolio-word-stats {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5em;
+	margin: 0.2em 0 0.9em;
+	color: var(--text-muted);
+	font-size: 0.82em;
+}
+
+.wf-tier {
+	padding: 0.1em 0.55em;
+	border-radius: var(--radius-s);
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+	cursor: help;
+}
+
+/* 只有「重點加強」用顏色。全部上色等於沒有重點,而這一級是唯一需要他採取
+   行動的——其他幾級都只是「繼續就好」。 */
+.wf-tier-shaky .wf-tier {
+	background: var(--background-modifier-error);
+	color: var(--text-error);
+}
+
+.wf-tier-mastered .wf-tier {
+	color: var(--text-success);
+}
+
+.wf-stat-item::after {
+	content: "·";
+	margin-left: 0.5em;
+	color: var(--text-faint);
+}
+
+.wf-stat-item:last-child::after {
+	content: "";
+}
+
+/* 舊筆記的近似值標記。淡到不干擾,但滑上去說得清楚。 */
+.wf-stat-approx {
+	color: var(--text-faint);
+	cursor: help;
+}
+
+/* --- 答案卡例句的整句發音鍵 --- */
+.wf-review-eg {
+	display: flex;
+	align-items: baseline;
+	gap: 0.4em;
+}
+
+.wf-eg-speak {
+	flex: 0 0 auto;
+	padding: 0 0.25em;
+	border: none;
+	background: transparent;
+	color: var(--text-faint);
+	cursor: pointer;
+	line-height: 1;
+}
+
+.wf-eg-speak:hover {
+	color: var(--text-accent);
+}

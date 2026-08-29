@@ -226,3 +226,72 @@ export function summarize(cards: StatCard[], days: DayLog[], today: string): Sta
 		avgStability,
 	};
 }
+
+// ---------------------------------------------------------------- 單字層級
+
+/**
+ * 一個字的熟練度分級。
+ *
+ * 這是**依他自己的表現**分的,跟這個字客觀上難不難無關(客觀難度另有 CEFR、
+ * 考試標籤、詞頻,那些在浮窗裡)。
+ */
+export type MasteryTier = "untested" | "shaky" | "learning" | "solid" | "mastered";
+
+export interface WordStats {
+	/** 複習過幾次 */
+	reps: number;
+	/** 答對幾次 */
+	right: number;
+	/** 答錯幾次(按過幾次「重來」) */
+	wrong: number;
+	/** 正確率 0–1;還沒複習過是 null,不是 0——那兩個意思差很多 */
+	accuracy: number | null;
+	tier: MasteryTier;
+}
+
+/**
+ * FSRS 的 stability 到幾天算「記牢了」。
+ *
+ * stability 的定義是「記憶強度掉到 90% 需要幾天」,所以 21 天 = 三週後still
+ * 有九成把握。挑 21 而不是 7 或 30:一週太短(剛複習完的字都會超過),
+ * 一個月太嚴(要等很久才有人能升到這一級,那個分級就沒有回饋作用)。
+ */
+const MASTERED_DAYS = 21;
+/** 低於這個正確率就是「重點加強」。 */
+const SHAKY_ACCURACY = 0.6;
+/** 少於這麼多次,樣本太小,不下「已掌握」的結論。 */
+const ENOUGH_REPS = 3;
+
+/**
+ * 從一張卡算出他在這個字上的實際表現。
+ *
+ * **答錯次數優先用 `again`,沒有才退回 `lapses`。** 舊筆記沒有 again 欄位,
+ * 那時只能用 lapses 當近似值——它會低估,所以舊卡的正確率偏樂觀,這一點
+ * 顯示的時候要老實講(見 i18n 的說明字串)。
+ */
+export function wordStats(card: {
+	reps: number;
+	lapses: number;
+	again?: number;
+	stability: number;
+}): WordStats {
+	const reps = Math.max(0, card.reps);
+	const wrong = Math.min(reps, Math.max(0, card.again ?? card.lapses));
+	const right = Math.max(0, reps - wrong);
+	const accuracy = reps > 0 ? right / reps : null;
+
+	let tier: MasteryTier;
+	if (reps === 0) tier = "untested";
+	else if (accuracy !== null && accuracy < SHAKY_ACCURACY) tier = "shaky";
+	else if (reps < ENOUGH_REPS) tier = "learning";
+	else if (card.stability >= MASTERED_DAYS && accuracy !== null && accuracy >= 0.9)
+		tier = "mastered";
+	else tier = "solid";
+
+	return { reps, right, wrong, accuracy, tier };
+}
+
+/** i18n 的 key。 */
+export function tierLabelKey(tier: MasteryTier): string {
+	return `tier_${tier}`;
+}

@@ -87,7 +87,21 @@ export interface VocabCard {
 	stability: number;
 	difficulty: number;
 	reps: number;
+	/**
+	 * FSRS 的「忘記次數」——**已經學會之後又忘掉**才算,不是「答錯幾次」。
+	 * 學習階段按 Again 不會讓它加一。要算正確率不能用這個,見 `wrong`。
+	 */
 	lapses: number;
+	/**
+	 * 按過幾次「重來」。這才是真正的答錯次數。
+	 *
+	 * 為什麼不能用 lapses:它只在 review 狀態下按 Again 才加一,新字還在學的
+	 * 時候答錯十次也是 0。拿它當分母算出來的正確率會系統性地偏高,而那種錯
+	 * 剛好會在「最不熟的字」上最嚴重。
+	 *
+	 * 舊筆記沒有這個欄位 → undefined,顯示時退回 lapses 當近似值。
+	 */
+	again?: number;
 	state: "new" | "learning" | "review" | "relearning";
 	lastReview?: string;
 	/**

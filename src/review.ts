@@ -15,6 +15,7 @@
 import { App, Modal, TFile, setIcon, type KeymapEventHandler } from "obsidian";
 import { t } from "./i18n";
 import { gradeCard, Rating, type Grade } from "./schedule";
+import { wordStats, tierLabelKey } from "./stats";
 import {
 	parseNote,
 	clozeSentence,
@@ -55,6 +56,10 @@ export interface ReviewHooks {
 	accent?: () => AccentPref;
 	/** 拼寫練習先給哪幾個字母。 */
 	spellingHint?: () => SpellingHint;
+	/** 念一整句(走系統語音)。 */
+	speakSentence?: (text: string) => void;
+	/** 筆記裡沒有出處例句時,從詞庫撈一句來墊。 */
+	fallbackExample?: (word: string) => string | null;
 	/** 開啟這張卡的筆記(複習到一半想改釋義)。 */
 	openNote?: (file: TFile) => void;
 	/** 已經算好的發音波形,同步。跟浮窗共用同一份快取。 */
@@ -194,6 +199,8 @@ export class ReviewModal extends Modal {
 			cls: "wordfolio-review-progress",
 			text: `${this.reviewed + 1} / ${this.reviewed + 1 + this.queue.length}`,
 		});
+		this.renderWordStats(contentEl);
+
 		if (!this.answered) {
 			this.renderFront(contentEl, note, entry.card.word);
 			// 問題卡一出現就先念一次。刻意只在**第一次**看到這張卡時念——
@@ -502,6 +509,44 @@ export class ReviewModal extends Modal {
 	}
 
 	/** 答案面:一塊一塊畫,不再把 markdown 洗成一團純文字。 */
+	/**
+	 * 這個字的練習數據與熟練度。**兩面都畫**——道哥要的就是一看到題目就知道
+	 * 自己在這個字上的狀況,翻面之後決定按哪一顆時也還看得到。
+	 *
+	 * 分級是依他自己的表現算的,跟這個字客觀上難不難無關。
+	 */
+	private renderWordStats(parent: HTMLElement): void {
+		const card = this.current?.card;
+		if (!card) return;
+		const st = wordStats(card);
+
+		const row = parent.createDiv({ cls: `wordfolio-word-stats wf-tier-${st.tier}` });
+		const tier = row.createSpan({ cls: "wf-tier", text: t(tierLabelKey(st.tier)) });
+		tier.setAttribute("aria-label", t(`${tierLabelKey(st.tier)}_why`));
+		tier.setAttribute("title", t(`${tierLabelKey(st.tier)}_why`));
+
+		if (st.reps === 0) {
+			row.createSpan({ cls: "wf-stat-item", text: t("wf_stats_untested") });
+			return;
+		}
+
+		const parts = [
+			t("wf_stats_reps", { reps: st.reps }),
+			t("wf_stats_right", { right: st.right }),
+			t("wf_stats_wrong", { wrong: st.wrong }),
+			t("wf_stats_accuracy", { pct: Math.round((st.accuracy ?? 0) * 100) }),
+		];
+		for (const p of parts) row.createSpan({ cls: "wf-stat-item", text: p });
+
+		// 舊筆記沒有逐次記錄,答錯次數是估的——不講的話那個正確率是在騙人。
+		if (card.again === undefined && card.reps > 0) {
+			row.createSpan({ cls: "wf-stat-approx", text: "~" }).setAttribute(
+				"title",
+				t("wf_stats_approx")
+			);
+		}
+	}
+
 	private renderBack(parent: HTMLElement, note: ParsedNote): void {
 		this.renderCorrection(parent, note.word);
 
@@ -522,13 +567,37 @@ export class ReviewModal extends Modal {
 		}
 
 		// 出處例句:答案面給完整的句子(正面是挖空的),看得到這個字實際怎麼用。
-		if (note.sentences.length) {
+		//
+		// 筆記裡沒有句子時(從 Anki 匯入的有些沒帶句子過來)退回詞庫的例句——
+		// **一張沒有任何例句的答案卡,等於只告訴你「這個字叫什麼意思」**,
+		// 而看不到它怎麼用。
+		const fallback = note.sentences.length ? null : this.hooks.fallbackExample?.(note.word);
+		if (note.sentences.length || fallback) {
 			const box = this.section(body, t("review_sec_sentence"));
-			for (const s of note.sentences) {
-				box.createDiv({ cls: "wf-review-eg", text: focusSentence(s.text, note.word, note.forms) });
+			const lines = note.sentences.length
+				? note.sentences
+				: [{ text: fallback as string, translation: undefined }];
+			for (const s of lines) {
+				const line = box.createDiv({ cls: "wf-review-eg" });
+				line.createSpan({
+					text: focusSentence(s.text, note.word, note.forms),
+				});
+				// 整句發音。走系統語音,所以沒有波形——那是拿不到時間軸的必然結果。
+				const play = line.createEl("button", {
+					cls: "wf-eg-speak",
+					attr: { "aria-label": t("review_speak_sentence"), title: t("review_speak_sentence") },
+				});
+				setIcon(play.createSpan(), "volume-2");
+				play.onclick = (e) => {
+					e.stopPropagation();
+					this.hooks.speakSentence?.(s.text);
+				};
 				if (s.translation) box.createDiv({ cls: "wf-review-eg-zh", text: s.translation });
 			}
-			if (note.source) box.createDiv({ cls: "wf-review-source", text: note.source });
+			box.createDiv({
+				cls: "wf-review-source",
+				text: fallback ? t("review_eg_from_dict") : note.source ?? "",
+			});
 		}
 
 		for (const extra of note.extras) {
@@ -644,6 +713,9 @@ export class ReviewModal extends Modal {
 		// learning 了,事後再問永遠是 false,每日新字上限就會失效。
 		const wasNew = entry.card.state === "new";
 		const updated = gradeCard(entry.card, rating);
+		// 自己記答錯次數。FSRS 的 lapses 只算「學會之後又忘」,學習階段按 Again
+		// 不會加一,拿它算正確率會在最不熟的字上偏得最厲害。
+		updated.again = (entry.card.again ?? entry.card.lapses) + (rating === Rating.Again ? 1 : 0);
 
 		await this.store.saveCard(entry.file, updated);
 		await this.hooks.onGraded?.(rating, wasNew);

@@ -289,6 +289,22 @@ export class Audio {
 		});
 	}
 
+	/**
+	 * 念一整句。
+	 *
+	 * **只能走系統語音。** 有道那個端點是給單字用的,餵一整句進去不保證回得來、
+	 * 也不保證念完;`speechSynthesis` 是唯一能念任意長度文字的。代價是機器音,
+	 * 而且**沒有波形**(拿不到時間軸,同 ADR-27)。
+	 *
+	 * 念句子前先把正在播的單字掐掉,不然兩個聲音疊在一起。
+	 */
+	speakSentence(text: string, accent: Accent): void {
+		const clean = text.trim();
+		if (!clean) return;
+		this.stopCurrent();
+		this.systemVoice(clean, accent);
+	}
+
 	// ---------------------------------------------------- 系統語音
 
 	private systemVoice(word: string, accent: Accent): void {

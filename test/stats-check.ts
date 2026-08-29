@@ -11,6 +11,7 @@ import {
 	shiftDate,
 	summarize,
 	LOG_START_PREFIX,
+	wordStats,
 	logStart,
 	LOG_END,
 	type DayLog,
@@ -147,6 +148,46 @@ check("封存數單獨算", parked.suspendedCount === 1, String(parked.suspended
 
 const empty = summarize([], [], "2026-08-27");
 check("空生詞本不會爆", empty.total === 0 && empty.allAccuracy === null && empty.avgStability === 0);
+
+console.log("\n單字的練習數據");
+const st = (reps: number, again: number, stability = 0) =>
+	wordStats({ reps, lapses: 0, again, stability });
+
+check("還沒複習過:正確率是 null 不是 0", st(0, 0).accuracy === null);
+check("還沒複習過 → untested", st(0, 0).tier === "untested", st(0, 0).tier);
+{
+	const s1 = st(10, 2);
+	check("對錯次數", s1.right === 8 && s1.wrong === 2, `${s1.right}/${s1.wrong}`);
+	check("正確率", Math.abs(s1.accuracy! - 0.8) < 1e-9, String(s1.accuracy));
+}
+
+console.log("\n熟練度分級");
+check("正確率低 → shaky(重點加強)", st(10, 6).tier === "shaky", st(10, 6).tier);
+// 樣本太小不下「已掌握」的結論:第一次就答對不代表記住了。
+check("只練一次全對 → learning,不是 mastered", st(1, 0, 99).tier === "learning", st(1, 0, 99).tier);
+check("兩次全對 → 還是 learning", st(2, 0, 99).tier === "learning");
+check("三次全對 + 記憶夠久 → mastered", st(3, 0, 30).tier === "mastered", st(3, 0, 30).tier);
+check("三次全對但記憶還很短 → solid,不是 mastered", st(3, 0, 5).tier === "solid", st(3, 0, 5).tier);
+check("練很多次、正確率中等 → solid", st(20, 4, 40).tier === "solid", st(20, 4, 40).tier);
+// 正確率低就是低,不會因為練很久、stability 很高就升級。
+check("stability 很高但正確率低 → 仍然 shaky", st(20, 12, 90).tier === "shaky", st(20, 12, 90).tier);
+
+console.log("\n舊筆記沒有 again 欄位時退回 lapses");
+{
+	const old = wordStats({ reps: 5, lapses: 2, stability: 10 });
+	check("用 lapses 當近似值", old.wrong === 2 && old.right === 3, `${old.right}/${old.wrong}`);
+	const fresh = wordStats({ reps: 5, lapses: 2, again: 4, stability: 10 });
+	check("有 again 就以 again 為準(它才是真的答錯次數)", fresh.wrong === 4, String(fresh.wrong));
+}
+
+console.log("\n不合理的輸入不會算出荒謬的數字");
+check("答錯次數超過複習次數 → 夾住,不會出現負的答對次數",
+	st(3, 99).wrong === 3 && st(3, 99).right === 0, JSON.stringify(st(3, 99)));
+check("負數不會爆", st(-5, -5).reps === 0 && st(-5, -5).accuracy === null);
+{
+	const a = st(4, 0, 30).accuracy;
+	check("正確率不會超過 1", a !== null && a <= 1, String(a));
+}
 
 console.log(failures ? `\n${failures} 項失敗` : "\n全部通過");
 process.exit(failures ? 1 : 0);

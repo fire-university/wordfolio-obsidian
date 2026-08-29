@@ -255,6 +255,21 @@ export default class WordFolioPlugin extends Plugin {
 		this.audio?.dispose();
 	}
 
+	/** 整句發音要用哪一種口音。設定是 both 時用美式(多數人學的那套)。 */
+	private mainAccentFor(): "uk" | "us" {
+		return this.settings.accent === "uk" ? "uk" : "us";
+	}
+
+	/**
+	 * 詞庫裡這個字的例句。答案卡在筆記沒有出處例句時拿它墊。
+	 *
+	 * 同步:複習卡是同步繪製的,而 shard 在查過這個字之後已經在記憶體裡了
+	 * (複習前才剛查過它的釋義)。撈不到就回 null,答案卡少一段而已。
+	 */
+	private dictExample(word: string): string | null {
+		return this.dict.cachedExample(word);
+	}
+
 	private async loadDictionary(): Promise<void> {
 		const ok = await this.dict.load();
 		if (!ok) {
@@ -438,6 +453,8 @@ export default class WordFolioPlugin extends Plugin {
 			speakFront: () => this.settings.reviewSpeakFront,
 			accent: () => this.settings.accent,
 			spellingHint: () => this.settings.spellingHint,
+			speakSentence: (text) => this.audio.speakSentence(text, this.mainAccentFor()),
+			fallbackExample: (word) => this.dictExample(word),
 			cachedWaveform: (word, accent) =>
 				this.settings.showWaveform ? this.audio.cachedWaveform(word, accent) : null,
 			loadWaveform: (word, accent) =>
