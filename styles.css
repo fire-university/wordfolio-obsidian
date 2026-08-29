@@ -1386,17 +1386,22 @@
 }
 
 /*
- * 手機上的關閉鍵。尺寸跟右上角的「加入生詞本」同一組,左右對稱。
+ * 手機上的關閉鍵。**視覺尺寸跟右上角的「加入生詞本」完全一樣**,左右對稱。
  *
- * 第一版給了它 44px 的灰底方塊,道哥:「太突兀了。」——**點擊區要 44px,
- * 但那不代表看起來要 44px**。改用透明背景 + 負 margin 把可觸控範圍撐到
- * 標題列外面,視覺上就只是一個跟 + 一樣大的字。
+ * 走過兩次錯的版本:第一版給了 44px 的灰底方塊(「太突兀了」),第二版改用
+ * padding 撐點擊區,但 padding 也把可見的框一起撐大了(「大小不對,太大了」)。
+ *
+ * 正解是**把點擊區和視覺大小分開**:框維持跟 + 一樣小,用一個透明的 ::after
+ * 往外擴 10px 當觸控範圍。手指按得到,眼睛看不到。
+ *
+ * `background: transparent` 要寫在 .is-mobile 這一層——Obsidian 手機版有一條
+ * `.is-mobile button` 的預設灰底,特異性比單一 class 高,不蓋掉就會冒出灰塊。
  */
 .wordfolio-close {
+	position: relative;
 	flex: 0 0 auto;
 	padding: 0 0.5em;
 	height: 1.6em;
-	margin: -0.6em 0 -0.6em -0.3em;
 	border: none;
 	border-radius: var(--radius-s);
 	background: transparent;
@@ -1406,15 +1411,19 @@
 	line-height: 1.6em;
 }
 
+.is-mobile .wordfolio-close {
+	background: transparent;
+	box-shadow: none;
+}
+
+.wordfolio-close::after {
+	content: "";
+	position: absolute;
+	inset: -10px;
+}
+
 .wordfolio-close:hover,
 .wordfolio-close:active {
 	background: var(--background-modifier-hover);
 	color: var(--text-normal);
-}
-
-/* 觸控範圍靠 padding 撐開,不動視覺大小。 */
-.is-mobile .wordfolio-close {
-	padding: 0.6em 0.9em;
-	height: auto;
-	margin: -0.6em 0 -0.6em -0.6em;
 }

@@ -451,9 +451,13 @@ export class WordTooltip {
 		this.el.className = "wordfolio-tooltip";
 		this.el.style.display = "none";
 		document.body.appendChild(this.el);
+		window.visualViewport?.addEventListener("resize", this.onViewportChange);
+		window.visualViewport?.addEventListener("scroll", this.onViewportChange);
 	}
 
 	destroy(): void {
+		window.visualViewport?.removeEventListener("resize", this.onViewportChange);
+		window.visualViewport?.removeEventListener("scroll", this.onViewportChange);
 		this.el.remove();
 	}
 
@@ -939,7 +943,22 @@ export class WordTooltip {
 	 * 貼在字的下方偏左對齊;下方放不下就翻到上方,右邊超出視窗就往左推。
 	 * 刻意不蓋住游標所在的那一行,不然滑動時會自己把自己關掉。
 	 */
+	/** 最後一次定位用的錨點。鍵盤開合時要拿它重算。 */
+	private lastAnchor: DOMRect | null = null;
+
+	/**
+	 * 鍵盤彈出／收起時重新定位。
+	 *
+	 * 常見順序是「鍵盤已經在了才按查詢」,那一次 position() 就算對了;但
+	 * 「先查詢、鍵盤才上來」也會發生(點了浮窗外面的輸入區),那時浮窗會
+	 * 突然被蓋住一半。掛一個監聽,兩種順序都對。
+	 */
+	private onViewportChange = () => {
+		if (this.isOpen && this.lastAnchor) this.position(this.lastAnchor);
+	};
+
 	private position(anchor: DOMRect): void {
+		this.lastAnchor = anchor;
 		const gap = 6;
 		const vw = window.innerWidth;
 		const vh = window.innerHeight;
@@ -951,24 +970,31 @@ export class WordTooltip {
 		// 手機:置中,不貼著那個字。
 		//
 		// 兩個理由。一是**瀏海／動態島**:貼著字放時浮窗常常頂到螢幕最上緣,
-		// 而發音鍵剛好落在動態島底下——道哥回報「我要按發音就點到 iPhone 的
-		// 動態島」。二是查詢已經改成按鈕觸發,浮窗跟那個字之間本來就沒有
-		// 「滑過去」的關係要維持,置中反而好讀。
+		// 而發音鍵剛好落在動態島底下。二是查詢已經改成按鈕觸發,浮窗跟那個字
+		// 之間本來就沒有「滑過去」的關係要維持,置中反而好讀。
 		if (this.cb.mobile?.()) {
+			// **一定要用 visualViewport,不能用 innerHeight。**
+			//
+			// iOS 上虛擬鍵盤彈出時 `window.innerHeight` **不會變小**,只有
+			// `visualViewport.height` 會。用 innerHeight 算出來的「畫面中央」
+			// 有一半在鍵盤底下——道哥回報「下面會被鍵盤擋住」就是這個。
+			const vv = window.visualViewport;
+			const viewH = vv?.height ?? vh;
+			const viewTop = vv?.offsetTop ?? 0;
+
 			// 上緣留給狀態列與動態島。59pt 是 iPhone 15 Pro 的安全區高度,
-			// 取整用 60,舊機型多留一點也不礙事。
-			const safeTop = 60;
+			// 取整用 60。鍵盤上來時 viewH 已經縮了,不需要再多留。
+			const safeTop = viewTop > 0 ? 8 : 60;
 			const safeBottom = 12;
 			// 上下都被佔滿很不舒服——道哥:「最多就是這麼大,不要再大了。」
-			// 七成高度剛好留得住上下文,看得出這個浮窗是浮在筆記上面,而不是
-			// 把筆記換掉。
-			const avail = Math.min(vh - safeTop - safeBottom, vh * 0.7);
+			const room = viewH - safeTop - safeBottom;
+			const avail = Math.max(160, Math.min(room, viewH * 0.7));
 			this.el.style.maxHeight = `${Math.floor(avail)}px`;
 			const height = Math.min(this.el.getBoundingClientRect().height, avail);
 			this.el.style.left = `${Math.round(Math.max(gap, (vw - box.width) / 2))}px`;
-			// 在「安全區的正中間」而不是「螢幕正中間」:上緣被狀態列吃掉一塊,
-			// 照螢幕算的話整個浮窗會偏低。
-			const top = safeTop + (vh - safeTop - safeBottom - height) / 2;
+			// 在可見區域的正中間。position 是 fixed,所以要把 visualViewport
+			// 的位移加回去,不然頁面被鍵盤往上推時浮窗會跟著跑掉。
+			const top = viewTop + safeTop + (room - height) / 2;
 			this.el.style.top = `${Math.round(top)}px`;
 			return;
 		}
