@@ -115,7 +115,7 @@ export default class WordFolioPlugin extends Plugin {
 		this.audio = new Audio(
 			this.app.vault,
 			`${base}/audio`,
-			() => this.settings.audioSource === "online_first",
+			() => this.effectiveAudioSource() === "online_first",
 			() => this.settings.normalizeVolume
 		);
 
@@ -805,6 +805,17 @@ export default class WordFolioPlugin extends Plugin {
 	}
 
 	/**
+	 * 這台裝置實際要用哪個發音來源。
+	 *
+	 * 手機與桌面分開存,因為 iOS 的靜音開關會切掉 Web Audio 但切不掉系統語音,
+	 * 而桌面沒有這個問題——不該為了手機把電腦上的真人錄音與波形一起降級。
+	 * 詳細理由見 settings.ts 的 audioSourceMobile。
+	 */
+	effectiveAudioSource(): AudioSource {
+		return Platform.isMobile ? this.settings.audioSourceMobile : this.settings.audioSource;
+	}
+
+	/**
 	 * 釋義與生詞筆記要用哪種語言。
 	 *
 	 * 跟介面語言分開:道哥的 Obsidian 介面是英文,要的釋義卻是繁中。auto 才
@@ -852,6 +863,14 @@ export default class WordFolioPlugin extends Plugin {
 		// 桌面維持開啟,那裡浮窗只佔角落一塊。
 		if (data && data.selectionIcon === undefined && Platform.isMobile) {
 			this.settings.selectionIcon = false;
+			await this.saveSettings();
+		}
+
+		// 遷移:發音來源拆成手機／桌面兩份之前只有一個全域值。把舊值原封不動
+		// 帶進手機那一份——**不要猜他想要什麼**,只保住他當初的選擇;之後兩邊
+		// 要各自調是他的事。
+		if (data && data.audioSourceMobile === undefined) {
+			this.settings.audioSourceMobile = data.audioSource ?? DEFAULT_SETTINGS.audioSource;
 			await this.saveSettings();
 		}
 
@@ -1206,16 +1225,24 @@ class WordFolioSettingTab extends PluginSettingTab {
 					})
 			);
 
+		// 發音來源**手機與桌面各存一份**。這一頁只改「你現在這台裝置」的那一份,
+		// 不然在手機上為了靜音開關改成系統語音,會把電腦上的真人錄音與波形一起
+		// 降級——而電腦根本沒有那個問題。
 		new Setting(containerEl)
 			.setName(t("set_audio_source_name"))
-			.setDesc(t("set_audio_source_desc"))
+			.setDesc(
+				Platform.isMobile
+					? t("set_audio_source_desc_mobile")
+					: t("set_audio_source_desc")
+			)
 			.addDropdown((d) =>
 				d
 					.addOption("online_first", t("audio_online_first"))
 					.addOption("system_only", t("audio_system_only"))
-					.setValue(s.audioSource)
+					.setValue(this.plugin.effectiveAudioSource())
 					.onChange(async (v) => {
-						s.audioSource = v as AudioSource;
+						if (Platform.isMobile) s.audioSourceMobile = v as AudioSource;
+						else s.audioSource = v as AudioSource;
 						await this.plugin.saveSettings();
 					})
 			);

@@ -64,6 +64,18 @@ export interface WordFolioSettings {
 
 	// --- 發音 ---
 	audioSource: AudioSource;
+	/**
+	 * 手機／平板上的發音來源。跟桌面分開存。
+	 *
+	 * **為什麼要分平台:iOS 的靜音開關會切掉 Web Audio,但切不掉系統語音。**
+	 * YouTube、Podcast 這類 App 把音訊類別宣告成 `playback`(「使用者就是要聽
+	 * 這個」)所以無視靜音開關;而 WKWebView 預設是 `ambient`,靜音就沒聲音,
+	 * 而且 **JavaScript 沒有 API 可以改那個類別**——只有原生 App 能設。
+	 *
+	 * 道哥的手機長年靜音,所以在手機上真人錄音等於完全聽不到。但桌面沒有這個
+	 * 問題,不該為了手機把電腦上的真人錄音與波形一起降級。
+	 */
+	audioSourceMobile: AudioSource;
 	// 顯示與播放哪一套口音。影響浮窗、複習卡的音標按鈕與所有自動發音。
 	accent: AccentPref;
 
@@ -142,6 +154,8 @@ export const DEFAULT_SETTINGS: WordFolioSettings = {
 	sectionOrder: [...ALL_SECTIONS],
 	sectionsEnabled: { ...DEFAULT_ENABLED },
 	audioSource: "online_first",
+	// 手機預設系統語音:靜音模式下唯一聽得到的選項,而多數人的手機是靜音的。
+	audioSourceMobile: "system_only",
 	// 預設兩套都給:不知道使用者學哪一種之前,少給不如多給。
 	accent: "both",
 	showWaveform: true,
