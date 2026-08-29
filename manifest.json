@@ -6,6 +6,6 @@
 	"description": "Hover any English word for definitions, UK/US phonetics and pronunciation — fully offline. Traditional Chinese or English definitions, a Markdown vocabulary notebook, and FSRS spaced repetition.",
 	"author": "Doug (fire-university)",
 	"authorUrl": "https://firetw.com",
-	"isDesktopOnly": true,
+	"isDesktopOnly": false,
 	"fundingUrl": "https://buymeacoffee.com/firetw"
 }

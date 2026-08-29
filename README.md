@@ -10,8 +10,8 @@ Definitions come in **English** or **Traditional Chinese**, following whichever
 language Obsidian is set to. Everything stays on your machine: no account, no
 server, no telemetry.
 
-> Desktop only. The dictionary is a one-time 38.5 MB download; after that
-> WordFolio never needs the network to look a word up.
+> Works on desktop and mobile. The dictionary is a one-time 38.5 MB download;
+> after that WordFolio never needs the network to look a word up.
 
 ## Why another dictionary plugin
 
@@ -48,6 +48,20 @@ or damaged — it never starts the 38.5 MB over.
 The files land in the plugin's own folder under `.obsidian/plugins/wordfolio/`,
 never in your vault. Removing the plugin removes them; your vocabulary notes
 are left alone.
+
+### On a phone or tablet
+
+Touch has no hover, so on mobile WordFolio is button-driven: tap anywhere in an
+English word (the cursor may land at either end — that still counts) and run
+**Look up the selected word**. Add it to the editor toolbar under
+*Settings → Mobile → Manage toolbar options*, or use it from the long-press menu.
+
+Selecting text first also works, and selecting several words looks up the phrase.
+
+Two things differ on mobile: importing from Anki is desktop-only (AnkiConnect is
+a desktop Anki add-on), and the tooltip does not appear by itself — that is
+deliberate, since anything that pops up on a small screen covers what you are
+reading. You can switch the automatic icon back on in the settings.
 
 ## What the tooltip shows
 
@@ -131,7 +145,7 @@ plugin folder.
 npm install
 npm run fetch:sources   # ~73 MB of source data into vendor/ (gitignored)
 npm run build:dict      # → dict/
-npm test                # 15 checks; the first needs dict/ to exist
+npm test                # 17 checks; the first needs dict/ to exist
 npm run build           # → main.js
 npm run deploy          # build and copy into your vault
 ```
