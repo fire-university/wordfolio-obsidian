@@ -1644,39 +1644,34 @@
 
 /* --- 設定頁的版面 --- */
 /*
- * Obsidian 的設定列是「說明」與「控制項」左右分欄的 flex,而**控制項預設不會
- * 縮**。所以只要下拉選單的文字長一點,它就把說明欄擠成一個詞的寬度——
- * 道哥看到的就是這個:「Online / recordings / sound / better;」一行兩三個字。
+ * Obsidian 的設定列是「說明」與「控制項」左右分欄的 flex。長下拉選單會把說明欄
+ * 擠成一行兩三個字;但**反過來壓扁選單更糟**——第一版我對 .setting-item-control
+ * 下了 `min-width: 0`,結果選單縮到只剩「Br」「R」兩個字母,道哥直接看不到自己
+ * 選了什麼。
  *
- * 治本是讓控制項可以縮、並且給說明欄一個底線寬度。選項文字本身也縮短了,
- * 但**光縮文字是治標**——下一個長選項出現時同樣的事會再發生一次。
+ * 所以不要去動整列的 flex(那是 Obsidian 的版面,兩邊怎麼分它自己有一套),
+ * **只給 select 一個下限與上限**:不能縮到讀不出來,也不能寬到吃掉說明。
  *
  * 只作用在 .wordfolio-settings 底下,不動別人的外掛。
  */
-.wordfolio-settings .setting-item-info {
-	flex: 1 1 auto;
-	min-width: 12em;
-	margin-right: 1em;
-}
-
-.wordfolio-settings .setting-item-control {
-	flex: 0 1 auto;
-	min-width: 0;
-	max-width: 55%;
-}
-
 .wordfolio-settings .setting-item-control select {
-	max-width: 100%;
+	min-width: 11em;
+	max-width: 20em;
+	text-overflow: ellipsis;
 }
 
-/* 手機上左右分欄本來就放不下,讓它上下疊。 */
+/* 手機上左右分欄本來就放不下,讓它上下疊,選單佔滿整行。 */
 .is-mobile .wordfolio-settings .setting-item {
 	flex-direction: column;
 	align-items: stretch;
 }
 
 .is-mobile .wordfolio-settings .setting-item-control {
-	max-width: 100%;
 	justify-content: flex-start;
 	margin-top: 0.5em;
+}
+
+.is-mobile .wordfolio-settings .setting-item-control select {
+	width: 100%;
+	max-width: 100%;
 }

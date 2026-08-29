@@ -1228,27 +1228,46 @@ class WordFolioSettingTab extends PluginSettingTab {
 					})
 			);
 
-		// 發音來源**手機與桌面各存一份**。這一頁只改「你現在這台裝置」的那一份,
-		// 不然在手機上為了靜音開關改成系統語音,會把電腦上的真人錄音與波形一起
-		// 降級——而電腦根本沒有那個問題。
-		new Setting(containerEl)
-			.setName(t("set_audio_source_name"))
-			.setDesc(
-				Platform.isMobile
-					? t("set_audio_source_desc_mobile")
-					: t("set_audio_source_desc")
-			)
-			.addDropdown((d) =>
+		// 發音來源**兩台裝置各一列,兩邊都看得到**。
+		//
+		// 第一版只畫一列、值跟著當下的裝置變——道哥:「我手機上的設定跟 Mac 上
+		// 不一樣,那這樣不會搞混嗎?為什麼不把它分成兩個設定呢?」他是對的:
+		// **藏起來的差異比看得見的兩個設定更容易搞混**。同一個標題在兩台機器上
+		// 顯示不同的值,而畫面上沒有任何東西解釋為什麼。
+		new Setting(containerEl).setName(t("set_audio_source_name")).setDesc(t("set_audio_source_why"));
+
+		const sourceRow = (
+			name: string,
+			get: () => AudioSource,
+			set: (v: AudioSource) => void
+		) => {
+			const row = new Setting(containerEl).setName(name);
+			// 標出你現在在哪一台,不然兩列長得一樣,不知道改的是哪個。
+			if ((name === t("set_audio_source_desktop")) !== Platform.isMobile) {
+				row.setDesc(t("set_audio_source_this_device"));
+			}
+			row.addDropdown((d) =>
 				d
 					.addOption("online_first", t("audio_online_first"))
 					.addOption("system_only", t("audio_system_only"))
-					.setValue(this.plugin.effectiveAudioSource())
+					.setValue(get())
 					.onChange(async (v) => {
-						if (Platform.isMobile) s.audioSourceMobile = v as AudioSource;
-						else s.audioSource = v as AudioSource;
+						set(v as AudioSource);
 						await this.plugin.saveSettings();
 					})
 			);
+		};
+
+		sourceRow(
+			t("set_audio_source_desktop"),
+			() => s.audioSource,
+			(v) => (s.audioSource = v)
+		);
+		sourceRow(
+			t("set_audio_source_mobile"),
+			() => s.audioSourceMobile,
+			(v) => (s.audioSourceMobile = v)
+		);
 
 		new Setting(containerEl)
 			.setName(t("set_normalize_name"))
