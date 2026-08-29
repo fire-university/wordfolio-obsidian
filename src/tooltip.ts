@@ -381,6 +381,8 @@ export class SelectionIcon {
 export interface TooltipCallbacks {
 	/** 點喇叭 */
 	/** 念出這個字。onProgress 給波形用:0–1 是播放中,null 是結束或被打斷。 */
+	/** 這是不是手機／平板。影響浮窗的定位策略。 */
+	mobile?: () => boolean;
 	onSpeak: (
 		word: string,
 		accent: "uk" | "us",
@@ -926,6 +928,25 @@ export class WordTooltip {
 		// 高度先解除限制才量得到真實內容高度。
 		this.el.style.maxHeight = "";
 		const box = this.el.getBoundingClientRect();
+
+		// 手機:置中,不貼著那個字。
+		//
+		// 兩個理由。一是**瀏海／動態島**:貼著字放時浮窗常常頂到螢幕最上緣,
+		// 而發音鍵剛好落在動態島底下——道哥回報「我要按發音就點到 iPhone 的
+		// 動態島」。二是查詢已經改成按鈕觸發,浮窗跟那個字之間本來就沒有
+		// 「滑過去」的關係要維持,置中反而好讀。
+		if (this.cb.mobile?.()) {
+			// 上緣留給狀態列與動態島。59pt 是 iPhone 15 Pro 的安全區高度,
+			// 取整用 60,舊機型多留一點也不礙事。
+			const safeTop = 60;
+			const safeBottom = 12;
+			const avail = vh - safeTop - safeBottom;
+			this.el.style.maxHeight = `${Math.floor(avail)}px`;
+			const height = Math.min(this.el.getBoundingClientRect().height, avail);
+			this.el.style.left = `${Math.round(Math.max(gap, (vw - box.width) / 2))}px`;
+			this.el.style.top = `${Math.round(safeTop + (avail - height) / 2)}px`;
+			return;
+		}
 
 		let left = anchor.left;
 		if (left + box.width > vw - gap) left = vw - box.width - gap;

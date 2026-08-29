@@ -66,6 +66,7 @@ import {
 } from "./sections";
 import type { Lookup, VocabCard } from "./types";
 import type { SpellingHint } from "./note-parse";
+import { wordAt } from "./lemma";
 import { reviewQueue, Rating, type Grade } from "./schedule";
 import type { RatingName } from "./stats";
 
@@ -146,6 +147,7 @@ export default class WordFolioPlugin extends Plugin {
 		}));
 
 		this.tooltip = new WordTooltip({
+			mobile: () => Platform.isMobile,
 			onSpeak: (word, accent, onProgress) => void this.audio.speak(word, accent, onProgress),
 			cachedWaveform: (word, accent) =>
 				this.settings.showWaveform ? this.audio.cachedWaveform(word, accent) : null,
@@ -630,18 +632,36 @@ export default class WordFolioPlugin extends Plugin {
 		}
 
 		const domSel = window.getSelection();
-		const word = (editor?.getSelection() || domSel?.toString() || "").trim();
+		let word = (editor?.getSelection() || domSel?.toString() || "").trim();
+		let sentence = editor
+			? editor.getLine(editor.getCursor("from").line) || word
+			: domSel?.anchorNode?.nodeValue ?? word;
+
+		// **沒有選取就查游標所在的那個字。**
+		//
+		// 手機上「一定要先長按選取」不叫方便,那是三個動作換一次查詢。點一下
+		// 那個字(游標會落在字裡或字尾),按按鈕就該查得到——wordAt 本來就會
+		// 在游標剛好在字尾時往回退一格,這個行為早就寫好了,只是命令沒用它。
+		if (!word && editor) {
+			const cur = editor.getCursor();
+			const line = editor.getLine(cur.line);
+			const hit = wordAt(line, cur.ch);
+			if (hit) {
+				word = hit.word;
+				sentence = line;
+			}
+		}
+
 		if (!word) {
 			new Notice(t("notice_no_selection"), 5000);
 			return;
 		}
 
-		// 例句取整行:游標那一行就是這個字出現的地方,比 DOM 節點的片段完整。
-		const sentence = editor
-			? editor.getLine(editor.getCursor("from").line) || word
-			: domSel?.anchorNode?.nodeValue ?? word;
-
-		const shown = await this.hover.showFor({ word, sentence, rect: this.anchorRect(domSel) });
+		const shown = await this.hover.showFor({
+			word,
+			sentence,
+			rect: this.anchorRect(domSel, editor),
+		});
 		if (!shown) new Notice(t("notice_not_found", { word }));
 	}
 
@@ -651,10 +671,19 @@ export default class WordFolioPlugin extends Plugin {
 	 * DOM 選取還在就貼著它;不在了(手機上按工具列常常就是這樣)就退到畫面
 	 * 底部中央——**寧可位置不完美,也不要因為算不出座標就不顯示**。
 	 */
-	private anchorRect(sel: Selection | null): DOMRect {
+	private anchorRect(sel: Selection | null, editor?: Editor): DOMRect {
 		if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
 			const r = sel.getRangeAt(0).getBoundingClientRect();
 			if (r.width || r.height) return r;
+		}
+		// 沒有選取時問 CodeMirror 游標在畫面上的哪裡。`editor.cm` 不在公開型別裡,
+		// 所以整段包在 try 裡——拿不到就退到畫面中央,不要因此不顯示。
+		try {
+			const cm = (editor as unknown as { cm?: { coordsAtPos(p: number): DOMRect | null } })?.cm;
+			const at = editor && cm?.coordsAtPos(editor.posToOffset(editor.getCursor()));
+			if (at) return new DOMRect(at.left, at.top, 0, at.bottom - at.top);
+		} catch {
+			// 內部 API 換了就走下面的退路。
 		}
 		const x = window.innerWidth / 2;
 		const y = window.innerHeight * 0.45;

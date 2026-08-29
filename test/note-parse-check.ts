@@ -7,6 +7,7 @@ import {
 	parseNote, clozeSentence, focusSentence, letterSlots, slotsFilled,
 	spellingAttempt, diffLetters, hasAttempt, BLANK,
 } from "../src/note-parse";
+import { wordAt } from "../src/lemma";
 
 let failures = 0;
 function check(label: string, ok: boolean, detail = "") {
@@ -277,6 +278,23 @@ check(
 );
 check("英文標題不會被丟進 extras", en.extras.length === 0, JSON.stringify(en.extras.map((e) => e.heading)));
 
+
+console.log("\n游標所在的字(手機上點一下就查,不用先選取)");
+{
+	const line = "The candidate made a precise statement.";
+	const at = (ch: number) => wordAt(line, ch)?.word ?? null;
+	check("游標在字中間", at(8) === "candidate", String(at(8)));
+	check("游標在字首", at(4) === "candidate", String(at(4)));
+	// 點一下英文字時,iOS 通常把游標放在字尾——這是最常見的情況。
+	check("游標剛好在字尾(點一下最常發生的位置)", at(13) === "candidate", String(at(13)));
+	// 空白處會退回前一個字——**這正是「點字尾就查得到」的機制本身**,不是 bug。
+	// "The candidate made" 裡 ch=13 是那個空格,退回去剛好是 candidate。
+	check("空白處退回前一個字", at(13) === "candidate", String(at(13)));
+	check("下一個字的字首查的是下一個字", at(14) === "made", String(at(14)));
+	check("游標在中文/標點上回 null", wordAt("這是中文。", 2) === null);
+	check("空行不會爆", wordAt("", 0) === null);
+	check("超出行尾不會爆", wordAt(line, 999) === null || typeof at(999) === "string");
+}
 
 console.log(failures ? `\n${failures} 項失敗` : "\n全部通過");
 process.exit(failures ? 1 : 0);
