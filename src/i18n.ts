@@ -353,14 +353,14 @@ const EN: Dict = {
 		"Plays the word as soon as a question card opens. Good for listening practice — but note it also tells you the pronunciation before you try to recall the word, which makes the question easier. Only plays the first time you see a card, not when you press Again.",
 	set_audio_source_name: "Audio source",
 	set_audio_source_why:
-		"Kept separately for each kind of device, because on iOS the silent switch mutes recorded audio — apps like YouTube declare themselves as media playback and ignore that switch, and a plugin running inside Obsidian cannot. If your phone lives on silent, give it the system voice: it is heard either way, at the cost of a synthetic voice and no waveform. Your computer has no such problem, so it can keep the recordings.",
+		"\"Recorded, then system voice\" never leaves you without sound: if you are offline, or the word has no recording, it falls back to the system voice automatically — and words you have played before are cached, so those stay as real recordings offline. Kept separately for each kind of device, because on iOS the silent switch mutes recorded audio — apps like YouTube declare themselves as media playback and ignore that switch, and a plugin running inside Obsidian cannot. If your phone lives on silent, give it the system voice: it is heard either way, at the cost of a synthetic voice and no waveform. Your computer has no such problem, so it can keep the recordings.",
 	set_audio_source_desktop: "On this computer",
 	set_audio_source_mobile: "On phones and tablets",
 	set_audio_source_this_device: "The device you are on now.",
 	set_audio_source_desc:
 		"Online recordings sound better; the system voice always works offline. Downloaded audio is cached, so a word you have heard once stays available offline.",
-	audio_online_first: "Recorded audio",
-	audio_system_only: "System voice",
+	audio_online_first: "Recorded, then system voice",
+	audio_system_only: "System voice only",
 	heading_vocab: "Vocabulary notebook",
 	set_vocab_folder_name: "Notebook folder",
 	set_vocab_folder_desc:
@@ -686,14 +686,14 @@ const ZH: Dict = {
 		"問題卡一打開就把那個字念出來。練聽力有幫助，但要知道它也等於在你回想之前先把讀音告訴你，題目會變簡單。只在第一次看到那張卡時念，按「重來」重問同一個字時不會再念。",
 	set_audio_source_name: "發音來源",
 	set_audio_source_why:
-		"兩種裝置各存一份,因為 iOS 的**靜音開關會切掉真人錄音**——YouTube 那類 App 把自己宣告成媒體播放所以無視靜音開關,而跑在 Obsidian 裡的外掛做不到。手機長年靜音的話就給它系統語音:靜音下也聽得到,代價是機器音、而且沒有波形。電腦沒有這個問題,可以留著真人錄音。",
+		"選「真人錄音」不會讓你在離線時沒聲音:**抓不到就自動改用系統語音**(離線、或有道沒有那個字都算),而且聽過的字已經快取在本機,離線時那些仍然是真人錄音。兩種裝置各存一份,因為 iOS 的**靜音開關會切掉真人錄音**——YouTube 那類 App 把自己宣告成媒體播放所以無視靜音開關,而跑在 Obsidian 裡的外掛做不到。手機長年靜音的話就給它系統語音:靜音下也聽得到,代價是機器音、而且沒有波形。電腦沒有這個問題,可以留著真人錄音。",
 	set_audio_source_desktop: "在這台電腦上",
 	set_audio_source_mobile: "在手機與平板上",
 	set_audio_source_this_device: "你現在用的就是這一台。",
 	set_audio_source_desc:
 		"線上真人錄音比較好聽,系統語音則是永遠都能用。抓過的音檔會快取,所以聽過一次的字之後離線也聽得到。",
-	audio_online_first: "真人錄音",
-	audio_system_only: "系統語音",
+	audio_online_first: "真人錄音,不行才用系統語音",
+	audio_system_only: "只用系統語音",
 	heading_vocab: "生詞本",
 	set_vocab_folder_name: "生詞本資料夾",
 	set_vocab_folder_desc: "一個字一篇筆記寫在這裡;外掛永遠只碰這個資料夾。",
