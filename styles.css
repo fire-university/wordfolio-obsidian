@@ -126,13 +126,30 @@
 	height: 18px;
 }
 
-/* 用 currentColor 才會跟著主題走;顏色比音標淡一階,它是輔助資訊不是主角。 */
+/*
+ * 未播放時是暗的。它是輔助資訊不是主角,靜止的時候不該搶走注意力。
+ *
+ * 播放時一格一格亮起來(.is-lit),跟著聲音走——可以照著波形唸。
+ * transition 只給「變亮」那個方向:亮起來要有掃過去的感覺,還原時要一次熄掉,
+ * 不然停止播放之後會看到一條慢慢退色的殘影。
+ */
 .wordfolio-wave rect {
 	fill: var(--text-faint);
 }
 
-.wordfolio-accent:hover .wordfolio-wave rect {
+.wordfolio-wave rect.is-lit {
 	fill: var(--text-accent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.wordfolio-wave rect.is-lit {
+		transition: fill 90ms linear;
+	}
+}
+
+/* 滑到音標上時整條淡淡地提示一下,跟播放時的亮不是同一件事。 */
+.wordfolio-accent:hover .wordfolio-wave rect:not(.is-lit) {
+	fill: var(--text-muted);
 }
 
 /* 複習卡的音標按鈕比較大,波形跟著放寬一點。 */
@@ -141,8 +158,8 @@
 	margin-left: 0.15em;
 }
 
-.wordfolio-review-speak:hover .wordfolio-wave rect {
-	fill: var(--text-accent);
+.wordfolio-review-speak:hover .wordfolio-wave rect:not(.is-lit) {
+	fill: var(--text-muted);
 }
 
 /* --- 釋義 --- */

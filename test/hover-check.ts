@@ -177,6 +177,49 @@ async function main() {
 		check("空的包絡線不動畫面", host.querySelectorAll("rect").length === 10);
 	}
 
+	// 播放時的由暗到亮。壞掉的樣子有兩種,都不會報錯:停下來的波形停在一半的
+	// 亮度(看起來像卡住),或者每一幀重設 56 根長方形而讓整條抖動。
+	console.log("\n波形跟著播放亮起來");
+	{
+		const { drawWave } = await import("../src/tooltip");
+		const host = document.createElement("div");
+		const h = drawWave(host, new Array(10).fill(0.5));
+		const bars = [...host.querySelectorAll("rect")];
+		const lit = () => bars.filter((r) => r.classList.contains("is-lit")).length;
+
+		check("一開始整條都是暗的", lit() === 0, String(lit()));
+
+		h.progress(0);
+		check("進度 0 只亮第一格", lit() === 1, String(lit()));
+
+		h.progress(0.5);
+		check("進度一半亮一半", lit() === 5, String(lit()));
+		check("亮的是前面那幾格,不是隨便幾格",
+			bars.slice(0, 5).every((r) => r.classList.contains("is-lit")) &&
+				bars.slice(5).every((r) => !r.classList.contains("is-lit")));
+
+		h.progress(1);
+		check("進度 1 整條都亮", lit() === 10, String(lit()));
+
+		// 超出範圍不可以爆掉,也不可以少亮一格——rAF 的時間戳很容易剛好超過 1。
+		h.progress(1.4);
+		check("進度超過 1 也是整條亮,不會出錯", lit() === 10, String(lit()));
+
+		h.progress(null);
+		check("結束後整條熄掉,不會停在一半", lit() === 0, String(lit()));
+
+		// 重播:再亮一次要能從頭來。上一版曾經因為 lit 沒還原而第二次不會動。
+		h.progress(0.3);
+		check("可以再播一次", lit() === 3, String(lit()));
+
+		// 倒退(播到一半換字、或使用者重按)要把多亮的熄掉。
+		h.progress(0.1);
+		check("進度倒退時多亮的會熄掉", lit() === 1, String(lit()));
+
+		h.progress(null);
+		check("再次還原", lit() === 0, String(lit()));
+	}
+
 	console.log(failures === 0 ? "\n全部通過。" : `\n${failures} 項失敗。`);
 	process.exit(failures === 0 ? 0 : 1);
 }

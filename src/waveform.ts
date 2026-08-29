@@ -58,9 +58,11 @@ export function analyse(samples: Float32Array): Loudness {
  * 坑裡摔過四次了。
  */
 export interface WaveformData {
-	/** 0–1 的包絡線 */
+	/** 0–1 的包絡線。**只涵蓋有聲的那一段**,不含頭尾靜音。 */
 	env: number[];
-	/** 秒 */
+	/** 從音檔的第幾秒開始播。掐掉前置靜音用的。 */
+	offset: number;
+	/** 要播多久(秒)。這也是波形涵蓋的長度。 */
 	duration: number;
 	loudness: Loudness;
 	/** 播放時要乘的增益 */
@@ -124,7 +126,11 @@ export function envelope(samples: Float32Array, buckets = 56): number[] {
  * 有道的錄音前後常有半秒以上的空白。不掐的話波形會被擠在中間一小段,而按下
  * 播放之後還要等空白跑完才聽到聲音。
  */
-export function trimSilence(samples: Float32Array, pad = 0.02): [number, number] {
+export function trimSilence(
+	samples: Float32Array,
+	/** 前後各留幾個取樣的餘裕。給比例(0–1)時照長度換算;給整數時直接當取樣數。 */
+	pad = 0.02
+): [number, number] {
 	const n = samples.length;
 	let start = 0;
 	let end = n;
@@ -132,8 +138,10 @@ export function trimSilence(samples: Float32Array, pad = 0.02): [number, number]
 	while (end > start && Math.abs(samples[end - 1]) < SILENCE) end--;
 	if (start >= end) return [0, n]; // 整段都在門檻以下,不要掐成空的
 
-	// 留一點餘裕,不然子音的起音會被切掉,聽起來像被吃掉一個音。
-	const padN = Math.round(pad * n);
+	// 留一點餘裕,不然子音的起音會被切掉,聽起來像被吃掉一個音——
+	// **這是這個函式唯一真正危險的地方**。多留 60 毫秒的靜音沒人聽得出來,
+	// 少切掉一個 /p/ /t/ 的爆破音卻會讓整個字聽起來是錯的,所以寧可留多。
+	const padN = pad < 1 ? Math.round(pad * n) : Math.round(pad);
 	return [Math.max(0, start - padN), Math.min(n, end + padN)];
 }
 

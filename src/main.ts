@@ -135,7 +135,7 @@ export default class WordFolioPlugin extends Plugin {
 		}));
 
 		this.tooltip = new WordTooltip({
-			onSpeak: (word, accent) => void this.audio.speak(word, accent),
+			onSpeak: (word, accent, onProgress) => void this.audio.speak(word, accent, onProgress),
 			cachedWaveform: (word, accent) =>
 				this.settings.showWaveform ? this.audio.cachedWaveform(word, accent) : null,
 			loadWaveform: (word, accent) =>
@@ -432,7 +432,7 @@ export default class WordFolioPlugin extends Plugin {
 			return;
 		}
 		new ReviewModal(this.app, this.vocab, due, {
-			speak: (word, accent) => void this.audio.speak(word, accent),
+			speak: (word, accent, onProgress) => void this.audio.speak(word, accent, onProgress),
 			autoSpeak: () => this.settings.reviewAutoSpeak,
 			speakFront: () => this.settings.reviewSpeakFront,
 			accent: () => this.settings.accent,

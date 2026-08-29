@@ -189,8 +189,20 @@ export interface IconOptions {
  * 高度用 `Math.max(1, …)`:靜音那幾格如果變成 0 高,波形頭尾會憑空斷掉,
  * 看起來像畫壞了;留一根細線才看得出「這裡是靜音」而不是「這裡沒東西」。
  */
-export function drawWave(parent: HTMLElement, env: number[]): void {
-	if (!env.length) return;
+export interface WaveHandle {
+	/**
+	 * 播到哪裡了。0–1 = 播放中,**null = 回到未播放的狀態**。
+	 *
+	 * 收到 null 一定要整條熄掉——停下來的波形停在一半的亮度,看起來是卡住不是停止。
+	 */
+	progress(p: number | null): void;
+}
+
+/** 什麼都不做的 handle。沒有波形可畫時回這個,呼叫端就不用到處判斷 null。 */
+const NO_WAVE: WaveHandle = { progress: () => undefined };
+
+export function drawWave(parent: HTMLElement, env: number[]): WaveHandle {
+	if (!env.length) return NO_WAVE;
 	const NS = "http://www.w3.org/2000/svg";
 	const W = 2;
 	const GAP = 1;
@@ -204,6 +216,7 @@ export function drawWave(parent: HTMLElement, env: number[]): void {
 	svg.setAttribute("role", "img");
 	svg.setAttribute("aria-hidden", "true");
 
+	const bars: SVGRectElement[] = [];
 	for (let i = 0; i < env.length; i++) {
 		const h = Math.max(1, env[i] * (H - 2));
 		const r = document.createElementNS(NS, "rect");
@@ -213,11 +226,31 @@ export function drawWave(parent: HTMLElement, env: number[]): void {
 		r.setAttribute("height", h.toFixed(2));
 		r.setAttribute("rx", "1");
 		svg.appendChild(r);
+		bars.push(r);
 	}
 	// 原生 DOM 而不是 Obsidian 的 empty():這是個對外的小工具函式,
 	// 別的地方(node 測試、複習卡)拿去用時不該連帶要求 Obsidian 的 DOM 擴充。
 	while (parent.firstChild) parent.removeChild(parent.firstChild);
 	parent.appendChild(svg);
+
+	// 播放時由暗到亮,一格一格跟著聲音走,可以跟著唸。
+	//
+	// **只動有變化的那幾格。** 每一幀重設 56 根長方形的 class 是白工,而且
+	// 播放中每秒六十次的全量寫入會讓整條波形在低階機器上抖動。
+	// 用「亮幾格」而不是「亮到第幾格」來算。索引語意很容易差一格——
+	// floor(0.5 × 10) = 5,亮到索引 5 就是**六**格,一半的進度亮了六成。
+	let lit = 0;
+	return {
+		progress(p) {
+			// p = 0 就亮第一格:按下去立刻有反應,不然開頭幾十毫秒像沒作用。
+			const want =
+				p === null ? 0 : Math.max(1, Math.min(bars.length, Math.ceil(p * bars.length)));
+			if (want === lit) return;
+			for (let i = lit; i < want; i++) bars[i].classList.add("is-lit");
+			for (let i = lit - 1; i >= want; i--) bars[i].classList.remove("is-lit");
+			lit = want;
+		},
+	};
 }
 
 export class SelectionIcon {
@@ -310,7 +343,12 @@ export class SelectionIcon {
 
 export interface TooltipCallbacks {
 	/** 點喇叭 */
-	onSpeak: (word: string, accent: "uk" | "us") => void;
+	/** 念出這個字。onProgress 給波形用:0–1 是播放中,null 是結束或被打斷。 */
+	onSpeak: (
+		word: string,
+		accent: "uk" | "us",
+		onProgress?: (p: number | null) => void
+	) => void;
 	/** 已經算好的波形,同步。沒有音檔或還沒算就回 null。 */
 	cachedWaveform?: (word: string, accent: "uk" | "us") => WaveformData | null;
 	/** 去算波形(只讀磁碟上已有的音檔,不連網)。算完呼叫端會重畫。 */
@@ -805,20 +843,35 @@ export class WordTooltip {
 			text: "▶",
 			attr: { "aria-label": `${accent.toUpperCase()} ${word}` },
 		});
-		speak.onclick = () => this.cb.onSpeak(word, accent);
-
 		// 波形接在音標後面。已經算好就直接畫;沒有就丟去算,算完只補這一格,
 		// **不重畫整個浮窗**——重畫會把游標下的元素抽換掉,hover 當場斷線。
 		const slot = group.createSpan({ cls: "wordfolio-wave-slot" });
+		let handle: WaveHandle | null = null;
 		const ready = this.cb.cachedWaveform?.(word, accent);
 		if (ready) {
-			drawWave(slot, ready.env);
+			handle = drawWave(slot, ready.env);
 		} else if (this.cb.loadWaveform) {
 			void this.cb.loadWaveform(word, accent).then((w) => {
 				// 這期間浮窗可能已經換成別的字了,補之前先確認這一格還在畫面上。
-				if (w && slot.isConnected) drawWave(slot, w.env);
+				if (w && slot.isConnected) handle = drawWave(slot, w.env);
 			});
 		}
+
+		// 波形跟著聲音由暗到亮。
+		//
+		// **第一次播一個新字時,波形本來是不存在的**——render 當下磁碟上還沒有
+		// 音檔,是這一次點擊才去下載的。所以在第一個進度回報時再撿一次:那時候
+		// audio 已經解碼完(它是先解碼才出聲的),波形一定在快取裡。
+		// 少了這一段,每個新字的第一次播放都不會有動畫,而那正是最想看的一次。
+		speak.onclick = () =>
+			this.cb.onSpeak(word, accent, (p) => {
+				if (!slot.isConnected) return;
+				if (!handle) {
+					const w = this.cb.cachedWaveform?.(word, accent);
+					if (w) handle = drawWave(slot, w.env);
+				}
+				handle?.progress(p);
+			});
 	}
 
 	// ---------------------------------------------------------- 定位

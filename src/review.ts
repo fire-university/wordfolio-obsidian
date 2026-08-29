@@ -27,7 +27,7 @@ import {
 	type ParsedNote,
 } from "./note-parse";
 import type { Accent } from "./audio";
-import { drawWave } from "./tooltip";
+import { drawWave, type WaveHandle } from "./tooltip";
 import type { WaveformData } from "./waveform";
 import type { AccentPref } from "./settings";
 import type { VocabStore } from "./vocab";
@@ -45,7 +45,7 @@ export interface ReviewHooks {
 	/** 視窗關掉時叫一次,讓清單視圖把數字重畫。 */
 	onClose?: () => void;
 	/** 念出這個字。接的是浮窗那套(有道真人錄音,失敗退回系統語音)。 */
-	speak?: (word: string, accent: Accent) => void;
+	speak?: (word: string, accent: Accent, onProgress?: (p: number | null) => void) => void;
 	/** 翻面時要不要自動念一次。 */
 	autoSpeak?: () => boolean;
 	/** 問題卡一出現就先念一次。 */
@@ -248,25 +248,36 @@ export class ReviewModal extends Modal {
 			b.createSpan({ cls: "wf-accent-label", text: label });
 			b.createSpan({ cls: "wf-ipa", text: ipa });
 			setIcon(b.createSpan({ cls: "wf-speak-icon" }), "volume-2");
-			const play = () => this.hooks.speak?.(word, accent);
+			// 波形。**放在音標按鈕裡面**,所以只有音標本來就看得到的時候才出現——
+			// 問題卡的音標藏在「顯示音標」後面,是使用者自己選擇要的提示,而 IPA
+			// 本身洩漏的音節數遠比一條波形多,所以這裡不會多給任何線索。
+			const slot = b.createSpan({ cls: "wordfolio-wave-slot" });
+			let handle: WaveHandle | null = null;
+			const ready = this.hooks.cachedWaveform?.(word, accent);
+			if (ready) {
+				handle = drawWave(slot, ready.env);
+			} else if (this.hooks.loadWaveform) {
+				void this.hooks.loadWaveform(word, accent).then((w) => {
+					if (w && slot.isConnected) handle = drawWave(slot, w.env);
+				});
+			}
+
+			// 第一次播新字時波形還不存在(音檔是這一次才下載的),
+			// 所以在第一個進度回報時再撿一次。理由同 tooltip.ts。
+			const play = () =>
+				this.hooks.speak?.(word, accent, (p) => {
+					if (!slot.isConnected) return;
+					if (!handle) {
+						const w = this.hooks.cachedWaveform?.(word, accent);
+						if (w) handle = drawWave(slot, w.env);
+					}
+					handle?.progress(p);
+				});
 			b.onclick = (e) => {
 				e.stopPropagation();
 				play();
 			};
 			if (bindKeys) this.bind(b, key, play);
-
-			// 波形。**放在音標按鈕裡面**,所以只有音標本來就看得到的時候才出現——
-			// 問題卡的音標藏在「顯示音標」後面,是使用者自己選擇要的提示,而 IPA
-			// 本身洩漏的音節數遠比一條波形多,所以這裡不會多給任何線索。
-			const slot = b.createSpan({ cls: "wordfolio-wave-slot" });
-			const ready = this.hooks.cachedWaveform?.(word, accent);
-			if (ready) {
-				drawWave(slot, ready.env);
-			} else if (this.hooks.loadWaveform) {
-				void this.hooks.loadWaveform(word, accent).then((w) => {
-					if (w && slot.isConnected) drawWave(slot, w.env);
-				});
-			}
 		}
 	}
 
