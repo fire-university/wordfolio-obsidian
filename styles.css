@@ -1566,6 +1566,17 @@
 
 /* --- 手機的生詞清單 --- */
 /*
+ * 底部要留給**浮動工具列 + home indicator**。
+ *
+ * 桌面那 4em 是為了 Obsidian 的狀態列(字數統計)留的,手機的工具列高得多,
+ * 而且底下還有 home indicator 的安全區——道哥回報捲到底時最後一列被擋住。
+ * `env(safe-area-inset-bottom)` 讓有無 home indicator 的機型都對。
+ */
+.is-mobile .wordfolio-vocab-view {
+	padding-bottom: calc(7em + env(safe-area-inset-bottom, 0px));
+}
+
+/*
  * 六欄的表格在 390px 寬的螢幕上擠不下。**藏掉三欄而不是讓它橫向捲**——
  * 要左右滑才看得到的欄位等於沒有,而複習次數／忘記次數在清單裡本來就只是參考,
  * 真正要決定「該練哪個字」看狀態與到期日就夠了。
