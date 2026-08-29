@@ -302,6 +302,12 @@ const EN: Dict = {
 	section_move_down: "Move down",
 
 	heading_audio: "Pronunciation",
+	set_waveform_name: "Show a waveform",
+	set_waveform_desc:
+		"Draws the shape of the recording next to the phonetics, so you can see which syllable carries the stress — not just how loud it is. Only words whose audio is already on disk get one; it never goes online just to draw a line, and the system voice fallback cannot be drawn at all.",
+	set_normalize_name: "Even out the volume",
+	set_normalize_desc:
+		"Recorded pronunciations arrive at wildly different levels — measured across 81 cached files, the quietest and loudest were 11.6 dB apart, roughly four times the loudness. This matches them on playback so you are not reaching for the volume key every other word.",
 	set_accent_name: "Accent",
 	set_accent_desc:
 		"Which pronunciation to show and play — in the hover popup, on review cards, and for every automatic playback. If you are learning one accent, the other one is just taking up space.",
@@ -590,6 +596,12 @@ const ZH: Dict = {
 	section_move_down: "往下移",
 
 	heading_audio: "發音",
+	set_waveform_name: "顯示波形",
+	set_waveform_desc:
+		"在音標旁邊畫出這段錄音的形狀,**看得到重音落在哪一個音節**,而不只是多大聲。只有音檔已經在磁碟上的字才畫,不會為了畫一條線而額外連網;退回系統語音的字沒有波形可畫。",
+	set_normalize_name: "拉齊音量",
+	set_normalize_desc:
+		"真人錄音的音量很不一致——實測 81 個快取檔,最小聲與最大聲差了 11.6 dB,大約四倍響度。開啟後播放時會自動拉齊,不用每隔幾個字就去動音量鍵。",
 	set_accent_name: "發音口音",
 	set_accent_desc:
 		"要顯示與播放哪一套發音——浮窗、複習卡的音標按鈕、以及所有自動發音都跟著這裡走。只學一種口音的話，另一種就只是佔版面。",

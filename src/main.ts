@@ -103,7 +103,8 @@ export default class WordFolioPlugin extends Plugin {
 		this.audio = new Audio(
 			this.app.vault,
 			`${base}/audio`,
-			() => this.settings.audioSource === "online_first"
+			() => this.settings.audioSource === "online_first",
+			() => this.settings.normalizeVolume
 		);
 
 		this.vocab = new VocabStore(this.app, () => this.settings.vocabFolder, () =>
@@ -135,6 +136,12 @@ export default class WordFolioPlugin extends Plugin {
 
 		this.tooltip = new WordTooltip({
 			onSpeak: (word, accent) => void this.audio.speak(word, accent),
+			cachedWaveform: (word, accent) =>
+				this.settings.showWaveform ? this.audio.cachedWaveform(word, accent) : null,
+			loadWaveform: (word, accent) =>
+				this.settings.showWaveform
+					? this.audio.waveform(word, accent)
+					: Promise.resolve(null),
 			accentPref: () => this.settings.accent,
 			onAdd: (lookup, sentence) => void this.addToVocab(lookup, sentence),
 			onAsk: (lookup, sentence, gen) => this.llm.explain(lookup, sentence, gen),
@@ -429,6 +436,12 @@ export default class WordFolioPlugin extends Plugin {
 			autoSpeak: () => this.settings.reviewAutoSpeak,
 			speakFront: () => this.settings.reviewSpeakFront,
 			accent: () => this.settings.accent,
+			cachedWaveform: (word, accent) =>
+				this.settings.showWaveform ? this.audio.cachedWaveform(word, accent) : null,
+			loadWaveform: (word, accent) =>
+				this.settings.showWaveform
+					? this.audio.waveform(word, accent)
+					: Promise.resolve(null),
 			openNote: (file) => void this.app.workspace.getLeaf(true).openFile(file),
 			// 每評一張就寫進 _review-log.md。複習到一半關掉視窗是常態,
 			// 那幾張不該憑空消失。
@@ -1068,6 +1081,26 @@ class WordFolioSettingTab extends PluginSettingTab {
 						s.audioSource = v as AudioSource;
 						await this.plugin.saveSettings();
 					})
+			);
+
+		new Setting(containerEl)
+			.setName(t("set_normalize_name"))
+			.setDesc(t("set_normalize_desc"))
+			.addToggle((tg) =>
+				tg.setValue(s.normalizeVolume).onChange(async (v) => {
+					s.normalizeVolume = v;
+					await this.plugin.saveSettings();
+				})
+			);
+
+		new Setting(containerEl)
+			.setName(t("set_waveform_name"))
+			.setDesc(t("set_waveform_desc"))
+			.addToggle((tg) =>
+				tg.setValue(s.showWaveform).onChange(async (v) => {
+					s.showWaveform = v;
+					await this.plugin.saveSettings();
+				})
 			);
 
 		// --- 生詞本 ---

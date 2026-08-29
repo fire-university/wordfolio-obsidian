@@ -55,6 +55,21 @@ export interface WordFolioSettings {
 	// 顯示與播放哪一套口音。影響浮窗、複習卡的音標按鈕與所有自動發音。
 	accent: AccentPref;
 
+	/**
+	 * 音標旁邊畫一條發音波形。
+	 *
+	 * 看得到的不只是「多大聲」,還有**重音落在哪一個音節**。只畫已經抓過的字
+	 * (磁碟上有音檔),不會為了畫線而額外連網。
+	 */
+	showWaveform: boolean;
+	/**
+	 * 播放時把各個字的音量拉齊。
+	 *
+	 * 有道的錄音音量很不一致——實測 81 個快取檔,人聲 RMS 差了 11.6 dB,
+	 * 大約四倍響度。有的字要湊近喇叭、有的嚇一跳。
+	 */
+	normalizeVolume: boolean;
+
 	// --- 生詞本 ---
 	// vault 相對路徑;外掛只碰這個資料夾。
 	vocabFolder: string;
@@ -101,6 +116,8 @@ export const DEFAULT_SETTINGS: WordFolioSettings = {
 	audioSource: "online_first",
 	// 預設兩套都給:不知道使用者學哪一種之前,少給不如多給。
 	accent: "both",
+	showWaveform: true,
+	normalizeVolume: true,
 	vocabFolder: "英文生詞本",
 	captureSentence: true,
 	ankiDeck: "WordFolio",

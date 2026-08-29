@@ -27,6 +27,8 @@ import {
 	type ParsedNote,
 } from "./note-parse";
 import type { Accent } from "./audio";
+import { drawWave } from "./tooltip";
+import type { WaveformData } from "./waveform";
 import type { AccentPref } from "./settings";
 import type { VocabStore } from "./vocab";
 import type { VocabCard } from "./types";
@@ -52,6 +54,10 @@ export interface ReviewHooks {
 	accent?: () => AccentPref;
 	/** 開啟這張卡的筆記(複習到一半想改釋義)。 */
 	openNote?: (file: TFile) => void;
+	/** 已經算好的發音波形,同步。跟浮窗共用同一份快取。 */
+	cachedWaveform?: (word: string, accent: Accent) => WaveformData | null;
+	/** 去算波形(只讀磁碟上已有的音檔,不連網)。 */
+	loadWaveform?: (word: string, accent: Accent) => Promise<WaveformData | null>;
 }
 
 export class ReviewModal extends Modal {
@@ -248,6 +254,19 @@ export class ReviewModal extends Modal {
 				play();
 			};
 			if (bindKeys) this.bind(b, key, play);
+
+			// 波形。**放在音標按鈕裡面**,所以只有音標本來就看得到的時候才出現——
+			// 問題卡的音標藏在「顯示音標」後面,是使用者自己選擇要的提示,而 IPA
+			// 本身洩漏的音節數遠比一條波形多,所以這裡不會多給任何線索。
+			const slot = b.createSpan({ cls: "wordfolio-wave-slot" });
+			const ready = this.hooks.cachedWaveform?.(word, accent);
+			if (ready) {
+				drawWave(slot, ready.env);
+			} else if (this.hooks.loadWaveform) {
+				void this.hooks.loadWaveform(word, accent).then((w) => {
+					if (w && slot.isConnected) drawWave(slot, w.env);
+				});
+			}
 		}
 	}
 

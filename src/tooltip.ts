@@ -8,6 +8,7 @@
 import { formsFor, meaningfulLines } from "./lemma";
 import { t, currentLang } from "./i18n";
 import type { SectionId } from "./sections";
+import type { WaveformData } from "./waveform";
 import type { Lookup, InflectionKind, GenOpts } from "./types";
 import { ABORTED } from "./types";
 import type { SourceEntry } from "./sources-parse";
@@ -178,6 +179,47 @@ export interface IconOptions {
  * 滑鼠移上去有翻頁動畫(純 CSS,`:hover` 觸發);若開了「停留展開」,停留超過
  * dwell() 毫秒就自動展開,秒數可在設定調。
  */
+/**
+ * 把包絡線畫成一條小波形。
+ *
+ * 用 createElementNS 一根一根建 rect,不用 innerHTML(社群外掛審查一律擋),
+ * 也不用 canvas——56 根長方形而已,SVG 在深淺色主題與高解析螢幕下都不用另外
+ * 處理,canvas 兩件事都要自己來。
+ *
+ * 高度用 `Math.max(1, …)`:靜音那幾格如果變成 0 高,波形頭尾會憑空斷掉,
+ * 看起來像畫壞了;留一根細線才看得出「這裡是靜音」而不是「這裡沒東西」。
+ */
+export function drawWave(parent: HTMLElement, env: number[]): void {
+	if (!env.length) return;
+	const NS = "http://www.w3.org/2000/svg";
+	const W = 2;
+	const GAP = 1;
+	const H = 18;
+	const width = env.length * (W + GAP) - GAP;
+
+	const svg = document.createElementNS(NS, "svg");
+	svg.setAttribute("class", "wordfolio-wave");
+	svg.setAttribute("viewBox", `0 0 ${width} ${H}`);
+	svg.setAttribute("preserveAspectRatio", "none");
+	svg.setAttribute("role", "img");
+	svg.setAttribute("aria-hidden", "true");
+
+	for (let i = 0; i < env.length; i++) {
+		const h = Math.max(1, env[i] * (H - 2));
+		const r = document.createElementNS(NS, "rect");
+		r.setAttribute("x", String(i * (W + GAP)));
+		r.setAttribute("y", ((H - h) / 2).toFixed(2));
+		r.setAttribute("width", String(W));
+		r.setAttribute("height", h.toFixed(2));
+		r.setAttribute("rx", "1");
+		svg.appendChild(r);
+	}
+	// 原生 DOM 而不是 Obsidian 的 empty():這是個對外的小工具函式,
+	// 別的地方(node 測試、複習卡)拿去用時不該連帶要求 Obsidian 的 DOM 擴充。
+	while (parent.firstChild) parent.removeChild(parent.firstChild);
+	parent.appendChild(svg);
+}
+
 export class SelectionIcon {
 	private el: HTMLButtonElement;
 	private visible = false;
@@ -269,6 +311,10 @@ export class SelectionIcon {
 export interface TooltipCallbacks {
 	/** 點喇叭 */
 	onSpeak: (word: string, accent: "uk" | "us") => void;
+	/** 已經算好的波形,同步。沒有音檔或還沒算就回 null。 */
+	cachedWaveform?: (word: string, accent: "uk" | "us") => WaveformData | null;
+	/** 去算波形(只讀磁碟上已有的音檔,不連網)。算完呼叫端會重畫。 */
+	loadWaveform?: (word: string, accent: "uk" | "us") => Promise<WaveformData | null>;
 	/** 要顯示哪一套口音。沒接就兩套都給。 */
 	accentPref?: () => "us" | "uk" | "both";
 	/** 點「加入生詞本」 */
@@ -760,6 +806,19 @@ export class WordTooltip {
 			attr: { "aria-label": `${accent.toUpperCase()} ${word}` },
 		});
 		speak.onclick = () => this.cb.onSpeak(word, accent);
+
+		// 波形接在音標後面。已經算好就直接畫;沒有就丟去算,算完只補這一格,
+		// **不重畫整個浮窗**——重畫會把游標下的元素抽換掉,hover 當場斷線。
+		const slot = group.createSpan({ cls: "wordfolio-wave-slot" });
+		const ready = this.cb.cachedWaveform?.(word, accent);
+		if (ready) {
+			drawWave(slot, ready.env);
+		} else if (this.cb.loadWaveform) {
+			void this.cb.loadWaveform(word, accent).then((w) => {
+				// 這期間浮窗可能已經換成別的字了,補之前先確認這一格還在畫面上。
+				if (w && slot.isConnected) drawWave(slot, w.env);
+			});
+		}
 	}
 
 	// ---------------------------------------------------------- 定位

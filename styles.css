@@ -113,6 +113,38 @@
 	color: var(--text-accent);
 }
 
+/* 發音波形。寬度固定,不然每個字的波形長短不一,兩行音標會對不齊。 */
+.wordfolio-wave-slot {
+	display: inline-flex;
+	align-items: center;
+	width: 5.5em;
+	height: 18px;
+}
+
+.wordfolio-wave {
+	width: 100%;
+	height: 18px;
+}
+
+/* 用 currentColor 才會跟著主題走;顏色比音標淡一階,它是輔助資訊不是主角。 */
+.wordfolio-wave rect {
+	fill: var(--text-faint);
+}
+
+.wordfolio-accent:hover .wordfolio-wave rect {
+	fill: var(--text-accent);
+}
+
+/* 複習卡的音標按鈕比較大,波形跟著放寬一點。 */
+.wordfolio-review-speak .wordfolio-wave-slot {
+	width: 4.5em;
+	margin-left: 0.15em;
+}
+
+.wordfolio-review-speak:hover .wordfolio-wave rect {
+	fill: var(--text-accent);
+}
+
 /* --- 釋義 --- */
 .wordfolio-translation > div {
 	margin: 0.1em 0;

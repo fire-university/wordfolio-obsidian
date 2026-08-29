@@ -127,6 +127,56 @@ async function main() {
 		hover.detach();
 	}
 
+	// ---------------------------------------------------------------- 波形
+	// 這裡才測得到 drawWave:它要真的 document。壞掉的樣子是 SVG 屬性變成 NaN,
+	// 瀏覽器不會報錯,只是那根長方形靜靜地不畫出來——畫面上是「波形缺了幾格」。
+	console.log("\n發音波形畫成 SVG");
+	{
+		const { drawWave } = await import("../src/tooltip");
+		const { envelope } = await import("../src/waveform");
+
+		const samples = new Float32Array(4800);
+		for (let i = 0; i < samples.length; i++) {
+			const loud = i > 1600 && i < 3200 ? 0.9 : 0.08;
+			samples[i] = loud * Math.sin((2 * Math.PI * i) / 32);
+		}
+		const env = envelope(samples, 56);
+
+		const host = document.createElement("div");
+		drawWave(host, env);
+		const svg = host.querySelector("svg");
+		const rects = [...host.querySelectorAll("rect")];
+		check("產生一個 svg", !!svg);
+		check("每一格都有一根長方形", rects.length === 56, String(rects.length));
+
+		const nums = rects.flatMap((r) =>
+			["x", "y", "width", "height"].map((a) => Number(r.getAttribute(a)))
+		);
+		check("所有座標都是數字,沒有 NaN", nums.every((n) => Number.isFinite(n)));
+		check("高度都是正的", rects.every((r) => Number(r.getAttribute("height")) > 0));
+		check(
+			"沒有一根超出畫布",
+			rects.every((r) => Number(r.getAttribute("y")) + Number(r.getAttribute("height")) <= 18.01)
+		);
+
+		const h = (i: number) => Number(rects[i].getAttribute("height"));
+		check("中段比兩端高(重音看得出來)", h(28) > h(4) && h(28) > h(52),
+			`${h(4).toFixed(1)} / ${h(28).toFixed(1)} / ${h(52).toFixed(1)}`);
+
+		// 靜音那幾格要留一根細線,不然波形頭尾會憑空斷掉,看起來像畫壞了。
+		drawWave(host, [0, 0, 0.5, 0, 0]);
+		check("靜音的格子仍然畫一根細線",
+			[...host.querySelectorAll("rect")].every((r) => Number(r.getAttribute("height")) >= 1));
+
+		// 重畫要換掉舊的,不是疊上去。
+		drawWave(host, new Array(10).fill(0.5));
+		check("重畫不會疊加", host.querySelectorAll("rect").length === 10,
+			String(host.querySelectorAll("rect").length));
+
+		drawWave(host, []);
+		check("空的包絡線不動畫面", host.querySelectorAll("rect").length === 10);
+	}
+
 	console.log(failures === 0 ? "\n全部通過。" : `\n${failures} 項失敗。`);
 	process.exit(failures === 0 ? 0 : 1);
 }
