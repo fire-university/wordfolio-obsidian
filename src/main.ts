@@ -249,6 +249,24 @@ export default class WordFolioPlugin extends Plugin {
 			void this.openVocabView()
 		);
 
+		// 編輯器的右鍵／長按選單也放一個入口。
+		//
+		// **不要只靠工具列。** 手機上那份工具列清單很長、命令名稱跟著介面語言走,
+		// 而且要先進設定加進去才會出現——中間任何一步卡住,使用者的結論都是
+		// 「這個外掛沒有這個功能」。多一個入口的成本是三行,漏掉的成本是他找不到。
+		this.registerEvent(
+			this.app.workspace.on("editor-menu", (menu, editor) => {
+				const sel = editor.getSelection().trim();
+				if (!sel || !/[A-Za-z]/.test(sel)) return;
+				menu.addItem((item) =>
+					item
+						.setTitle(t("command_lookup"))
+						.setIcon("book-open-check")
+						.onClick(() => void this.lookupAtCursor(editor))
+				);
+			})
+		);
+
 		// 生詞本被改動(手動編輯、複習寫回)時更新徽章。
 		this.registerEvent(
 			this.app.metadataCache.on("changed", (file) => {
