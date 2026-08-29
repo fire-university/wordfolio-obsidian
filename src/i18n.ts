@@ -302,6 +302,7 @@ const EN: Dict = {
 	section_move_down: "Move down",
 
 	heading_audio: "Pronunciation",
+	wave_not_downloaded: "No recording saved yet — press play once and the waveform appears.",
 	set_waveform_name: "Show a waveform",
 	set_waveform_desc:
 		"Draws the shape of the recording next to the phonetics, so you can see which syllable carries the stress — not just how loud it is. Only words whose audio is already on disk get one; it never goes online just to draw a line, and the system voice fallback cannot be drawn at all.",
@@ -596,6 +597,7 @@ const ZH: Dict = {
 	section_move_down: "往下移",
 
 	heading_audio: "發音",
+	wave_not_downloaded: "這個口音的發音還沒下載過——按一次播放就會出現波形。",
 	set_waveform_name: "顯示波形",
 	set_waveform_desc:
 		"在音標旁邊畫出這段錄音的形狀,**看得到重音落在哪一個音節**,而不只是多大聲。只有音檔已經在磁碟上的字才畫,不會為了畫一條線而額外連網;退回系統語音的字沒有波形可畫。",

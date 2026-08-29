@@ -141,6 +141,13 @@
 	fill: var(--text-accent);
 }
 
+/* 還沒下載發音時的佔位。比波形更淡,而且是斷斷續續的點,
+   一眼就看得出「這裡還沒有東西」而不是「這段錄音是無聲的」。 */
+.wordfolio-wave.is-empty rect {
+	fill: var(--text-faint);
+	opacity: 0.45;
+}
+
 @media (prefers-reduced-motion: no-preference) {
 	.wordfolio-wave rect.is-lit {
 		transition: fill 90ms linear;

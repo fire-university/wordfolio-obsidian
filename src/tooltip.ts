@@ -201,6 +201,43 @@ export interface WaveHandle {
 /** 什麼都不做的 handle。沒有波形可畫時回這個,呼叫端就不用到處判斷 null。 */
 const NO_WAVE: WaveHandle = { progress: () => undefined };
 
+/**
+ * 還沒有錄音時的佔位。
+ *
+ * 原本是什麼都不畫,結果同一個浮窗裡 US 有波形、UK 空一塊,看起來像壞掉——
+ * **規則(「那個口音的音檔下載過沒有」)是對的,但畫面上沒有任何東西說明它**,
+ * 所以使用者只會覺得波形時有時無。
+ *
+ * 刻意畫成一排小點而不是一條平線:平線會被讀成「這段錄音是無聲的」,那是錯的
+ * 資訊;點點看起來就是「這裡還沒有東西」。
+ */
+export function drawWavePlaceholder(parent: HTMLElement, label: string): void {
+	const NS = "http://www.w3.org/2000/svg";
+	const W = 2;
+	const GAP = 1;
+	const H = 18;
+	const n = 56;
+
+	const svg = document.createElementNS(NS, "svg");
+	svg.setAttribute("class", "wordfolio-wave is-empty");
+	svg.setAttribute("viewBox", `0 0 ${n * (W + GAP) - GAP} ${H}`);
+	svg.setAttribute("preserveAspectRatio", "none");
+	svg.setAttribute("role", "img");
+	svg.setAttribute("aria-label", label);
+
+	for (let i = 0; i < n; i += 4) {
+		const r = document.createElementNS(NS, "rect");
+		r.setAttribute("x", String(i * (W + GAP)));
+		r.setAttribute("y", String((H - 1) / 2));
+		r.setAttribute("width", String(W));
+		r.setAttribute("height", "1");
+		svg.appendChild(r);
+	}
+	while (parent.firstChild) parent.removeChild(parent.firstChild);
+	parent.setAttribute("title", label);
+	parent.appendChild(svg);
+}
+
 export function drawWave(parent: HTMLElement, env: number[]): WaveHandle {
 	if (!env.length) return NO_WAVE;
 	const NS = "http://www.w3.org/2000/svg";
@@ -850,8 +887,9 @@ export class WordTooltip {
 		const ready = this.cb.cachedWaveform?.(word, accent);
 		if (ready) {
 			handle = drawWave(slot, ready.env);
-		} else if (this.cb.loadWaveform) {
-			void this.cb.loadWaveform(word, accent).then((w) => {
+		} else {
+			drawWavePlaceholder(slot, t("wave_not_downloaded"));
+			void this.cb.loadWaveform?.(word, accent).then((w) => {
 				// 這期間浮窗可能已經換成別的字了,補之前先確認這一格還在畫面上。
 				if (w && slot.isConnected) handle = drawWave(slot, w.env);
 			});

@@ -27,7 +27,7 @@ import {
 	type ParsedNote,
 } from "./note-parse";
 import type { Accent } from "./audio";
-import { drawWave, type WaveHandle } from "./tooltip";
+import { drawWave, drawWavePlaceholder, type WaveHandle } from "./tooltip";
 import type { WaveformData } from "./waveform";
 import type { AccentPref } from "./settings";
 import type { VocabStore } from "./vocab";
@@ -256,8 +256,9 @@ export class ReviewModal extends Modal {
 			const ready = this.hooks.cachedWaveform?.(word, accent);
 			if (ready) {
 				handle = drawWave(slot, ready.env);
-			} else if (this.hooks.loadWaveform) {
-				void this.hooks.loadWaveform(word, accent).then((w) => {
+			} else {
+				drawWavePlaceholder(slot, t("wave_not_downloaded"));
+				void this.hooks.loadWaveform?.(word, accent).then((w) => {
 					if (w && slot.isConnected) handle = drawWave(slot, w.env);
 				});
 			}
