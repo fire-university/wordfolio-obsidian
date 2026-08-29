@@ -167,6 +167,7 @@ export default class WordFolioPlugin extends Plugin {
 			// 觸控裝置一律走選字。hover 在手機上不存在,把判斷交給 hover.ts,
 			// 它會據此忽略設定裡那三個為滑鼠設計的選項。
 			touch: () => Platform.isMobile,
+			selectionIcon: () => this.settings.selectionIcon,
 			delay: () => this.settings.hoverDelay,
 			closeDelay: () => this.settings.closeDelay,
 			enabled: () => this.dict.installed,
@@ -733,6 +734,9 @@ export default class WordFolioPlugin extends Plugin {
 		// 只在**沒有存過設定**時做一次。之後切換介面語言不會再動這些——已經
 		// 建好的生詞本資料夾不會自己搬家,使用者調過的區塊也不該被重置。
 		if (!data) {
+			// 手機上首次安裝就把自動圖示關掉。小螢幕上自動冒出來的東西是在搶
+			// 使用者正在讀的那幾行;要查字改按工具列上的命令。
+			if (Platform.isMobile) this.settings.selectionIcon = false;
 			const lang = this.contentLang();
 			this.settings.sectionsEnabled = defaultEnabledFor(lang);
 			this.settings.vocabFolder = t("default_vocab_folder");
@@ -744,6 +748,14 @@ export default class WordFolioPlugin extends Plugin {
 		// 一律釘成 zh-TW——不釘的話,介面設英文的既有使用者(道哥就是)會突然
 		// 開始拿到英文釋義、而且新的生詞筆記會用英文格式寫,跟他既有的兩百多篇
 		// 對不上。新安裝才走 auto。
+		// 遷移:自動圖示這個欄位是後加的。手機上既有的使用者(欄位不存在)一律
+		// 關掉——那正是道哥回報的問題,而且在小螢幕上它一定會擋到閱讀。
+		// 桌面維持開啟,那裡浮窗只佔角落一塊。
+		if (data && data.selectionIcon === undefined && Platform.isMobile) {
+			this.settings.selectionIcon = false;
+			await this.saveSettings();
+		}
+
 		const migrated = migrateContentLang(data);
 		if (this.settings.contentLang !== migrated) {
 			this.settings.contentLang = migrated;
@@ -935,6 +947,16 @@ class WordFolioSettingTab extends PluginSettingTab {
 						// hover 延遲滑桿只在有 hover 的模式下才有意義。
 						this.display();
 					})
+			);
+
+		new Setting(containerEl)
+			.setName(t("set_selection_icon_name"))
+			.setDesc(t("set_selection_icon_desc"))
+			.addToggle((tg) =>
+				tg.setValue(s.selectionIcon).onChange(async (v) => {
+					s.selectionIcon = v;
+					await this.plugin.saveSettings();
+				})
 			);
 
 		// hover 延遲只在會用到 hover 的模式顯示。

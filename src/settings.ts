@@ -33,6 +33,17 @@ export interface WordFolioSettings {
 	// 怎麼觸發查詢:hover(滑過去)/ select(選取放開)/ both。
 	// select 模式下,選取多個字會查片語。
 	triggerMode: TriggerMode;
+	/**
+	 * 選字之後要不要自動冒出那顆查詢圖示。
+	 *
+	 * **手機上首次安裝預設關閉。** 道哥實機回報:「不要讓它自動跳出來…它會把
+	 * 版面佔了一大半。」小螢幕上任何自動出現的東西都是在搶他正在讀的那幾行,
+	 * 而桌面上浮窗只佔角落一塊,感受完全不同。
+	 *
+	 * 關掉之後改用命令「查詢選取的單字」——手機版可以把它加進下方工具列,
+	 * 變成一顆他自己按的按鈕。
+	 */
+	selectionIcon: boolean;
 	// 選取後那顆書本圖示怎麼展開浮窗:click(點一下)/ hover(停留)/ both。
 	iconMode: IconMode;
 	// 停留展開的秒數(ms)。
@@ -121,6 +132,7 @@ export const DEFAULT_SETTINGS: WordFolioSettings = {
 	language: "auto",
 	contentLang: "auto",
 	triggerMode: "hover",
+	selectionIcon: true,
 	iconMode: "both",
 	iconDwell: 1000,
 	hoverEnabled: true,

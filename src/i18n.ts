@@ -335,6 +335,9 @@ const EN: Dict = {
 	tier_solid_why: "Reliable so far, but not yet held over a long gap.",
 	tier_mastered_why: "Right almost every time, and still remembered after weeks.",
 	review_eg_from_dict: "Example from the dictionary",
+	set_selection_icon_name: "Show the lookup icon when you select a word",
+	set_selection_icon_desc:
+		"When on, selecting a word pops up a small book icon you tap to open the dictionary. Off by default on phones and tablets: on a small screen anything that appears by itself covers the lines you are reading. With it off, look words up with the \"Look up the selected word\" command — on mobile you can add that to the toolbar (Settings → Mobile → Manage toolbar options) and it becomes a button you press when you want it.",
 	set_spelling_hint_name: "Letters given in spelling practice",
 	set_spelling_hint_desc:
 		"Which letters of the answer are filled in for you. Fewer letters is harder — with none, you spell the whole word from scratch, which turns the exercise from fill-in-the-blank into writing it out from memory. Hyphens and apostrophes are always given; they are not the hard part. Words of two letters or fewer are never blanked.",
@@ -657,6 +660,9 @@ const ZH: Dict = {
 	tier_solid_why: "目前都答得出來,但還沒經過長時間的間隔考驗。",
 	tier_mastered_why: "幾乎每次都對,而且隔了幾週還記得。",
 	review_eg_from_dict: "詞庫例句",
+	set_selection_icon_name: "選字時自動顯示查詢圖示",
+	set_selection_icon_desc:
+		"開啟時,選取一個字就會冒出一顆小書本圖示,點它才開字典。**手機與平板預設關閉**:小螢幕上任何自動出現的東西都是在搶你正在讀的那幾行。關閉時改用命令「查詢選取的單字」——手機版可以把它加進下方工具列(設定 → 行動裝置 → 管理工具列選項),變成一顆你想按才按的按鈕。",
 	set_spelling_hint_name: "拼寫練習先給幾個字母",
 	set_spelling_hint_desc:
 		"答案的哪幾個字母會先幫你填好。**給越少越難**——一個都不給等於整個字從頭拼到尾,那是把「填空」變成「默寫」。連字號與撇號一律直接給,那不是拼寫的難點;兩個字母以內的字也不會挖空。",

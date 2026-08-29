@@ -99,6 +99,12 @@ export class Audio {
 	 * 拿不到時間軸,硬做只能用「猜一個秒數」的假動畫,那比沒有更糟。
 	 */
 	async speak(word: string, accent: Accent, onProgress?: ProgressFn): Promise<void> {
+		// **一定要在這裡、而且在任何 await 之前解鎖。** iOS 只允許在使用者手勢的
+		// 同步執行期間喚醒 AudioContext;等到下載完音檔再碰它,手勢早就結束了,
+		// context 仍是 suspended,`start()` 會安靜地什麼都不做——**不報錯、
+		// 波形照跑、就是沒有聲音**。實機在 iPhone 上就是這個症狀。
+		this.unlock();
+
 		if (this.onlineAllowed()) {
 			const key = this.cacheKey(word, accent);
 			const buf = this.decoded.get(key) ?? (await this.load(word, accent));
@@ -113,6 +119,25 @@ export class Audio {
 	}
 
 	// ---------------------------------------------------- 波形
+
+	/**
+	 * 在使用者手勢裡把音訊解鎖。
+	 *
+	 * 除了 resume(),還要真的播一個一取樣的靜音 buffer——iOS 上光是 resume()
+	 * 不夠,要有一次實際的播放才算數。這個動作聽不見,也不會蓋掉正在播的東西
+	 * (它是獨立的 source,長度一個取樣)。
+	 */
+	private unlock(): void {
+		const ctx = this.audioCtx();
+		try {
+			const silent = ctx.createBufferSource();
+			silent.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+			silent.connect(ctx.destination);
+			silent.start(0);
+		} catch {
+			// 某些環境不給建 buffer(例如測試),解不開就算了,桌面本來就不需要。
+		}
+	}
 
 	/** 算過的波形。浮窗畫的時候用,同步,沒有就回 null。 */
 	cachedWaveform(word: string, accent: Accent): Waveform | null {
@@ -239,6 +264,9 @@ export class Audio {
 
 	private play(buf: AudioBuffer, wave: Waveform | undefined, onProgress?: ProgressFn): Promise<void> {
 		const ctx = this.audioCtx();
+		// 防守一次:走到這裡通常已經被 unlock() 喚醒了,但下載很慢時 iOS 可能
+		// 又把它掛回 suspended。
+		if (ctx.state === "suspended") void ctx.resume();
 		// 上一次還在響就掐掉。連按兩個字時兩段聲音疊在一起會聽不清楚,
 		// 而且兩條進度動畫會同時跑。
 		this.stopCurrent();

@@ -42,6 +42,13 @@ const SELECTION_SETTLE_MS = 350;
 export interface HoverOptions {
 	triggerMode: () => TriggerMode;
 	/**
+	 * 選字之後要不要自動冒出查詢圖示。
+	 *
+	 * 關掉之後選字完全不主動做事,查詢改由命令觸發(手機版可以把那個命令加進
+	 * 下方工具列)。小螢幕上自動冒出來的東西是在搶使用者正在讀的那幾行。
+	 */
+	selectionIcon?: () => boolean;
+	/**
 	 * 這台裝置是不是觸控裝置(手機／平板)。
 	 *
 	 * **不在這裡自己判斷。** 這個檔刻意不 import obsidian(它要在 JSDOM 測試裡
@@ -120,7 +127,9 @@ export class HoverController {
 	}
 
 	private selectOn(): boolean {
-		// 同上:觸控裝置一律走選字,不看設定。設定裡那三個選項是為滑鼠設計的。
+		// 自動圖示關掉時,選字完全不主動做事——查詢改由命令觸發。
+		if (this.opts.selectionIcon?.() === false) return false;
+		// 觸控裝置一律走選字,不看設定。設定裡那三個選項是為滑鼠設計的。
 		if (this.isTouch()) return true;
 		const m = this.opts.triggerMode();
 		return m === "select" || m === "both";
@@ -198,7 +207,7 @@ export class HoverController {
 	 * 桌面維持 `mouseup`:它更精準,而且不會在拖曳中途就跳出圖示打擾人。
 	 */
 	private onSelectionChange = () => {
-		if (!this.opts.enabled() || !this.isTouch()) return;
+		if (!this.opts.enabled() || !this.isTouch() || !this.selectOn()) return;
 		if (this.selectionTimer) window.clearTimeout(this.selectionTimer);
 		this.selectionTimer = window.setTimeout(() => {
 			this.selectionTimer = 0;
