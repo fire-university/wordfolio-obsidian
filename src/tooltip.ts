@@ -537,6 +537,24 @@ export class WordTooltip {
 
 		head.createSpan({ cls: "wordfolio-word", text: entry.w });
 
+		// 關閉鍵。**手機上是必要的,不是裝飾。**
+		//
+		// 桌面上點浮窗外面就關掉了,滑鼠也隨時能移開;手機上浮窗置中蓋住半個
+		// 畫面,而點外面在觸控上不一定送得到那個事件——道哥回報「沒有辦法點關閉,
+		// 也沒有辦法移動它,擋住我整個視線」。看得到的關閉鍵是唯一保證有效的出口。
+		if (this.cb.mobile?.()) {
+			const close = head.createEl("button", {
+				cls: "wordfolio-close",
+				text: "×",
+				attr: { "aria-label": t("tooltip_close") },
+			});
+			close.onclick = (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				this.hide();
+			};
+		}
+
 		if (lookup.inflection) {
 			const zh = currentLang() === "zh-TW";
 			const label = zh

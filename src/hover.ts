@@ -184,7 +184,7 @@ export class HoverController {
 	};
 
 	/** 收 Logo 與 sticky 浮窗的「點外面就關」。不分模式,永遠生效。 */
-	private onPointerDown = (e: MouseEvent) => {
+	private onPointerDown = (e: MouseEvent | TouchEvent) => {
 		// 點 Logo 本身交給它自己的 click,這裡別動。
 		if (this.icon.contains(e.target)) return;
 		// 點在 Logo 以外 → 收掉 Logo。
@@ -297,6 +297,12 @@ export class HoverController {
 	attach(): void {
 		document.addEventListener("mousemove", this.onMouseMove, { passive: true });
 		document.addEventListener("mousedown", this.onPointerDown, { capture: true });
+		// 觸控上 mousedown 不保證送得出來(尤其點在浮窗外面時),所以另外聽
+		// touchstart。少了這條,手機上的浮窗會關不掉——它是置中的,擋住半個畫面。
+		document.addEventListener("touchstart", this.onPointerDown, {
+			capture: true,
+			passive: true,
+		});
 		document.addEventListener("mouseup", this.onMouseUp);
 		// 觸控裝置唯一可靠的選字訊號。桌面上也會觸發,但 onSelectionChange
 		// 自己會用 isTouch() 擋掉,不會兩條路重複。
@@ -314,6 +320,7 @@ export class HoverController {
 		this.icon.destroy();
 		document.removeEventListener("mousemove", this.onMouseMove);
 		document.removeEventListener("mousedown", this.onPointerDown, { capture: true });
+		document.removeEventListener("touchstart", this.onPointerDown, { capture: true });
 		document.removeEventListener("mouseup", this.onMouseUp);
 		document.removeEventListener("selectionchange", this.onSelectionChange);
 		document.removeEventListener("scroll", this.onScroll, { capture: true });

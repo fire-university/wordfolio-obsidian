@@ -1384,3 +1384,25 @@
 .is-mobile .wf-key {
 	display: none;
 }
+
+/* 手機上的關閉鍵。點擊區 44px,視覺上維持小字,不要跟「加入生詞本」搶注意力。 */
+.wordfolio-close {
+	flex: 0 0 auto;
+	min-width: 44px;
+	min-height: 44px;
+	margin-left: 0.2em;
+	padding: 0;
+	border: none;
+	border-radius: var(--radius-s);
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	font-size: 1.3em;
+	line-height: 1;
+}
+
+.wordfolio-close:hover,
+.wordfolio-close:active {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}

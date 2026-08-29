@@ -296,5 +296,27 @@ console.log("\n游標所在的字(手機上點一下就查,不用先選取)");
 	check("超出行尾不會爆", wordAt(line, 999) === null || typeof at(999) === "string");
 }
 
+console.log("\nMarkdown 標記不可以擋住查詢(編輯模式看到的是原始文字)");
+{
+	// 道哥實機:「只要一個單字加了 ** 這樣的符號,就查不到了。」
+	// 而筆記裡最常被強調、也最值得查的字,剛好都包在標記裡。
+	const md = "The **candidate** made";
+	const w = (ch: number) => wordAt(md, ch)?.word ?? null;
+	check("游標在前面那組星號上", w(4) === "candidate" && w(5) === "candidate", `${w(4)}/${w(5)}`);
+	check("游標在字裡", w(10) === "candidate", String(w(10)));
+	check("游標在後面那組星號上", w(15) === "candidate" && w(16) === "candidate", `${w(15)}/${w(16)}`);
+	check("游標在整串之後的空白", w(17) === "candidate", String(w(17)));
+
+	const pick = (t: string, ch: number) => wordAt(t, ch)?.word ?? null;
+	check("斜體 *word*", pick("a *word* here", 8) === "word");
+	check("行內程式碼 `code`", pick("use `code` now", 10) === "code");
+	check("highlight ==mark==", pick("==mark== it", 8) === "mark");
+	check("連結 [link](url)", pick("[link](url) x", 5) === "link");
+	check("整行只有 **bold**", pick("**bold**", 8) === "bold");
+
+	// 跨越標記只能跨標記本身,碰到空白就放棄——不然會咬到隔壁那一整個字。
+	check("標記前面是空白就不亂咬", pick("The  **x", 4) === null, String(pick("The  **x", 4)));
+}
+
 console.log(failures ? `\n${failures} 項失敗` : "\n全部通過");
 process.exit(failures ? 1 : 0);

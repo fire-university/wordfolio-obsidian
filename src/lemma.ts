@@ -74,6 +74,19 @@ export function meaningfulLines(tr: string): string[] {
 	return plain.length ? plain : lines;
 }
 
+/**
+ * Markdown 的標記字元。
+ *
+ * 這些**不算單字的一部分,但也不該擋住查詢**:編輯模式下看到的是原始文字,
+ * 游標點在 `**candidate**` 上時,`offset` 很可能落在星號上。不跳過的話,
+ * 所有粗體、斜體、highlight、行內程式碼裡的字全都查不到——而那是筆記裡
+ * 最常被強調、也最值得查的那些字。
+ *
+ * 2026-08-29 道哥實機回報:「只要是一個單字加了符號,例如 ** 這樣一個符號在的話,
+ * 它就阻止了查詢單字這個功能。」
+ */
+const MD_SYNTAX = /[*_~`=[\]()]/;
+
 /** 從一段文字裡抓出 offset 位置所在的英文單字(含連字號與撇號)。 */
 export function wordAt(text: string, offset: number): { word: string; from: number; to: number } | null {
 	const isWordChar = (c: string) => /[A-Za-z'’-]/.test(c);
@@ -81,9 +94,36 @@ export function wordAt(text: string, offset: number): { word: string; from: numb
 
 	let from = offset;
 	let to = offset;
-	// 游標剛好落在字尾時，offset 指向的是下一個字元，要往回退一格才咬得到。
-	if (from > 0 && (to >= text.length || !isWordChar(text[to]))) from--;
-	if (from < 0 || !isWordChar(text[from])) return null;
+
+	/**
+	 * 從 i 往兩個方向跨越 Markdown 標記,找出最近的字母。
+	 *
+	 * **先往回再往前**:游標點在 `**word**` 後面時退回 word(最常見的情況),
+	 * 點在前面那組星號上時才往前找。兩個方向都只跨越標記字元,一碰到空白或
+	 * 其他標點就放棄——不然會咬到隔壁那一整個字。
+	 */
+	const throughSyntax = (i: number): number => {
+		let back = i;
+		while (back >= 0 && MD_SYNTAX.test(text[back])) back--;
+		if (back >= 0 && isWordChar(text[back])) return back;
+		let fwd = i;
+		while (fwd < text.length && MD_SYNTAX.test(text[fwd])) fwd++;
+		return fwd < text.length && isWordChar(text[fwd]) ? fwd : -1;
+	};
+
+	// 游標就落在標記上(`**candidate**` 的星號)。這要在退一格之前處理——
+	// 退一格會把游標推到標記串外面的空白上,那時就找不回來了。
+	if (from < text.length && MD_SYNTAX.test(text[from])) {
+		from = throughSyntax(from);
+	} else if (from > 0 && (to >= text.length || !isWordChar(text[to]))) {
+		// 游標剛好落在字尾時，offset 指向的是下一個字元，要往回退一格才咬得到。
+		from--;
+		if (from >= 0 && from < text.length && MD_SYNTAX.test(text[from])) {
+			from = throughSyntax(from);
+		}
+	}
+
+	if (from < 0 || from >= text.length || !isWordChar(text[from])) return null;
 
 	to = from;
 	while (from > 0 && isWordChar(text[from - 1])) from--;
