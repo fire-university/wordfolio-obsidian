@@ -216,7 +216,7 @@ const EN: Dict = {
 	set_content_lang_name: "Definition language",
 	set_content_lang_desc:
 		"What language definitions and new vocabulary notes are written in — separate from the interface language above, so you can read an English interface and still get Chinese definitions. Changing this resets which tooltip sections are shown to that language's defaults; notes you already have are left as they are and stay readable either way.",
-	content_lang_auto: "Same as the interface",
+	content_lang_auto: "Same as interface",
 	heading_dict: "Offline dictionary",
 	set_dict_status_name: "Dictionary files",
 	set_dict_installed: "Installed — version {version}, {entries} entries, {size} on disk.",
@@ -347,7 +347,7 @@ const EN: Dict = {
 	spelling_hint_both: "First and last",
 	spelling_hint_first: "First only",
 	spelling_hint_last: "Last only",
-	spelling_hint_none: "None — spell the whole word",
+	spelling_hint_none: "None",
 	set_speak_front_name: "Say the word when the question appears",
 	set_speak_front_desc:
 		"Plays the word as soon as a question card opens. Good for listening practice — but note it also tells you the pronunciation before you try to recall the word, which makes the question easier. Only plays the first time you see a card, not when you press Again.",
@@ -356,8 +356,8 @@ const EN: Dict = {
 		"This setting is for phones and tablets only; your computer keeps its own. Recorded human audio is better for learning pronunciation, but on iOS the silent switch mutes it — apps like YouTube declare themselves as media playback and ignore that switch, and a plugin running inside Obsidian cannot. If your phone lives on silent, pick the system voice: it is heard either way, at the cost of a synthetic voice and no waveform.",
 	set_audio_source_desc:
 		"Online recordings sound better; the system voice always works offline. Downloaded audio is cached, so a word you have heard once stays available offline.",
-	audio_online_first: "Online recording, fall back to system voice",
-	audio_system_only: "System voice only (fully offline)",
+	audio_online_first: "Recorded audio",
+	audio_system_only: "System voice",
 	heading_vocab: "Vocabulary notebook",
 	set_vocab_folder_name: "Notebook folder",
 	set_vocab_folder_desc:
@@ -677,7 +677,7 @@ const ZH: Dict = {
 	spelling_hint_both: "首字母與尾字母",
 	spelling_hint_first: "只給首字母",
 	spelling_hint_last: "只給尾字母",
-	spelling_hint_none: "都不給——整個字自己拼",
+	spelling_hint_none: "都不給",
 	set_speak_front_name: "問題卡出現時先念一次",
 	set_speak_front_desc:
 		"問題卡一打開就把那個字念出來。練聽力有幫助，但要知道它也等於在你回想之前先把讀音告訴你，題目會變簡單。只在第一次看到那張卡時念，按「重來」重問同一個字時不會再念。",
@@ -686,8 +686,8 @@ const ZH: Dict = {
 		"這一項只管手機與平板,電腦那台另外存一份。真人錄音對練發音比較好,但 iOS 的**靜音開關會把它切掉**——YouTube 那類 App 把自己宣告成媒體播放所以無視靜音開關,而跑在 Obsidian 裡的外掛做不到。手機長年靜音的話就選系統語音:靜音下也聽得到,代價是機器音、而且沒有波形。",
 	set_audio_source_desc:
 		"線上真人錄音比較好聽,系統語音則是永遠都能用。抓過的音檔會快取,所以聽過一次的字之後離線也聽得到。",
-	audio_online_first: "線上真人錄音,失敗時用系統語音",
-	audio_system_only: "只用系統語音(完全離線)",
+	audio_online_first: "真人錄音",
+	audio_system_only: "系統語音",
 	heading_vocab: "生詞本",
 	set_vocab_folder_name: "生詞本資料夾",
 	set_vocab_folder_desc: "一個字一篇筆記寫在這裡;外掛永遠只碰這個資料夾。",

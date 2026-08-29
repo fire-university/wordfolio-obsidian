@@ -1641,3 +1641,42 @@
 .is-mobile .wordfolio-review-word {
 	font-size: 1.8em;
 }
+
+/* --- 設定頁的版面 --- */
+/*
+ * Obsidian 的設定列是「說明」與「控制項」左右分欄的 flex,而**控制項預設不會
+ * 縮**。所以只要下拉選單的文字長一點,它就把說明欄擠成一個詞的寬度——
+ * 道哥看到的就是這個:「Online / recordings / sound / better;」一行兩三個字。
+ *
+ * 治本是讓控制項可以縮、並且給說明欄一個底線寬度。選項文字本身也縮短了,
+ * 但**光縮文字是治標**——下一個長選項出現時同樣的事會再發生一次。
+ *
+ * 只作用在 .wordfolio-settings 底下,不動別人的外掛。
+ */
+.wordfolio-settings .setting-item-info {
+	flex: 1 1 auto;
+	min-width: 12em;
+	margin-right: 1em;
+}
+
+.wordfolio-settings .setting-item-control {
+	flex: 0 1 auto;
+	min-width: 0;
+	max-width: 55%;
+}
+
+.wordfolio-settings .setting-item-control select {
+	max-width: 100%;
+}
+
+/* 手機上左右分欄本來就放不下,讓它上下疊。 */
+.is-mobile .wordfolio-settings .setting-item {
+	flex-direction: column;
+	align-items: stretch;
+}
+
+.is-mobile .wordfolio-settings .setting-item-control {
+	max-width: 100%;
+	justify-content: flex-start;
+	margin-top: 0.5em;
+}

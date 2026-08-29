@@ -1003,6 +1003,9 @@ class WordFolioSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
+		// 給設定頁一個可以下手的 class。Obsidian 沒有提供每個外掛的作用域,
+		// 沒有它就只能寫全域選擇器去改設定列的版面,那會影響到別人的外掛。
+		containerEl.addClass("wordfolio-settings");
 		const s = this.plugin.settings;
 
 		new Setting(containerEl)
