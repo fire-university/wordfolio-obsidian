@@ -1401,7 +1401,41 @@
 }
 
 /* 評分鍵與音標鍵同理:手指比游標粗。 */
-.is-mobile .wf-grade,
+/*
+ * 手機的評分列。
+ *
+ * 桌面是「彈性排列 + 每顆最少 5.5em」,在 390px 上會擠不下而換行,變成 3 + 1
+ * 的破碎排法,再加上 44px 的高度就成了一片笨重的色塊——道哥:「那些 Again、
+ * Hard 的按鈕怎麼那麼醜?」
+ *
+ * 改成**四等分的格線**:四顆評分鍵一排、次要動作(已學會／開筆記)第二排。
+ * 一排四顆是 Anki 的排法,而且「由紅到綠」的順序只有排成一列才讀得出來。
+ */
+.is-mobile .wordfolio-review-buttons {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 0.4em;
+	padding: 0.7em 0 1em;
+}
+
+.is-mobile .wordfolio-review-buttons button {
+	/* 5.5em 在窄螢幕上就是換行的元凶,格線已經保證等寬了。 */
+	min-width: 0;
+	min-height: 44px;
+	padding: 0 0.2em;
+	font-size: 0.95em;
+	white-space: nowrap;
+}
+
+/* 直線分隔在格線裡沒有意義,第二排本身就是分隔。 */
+.is-mobile .wf-btn-separator {
+	display: none;
+}
+
+.is-mobile .wordfolio-review-buttons .wf-secondary-action {
+	grid-column: span 2;
+}
+
 .is-mobile .wordfolio-review-speak {
 	min-height: 44px;
 }

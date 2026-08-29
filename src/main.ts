@@ -247,6 +247,10 @@ export default class WordFolioPlugin extends Plugin {
 		// ribbon 改成開清單視圖,不是直接進複習 Modal。
 		// 「唯一的入口是一次一張卡的 Modal」正是他覺得不好用的原因;清單頁上
 		// 有一顆「開始複習(N)」,少一次點擊換來看得到全部的字與數據。
+		// ribbon 的文字在手機上**就是選單裡那一列的名稱**(Obsidian 手機版把
+		// ribbon 收進「⋯」選單)。所以它必須是一個**動作名稱**,不是狀態報告——
+		// 原本寫「WordFolio:今天沒有要複習的」,在選單裡讀起來完全不像可以點的
+		// 東西,道哥因此覺得「練習的路徑藏得太深」。
 		this.ribbon = this.addRibbonIcon("book-open-check", t("ribbon_tooltip_empty"), () =>
 			void this.openVocabView()
 		);

@@ -41,8 +41,8 @@ type Dict = Record<string, string>;
 
 const EN: Dict = {
 	// 命令 / 圖示
-	ribbon_tooltip: "WordFolio: review vocabulary ({due} due)",
-	ribbon_tooltip_empty: "WordFolio: nothing due today",
+	ribbon_tooltip: "WordFolio: vocabulary — {due} to review",
+	ribbon_tooltip_empty: "WordFolio: vocabulary",
 	command_lookup: "Look up the selected word",
 	command_review: "Start vocabulary review",
 	command_anki: "Send vocabulary to Anki",
@@ -372,8 +372,8 @@ const EN: Dict = {
 
 const ZH: Dict = {
 	// 命令 / 圖示
-	ribbon_tooltip: "WordFolio:複習生詞(今天 {due} 個)",
-	ribbon_tooltip_empty: "WordFolio:今天沒有要複習的",
+	ribbon_tooltip: "WordFolio:生詞本(今天 {due} 個要複習)",
+	ribbon_tooltip_empty: "WordFolio:生詞本",
 	command_lookup: "查詢選取的單字",
 	command_review: "開始複習生詞",
 	command_anki: "把生詞本送進 Anki",
