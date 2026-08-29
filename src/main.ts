@@ -657,6 +657,16 @@ export default class WordFolioPlugin extends Plugin {
 			return;
 		}
 
+		// **手機上先把鍵盤收掉。**
+		//
+		// 查字不需要鍵盤,而鍵盤吃掉的是畫面下半部——浮窗再怎麼算高度都會有一截
+		// 在它底下。試過用 visualViewport 算可用高度,但 Obsidian 手機版的
+		// WebView 不一定會把鍵盤反映到那裡,**與其猜哪個 API 說得準,不如把鍵盤
+		// 收掉讓整個畫面都可用**。使用者是來查字的,不是來打字的。
+		if (Platform.isMobile) {
+			(document.activeElement as HTMLElement | null)?.blur?.();
+		}
+
 		const shown = await this.hover.showFor({
 			word,
 			sentence,

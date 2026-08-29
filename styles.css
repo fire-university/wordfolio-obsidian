@@ -1404,7 +1404,9 @@
 	height: 1.6em;
 	border: none;
 	border-radius: var(--radius-s);
-	background: transparent;
+	/* 跟「已加入」那顆同一塊底色。左右兩顆看起來要是同一組東西——
+	   道哥:「它跟右邊的加入字典的長相不太一樣,它少了一個外框。」 */
+	background: var(--background-modifier-border);
 	color: var(--text-muted);
 	cursor: pointer;
 	font-size: 0.95em;
@@ -1412,7 +1414,7 @@
 }
 
 .is-mobile .wordfolio-close {
-	background: transparent;
+	background: var(--background-modifier-border);
 	box-shadow: none;
 }
 
