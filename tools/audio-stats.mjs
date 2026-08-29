@@ -17,7 +17,7 @@ import { analyse, normalizationGain, dbfs, trimSilence } from "../src/waveform.t
 
 const DEFAULT_DIR = path.join(
 	os.homedir(),
-	"Library/Mobile Documents/iCloud~md~obsidian/Documents/.obsidian/plugins/wordfolio/audio"
+	"Library/Mobile Documents/iCloud~md~obsidian/Documents/Doug/.obsidian/plugins/wordfolio/audio"
 );
 const dir = process.argv[2] ?? DEFAULT_DIR;
 

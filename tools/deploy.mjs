@@ -11,7 +11,7 @@ import os from "os";
 
 const DEFAULT_VAULT = path.join(
 	os.homedir(),
-	"Library/Mobile Documents/iCloud~md~obsidian/Documents"
+	"Library/Mobile Documents/iCloud~md~obsidian/Documents/Doug"
 );
 
 const vault = process.env.WORDFOLIO_VAULT || DEFAULT_VAULT;

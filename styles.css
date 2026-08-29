@@ -1610,3 +1610,34 @@
 .is-mobile .wf-vocab-actions button {
 	min-height: 44px;
 }
+
+/* --- 手機的問題卡:字級收斂 --- */
+/*
+ * 桌面的 1.35em 在 390px 上會把中文釋義撐成一大塊,加上 1.5em 的上邊距,
+ * 題目還沒看完就先被它佔掉半個畫面——道哥:「中文解釋也太大字了吧,
+ * 佔了好多版面。」
+ *
+ * 中文字本來就比等寬的英文佔位,同一個 em 值在兩種語言下的視覺重量不一樣,
+ * 這是桌面看不出來、只有在窄螢幕上才會炸開的那種差異。
+ */
+.is-mobile .wordfolio-review-gloss {
+	margin: 0.8em auto 0.8em;
+	font-size: 1.1em;
+	line-height: 1.55;
+}
+
+.is-mobile .wordfolio-review-cloze {
+	font-size: 1em;
+	line-height: 1.6;
+	margin-bottom: 0.8em;
+}
+
+.is-mobile .wordfolio-review-hint-zh {
+	font-size: 0.88em;
+	margin-bottom: 0.8em;
+}
+
+/* 答案卡的單字本來就是主角,但 2.2em 在手機上會換行。 */
+.is-mobile .wordfolio-review-word {
+	font-size: 1.8em;
+}
