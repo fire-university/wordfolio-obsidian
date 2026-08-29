@@ -4,6 +4,7 @@ import type { LangSetting } from "./i18n";
 import { ALL_SECTIONS, DEFAULT_ENABLED, type SectionId } from "./sections";
 
 import type { IconMode } from "./tooltip";
+import type { SpellingHint } from "./note-parse";
 
 export type AudioSource = "online_first" | "system_only";
 /**
@@ -94,6 +95,13 @@ export interface WordFolioSettings {
 	// 問題卡一出現就先念一次。**這等於先把讀音告訴你**,對練聽力有幫助,
 	// 但也讓「想不想得起來」變簡單,所以做成可關的。
 	reviewSpeakFront: boolean;
+	/**
+	 * 拼寫練習先給哪幾個字母。
+	 *
+	 * 首尾給出來原本是寫死的。**給越少越難**,`none` 等於從填空變成默寫。
+	 * 預設維持 both,不要因為加了設定就把既有使用者的難度悄悄調高。
+	 */
+	spellingHint: SpellingHint;
 
 	// --- 本地 AI(選用) ---
 	// OpenAI 相容端點(預設 Ollama)。不用 API key、不把查的字送出電腦。
@@ -134,6 +142,7 @@ export const DEFAULT_SETTINGS: WordFolioSettings = {
 	newPerDay: 20,
 	reviewAutoSpeak: true,
 	reviewSpeakFront: true,
+	spellingHint: "both",
 	llmEndpoint: "http://localhost:11434/v1",
 	// 預設用 3b 而不是 7b:實測暖機後 3b 約 2 秒、7b 明顯更久。
 	// 這幾個任務(挑義項、拆字根、造例句)不需要大模型,速度比較重要。

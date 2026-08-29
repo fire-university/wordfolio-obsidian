@@ -20,6 +20,7 @@ import {
 	clozeSentence,
 	focusSentence,
 	letterSlots,
+	type SpellingHint,
 	slotsFilled,
 	spellingAttempt,
 	diffLetters,
@@ -52,6 +53,8 @@ export interface ReviewHooks {
 	speakFront?: () => boolean;
 	/** 要哪一套口音。 */
 	accent?: () => AccentPref;
+	/** 拼寫練習先給哪幾個字母。 */
+	spellingHint?: () => SpellingHint;
 	/** 開啟這張卡的筆記(複習到一半想改釋義)。 */
 	openNote?: (file: TFile) => void;
 	/** 已經算好的發音波形,同步。跟浮窗共用同一份快取。 */
@@ -393,7 +396,7 @@ export class ReviewModal extends Modal {
 		word: string,
 		onDone: (correct: boolean) => void
 	): void {
-		const slots = letterSlots(word);
+		const slots = letterSlots(word, this.hooks.spellingHint?.() ?? "both");
 		if (!slots.length) return;
 
 		const row = parent.createDiv({ cls: "wordfolio-review-spelling" });

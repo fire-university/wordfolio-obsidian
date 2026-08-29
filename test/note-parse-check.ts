@@ -178,6 +178,41 @@ check("形狀長度 = 原字長度", shape("overrate").length === "overrate".len
 check("連字號原樣顯示(比一整排底線好讀)", shape("well-known") === "w___-____n", shape("well-known"));
 check("撇號原樣顯示", shape("don't") === "d__'t", shape("don't"));
 
+console.log("\n先給幾個字母(設定可調,給越少越難)");
+const shapeH = (w: string, h: "both" | "first" | "last" | "none") =>
+	letterSlots(w, h).map((x) => (x.editable ? "_" : x.char)).join("");
+check("both:首尾都給(預設,跟舊行為一樣)", shapeH("vibrant", "both") === "v_____t", shapeH("vibrant", "both"));
+check("first:只給首字母", shapeH("vibrant", "first") === "v______", shapeH("vibrant", "first"));
+check("last:只給尾字母", shapeH("vibrant", "last") === "______t", shapeH("vibrant", "last"));
+check("none:整個字自己拼", shapeH("vibrant", "none") === "_______", shapeH("vibrant", "none"));
+check("不給參數 = both,舊呼叫端不受影響", shape("vibrant") === shapeH("vibrant", "both"));
+
+// 連字號與撇號不是拼寫的難點,不管設定怎麼調都直接給。
+for (const h of ["both", "first", "last", "none"] as const) {
+	check(`${h}:連字號一律直接給`, shapeH("well-known", h)[4] === "-", shapeH("well-known", h));
+	check(`${h}:撇號一律直接給`, shapeH("don't", h).includes("'"), shapeH("don't", h));
+}
+
+// 兩個字母以內的字,不管設定怎麼調都不挖——挖了就沒東西可填。
+for (const h of ["both", "first", "last", "none"] as const) {
+	check(`${h}:兩個字母的字不挖`, letterSlots("ox", h).every((x) => !x.editable), shapeH("ox", h));
+}
+check("none:三個字母的字整個挖", shapeH("cat", "none") === "___", shapeH("cat", "none"));
+check("空字串在任何設定下都不會爆", letterSlots("", "none").length === 0);
+
+// 對答案與訂正要跟著設定走,不能只認「中間那幾格」。
+{
+	const none = letterSlots("cat", "none");
+	check("none:全部自己填也對得了答案", slotsFilled(none, "cat".split("")));
+	check("none:少填一個不算對", !slotsFilled(none, "ca".split("")));
+	check("none:組回來是完整的字", spellingAttempt(none, "cat".split("")) === "cat");
+	const last = letterSlots("vibrant", "last");
+	check("last:首字母變成要自己填", last[0].editable);
+	check("last:尾字母仍然直接給", !last[6].editable);
+	check("last:組回來時尾字母來自答案", spellingAttempt(last, "vibran".split("")) === "vibrant",
+		spellingAttempt(last, "vibran".split("")));
+}
+
 console.log("\n對答案(大小寫不計,不記分只給回饋)");
 check("全對", slotsFilled(slots, "orthwhil".split("")));
 check("大寫也算對", slotsFilled(slots, "ORTHWHIL".split("")));

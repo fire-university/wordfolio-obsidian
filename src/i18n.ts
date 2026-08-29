@@ -318,6 +318,13 @@ const EN: Dict = {
 	accent_both: "British and American",
 	accent_us_only: "American only",
 	accent_uk_only: "British only",
+	set_spelling_hint_name: "Letters given in spelling practice",
+	set_spelling_hint_desc:
+		"Which letters of the answer are filled in for you. Fewer letters is harder — with none, you spell the whole word from scratch, which turns the exercise from fill-in-the-blank into writing it out from memory. Hyphens and apostrophes are always given; they are not the hard part. Words of two letters or fewer are never blanked.",
+	spelling_hint_both: "First and last",
+	spelling_hint_first: "First only",
+	spelling_hint_last: "Last only",
+	spelling_hint_none: "None — spell the whole word",
 	set_speak_front_name: "Say the word when the question appears",
 	set_speak_front_desc:
 		"Plays the word as soon as a question card opens. Good for listening practice — but note it also tells you the pronunciation before you try to recall the word, which makes the question easier. Only plays the first time you see a card, not when you press Again.",
@@ -616,6 +623,13 @@ const ZH: Dict = {
 	accent_both: "英式與美式都要",
 	accent_us_only: "只要美式",
 	accent_uk_only: "只要英式",
+	set_spelling_hint_name: "拼寫練習先給幾個字母",
+	set_spelling_hint_desc:
+		"答案的哪幾個字母會先幫你填好。**給越少越難**——一個都不給等於整個字從頭拼到尾,那是把「填空」變成「默寫」。連字號與撇號一律直接給,那不是拼寫的難點;兩個字母以內的字也不會挖空。",
+	spelling_hint_both: "首字母與尾字母",
+	spelling_hint_first: "只給首字母",
+	spelling_hint_last: "只給尾字母",
+	spelling_hint_none: "都不給——整個字自己拼",
 	set_speak_front_name: "問題卡出現時先念一次",
 	set_speak_front_desc:
 		"問題卡一打開就把那個字念出來。練聽力有幫助，但要知道它也等於在你回想之前先把讀音告訴你，題目會變簡單。只在第一次看到那張卡時念，按「重來」重問同一個字時不會再念。",

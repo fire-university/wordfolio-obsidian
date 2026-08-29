@@ -212,21 +212,38 @@ export interface LetterSlot {
 }
 
 /**
+ * 拼寫練習要先給幾個字母當線索。
+ *
+ * 給得越少越難。`none` 等於整個字從頭拼到尾——**這是把它從「填空」變成「默寫」**,
+ * 難度差很多,所以做成可選而不是直接改預設。
+ */
+export type SpellingHint = "both" | "first" | "last" | "none";
+
+/**
  * 把一個字拆成一排拼寫格子。
  *
  * 道哥:「既然你已經有格子、空格出來了,是不是可以讓我把中間的空白填進去呢?
  * 這樣是不是可以增加我動腦的機會?」——對,而且不只是「多一點動腦」:
  * 用打的會逼出**拼寫**,而光是心裡想「喔是 worthwhile」是可以含糊帶過的。
  *
- * 首尾與非字母(連字號、撇號)直接給——它們是線索不是題目;其餘留空等他填。
+ * `hint` 決定首尾要不要直接給。**非字母(連字號、撇號)一律直接給,不受 hint
+ * 影響**——那些不是拼寫的難點,要人去猜「這裡有沒有連字號」只是刁難。
+ *
+ * 兩個字母以內的字全部直接給:`go` 挖掉一格就只剩一格,那不叫練習。
  */
-export function letterSlots(word: string): LetterSlot[] {
+export function letterSlots(word: string, hint: SpellingHint = "both"): LetterSlot[] {
 	const w = word.trim();
-	return [...w].map((char, i) => ({
-		char,
-		editable:
-			i !== 0 && i !== w.length - 1 && /[A-Za-z]/.test(char) && w.length > 2,
-	}));
+	const givenFirst = hint === "both" || hint === "first";
+	const givenLast = hint === "both" || hint === "last";
+	return [...w].map((char, i) => {
+		const isFirst = i === 0;
+		const isLast = i === w.length - 1;
+		const given = (isFirst && givenFirst) || (isLast && givenLast);
+		return {
+			char,
+			editable: !given && /[A-Za-z]/.test(char) && w.length > 2,
+		};
+	});
 }
 
 /** 使用者填的字母跟正確答案對不對得上(大小寫不計)。 */

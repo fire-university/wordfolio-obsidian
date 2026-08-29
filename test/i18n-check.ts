@@ -6,6 +6,8 @@
 //
 //   npx tsx test/i18n-check.ts
 
+import fs from "fs";
+import path from "path";
 import { STRINGS, t, setLang, resolveLang } from "../src/i18n";
 
 let failures = 0;
@@ -47,6 +49,44 @@ setLang("en");
 check("取得英文", t("list_title") === "Vocabulary", t("list_title"));
 check("不存在的鍵原樣回傳", t("no_such_key_here") === "no_such_key_here");
 check("auto 跟著語系碼走", resolveLang("auto", "zh-TW") === "zh-TW" && resolveLang("auto", "en-US") === "en");
+
+console.log("\n同一份字典裡不可以有重複的鍵");
+// 為什麼要讀原始碼而不是看 STRINGS:**物件實字裡重複的鍵會靜靜地被後面那個蓋掉**,
+// 讀 STRINGS 只看得到贏的那一個,鍵集合完全正常。實際發生過:用 Python 的
+// str.replace 補字串,它預設換掉**所有**出現的地方,於是英文區塊同時被塞進
+// 英文與繁中兩份字典。tsc 抓得到(TS1117),但 npm test 不跑 tsc。
+//
+// 這種錯的下場是:繁中使用者看到英文句子,而且測試全綠。
+{
+	const src = fs.readFileSync(path.resolve(__dirname, "../src/i18n.ts"), "utf8");
+	const dicts = [...src.matchAll(/const (EN|ZH|[A-Z_]+): Dict = \{([\s\S]*?)\n\};/g)];
+	check(`找得到字典(${dicts.length} 份)`, dicts.length >= 2, String(dicts.length));
+	for (const [, name, bodyText] of dicts) {
+		const keys = [...bodyText.matchAll(/^\t([a-z_0-9]+):/gm)].map((m) => m[1]);
+		const seen = new Set<string>();
+		const dup = keys.filter((k) => (seen.has(k) ? true : (seen.add(k), false)));
+		check(`${name} 沒有重複的鍵(共 ${keys.length} 個)`, dup.length === 0, [...new Set(dup)].join(", "));
+	}
+}
+
+console.log("\n繁中那份不可以殘留沒翻的英文句子");
+// 同一個坑的另一面:值被覆蓋成英文時,鍵集合檢查看不出來。
+// 只抓「長句子、完全沒有中日韓字元、而且跟英文版一字不差」的,
+// 像 UK / US / Anki / Obsidian 這種本來就該維持原樣的短字串不會被誤判。
+{
+	const en = STRINGS.en;
+	const zh = STRINGS["zh-TW"];
+	const untranslated = Object.keys(zh).filter((k) => {
+		const v = zh[k];
+		return (
+			v === en[k] &&
+			v.length > 24 &&
+			/[A-Za-z]{3,}\s+[A-Za-z]{3,}/.test(v) &&
+			!/[\u3000-\u9fff\uff00-\uffef]/.test(v)
+		);
+	});
+	check("沒有殘留英文", untranslated.length === 0, untranslated.join(", "));
+}
 
 console.log(failures ? `\n${failures} 項失敗` : "\n全部通過");
 process.exit(failures ? 1 : 0);

@@ -55,6 +55,7 @@ import {
 	sectionDescKey,
 } from "./sections";
 import type { Lookup, VocabCard } from "./types";
+import type { SpellingHint } from "./note-parse";
 import { reviewQueue, Rating, type Grade } from "./schedule";
 import type { RatingName } from "./stats";
 
@@ -436,6 +437,7 @@ export default class WordFolioPlugin extends Plugin {
 			autoSpeak: () => this.settings.reviewAutoSpeak,
 			speakFront: () => this.settings.reviewSpeakFront,
 			accent: () => this.settings.accent,
+			spellingHint: () => this.settings.spellingHint,
 			cachedWaveform: (word, accent) =>
 				this.settings.showWaveform ? this.audio.cachedWaveform(word, accent) : null,
 			loadWaveform: (word, accent) =>
@@ -1146,6 +1148,22 @@ class WordFolioSettingTab extends PluginSettingTab {
 			},
 			t("set_new_per_day_unit")
 		);
+
+		new Setting(containerEl)
+			.setName(t("set_spelling_hint_name"))
+			.setDesc(t("set_spelling_hint_desc"))
+			.addDropdown((d) =>
+				d
+					.addOption("both", t("spelling_hint_both"))
+					.addOption("first", t("spelling_hint_first"))
+					.addOption("last", t("spelling_hint_last"))
+					.addOption("none", t("spelling_hint_none"))
+					.setValue(s.spellingHint)
+					.onChange(async (v) => {
+						s.spellingHint = v as SpellingHint;
+						await this.plugin.saveSettings();
+					})
+			);
 
 		new Setting(containerEl)
 			.setName(t("set_speak_front_name"))
