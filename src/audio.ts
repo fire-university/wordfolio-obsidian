@@ -52,6 +52,14 @@ export class Audio {
 	private waves = new Map<string, Waveform>();
 	/** 正在解碼中的字,避免連按兩下抓兩次。 */
 	private pending = new Map<string, Promise<Waveform | null>>();
+	/**
+	 * 有道沒有這個字的錄音。
+	 *
+	 * **開了 hover 預先下載之後,這個negative cache 是必要的**:有道不是每個字
+	 * 都有錄音(冷僻字、片語),沒有的話每滑過去一次就再問一次,同一個字讀一篇
+	 * 文章可能滑過十幾次——那是對別人的免費服務做重複轟炸。
+	 */
+	private missing = new Set<string>();
 	private ctx: AudioContext | null = null;
 	private playing: AudioBufferSourceNode | null = null;
 	/** 進行中的進度動畫。換一個字播放時要先取消,不然兩條線一起跑。 */
@@ -65,6 +73,11 @@ export class Audio {
 		/** 要不要把各個字的音量拉齊。設定頁可關。 */
 		private normalize: () => boolean = () => true
 	) {}
+
+	/** 這個字這個口音確定抓不到,不要再問了。 */
+	private markMissing(key: string): void {
+		this.missing.add(key);
+	}
 
 	/**
 	 * AudioContext 延後到第一次真的要出聲才建立。
@@ -113,7 +126,7 @@ export class Audio {
 	 * 送一次請求去有道,只為了畫一條線,那是拿別人的頻寬換一個沒人要求的東西;
 	 * 真的要抓是使用者按下發音鍵的時候。
 	 */
-	async waveform(word: string, accent: Accent): Promise<Waveform | null> {
+	async waveform(word: string, accent: Accent, fetch = false): Promise<Waveform | null> {
 		const key = this.cacheKey(word, accent);
 		const done = this.waves.get(key);
 		if (done) return done;
@@ -121,12 +134,20 @@ export class Audio {
 		const inflight = this.pending.get(key);
 		if (inflight) return inflight;
 
+		// 問過而且確定沒有的,不要再問。
+		if (fetch && this.missing.has(key)) return null;
+
 		const job = (async () => {
 			const path = `${this.cacheDir}/${key}`;
 			try {
-				if (!(await this.vault.adapter.exists(path))) return null;
-				const raw = await this.vault.adapter.readBinary(path);
-				return await this.decode(key, raw);
+				if (await this.vault.adapter.exists(path)) {
+					return await this.decode(key, await this.vault.adapter.readBinary(path));
+				}
+				// 磁碟上沒有。預先下載開著、而且允許連網時才去抓。
+				if (!fetch || !this.onlineAllowed()) return null;
+				const buf = await this.load(word, accent);
+				if (!buf) this.markMissing(key);
+				return this.waves.get(key) ?? null;
 			} catch {
 				return null;
 			} finally {
@@ -289,6 +310,7 @@ export class Audio {
 		this.decoded.clear();
 		this.waves.clear();
 		this.pending.clear();
+		this.missing.clear();
 		void this.ctx?.close();
 		this.ctx = null;
 	}

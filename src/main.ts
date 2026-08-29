@@ -140,7 +140,7 @@ export default class WordFolioPlugin extends Plugin {
 				this.settings.showWaveform ? this.audio.cachedWaveform(word, accent) : null,
 			loadWaveform: (word, accent) =>
 				this.settings.showWaveform
-					? this.audio.waveform(word, accent)
+					? this.audio.waveform(word, accent, this.settings.prefetchAudio)
 					: Promise.resolve(null),
 			accentPref: () => this.settings.accent,
 			onAdd: (lookup, sentence) => void this.addToVocab(lookup, sentence),
@@ -440,7 +440,7 @@ export default class WordFolioPlugin extends Plugin {
 				this.settings.showWaveform ? this.audio.cachedWaveform(word, accent) : null,
 			loadWaveform: (word, accent) =>
 				this.settings.showWaveform
-					? this.audio.waveform(word, accent)
+					? this.audio.waveform(word, accent, this.settings.prefetchAudio)
 					: Promise.resolve(null),
 			openNote: (file) => void this.app.workspace.getLeaf(true).openFile(file),
 			// 每評一張就寫進 _review-log.md。複習到一半關掉視窗是常態,
@@ -1100,8 +1100,22 @@ class WordFolioSettingTab extends PluginSettingTab {
 				tg.setValue(s.showWaveform).onChange(async (v) => {
 					s.showWaveform = v;
 					await this.plugin.saveSettings();
+					this.display();
 				})
 			);
+
+		// 預先下載只在波形開著時才有意義,關掉波形就不該留一個沒作用的開關。
+		if (s.showWaveform) {
+			new Setting(containerEl)
+				.setName(t("set_prefetch_name"))
+				.setDesc(t("set_prefetch_desc"))
+				.addToggle((tg) =>
+					tg.setValue(s.prefetchAudio).onChange(async (v) => {
+						s.prefetchAudio = v;
+						await this.plugin.saveSettings();
+					})
+				);
+		}
 
 		// --- 生詞本 ---
 		new Setting(containerEl).setName(t("heading_vocab")).setHeading();

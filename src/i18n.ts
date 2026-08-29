@@ -306,6 +306,9 @@ const EN: Dict = {
 	set_waveform_name: "Show a waveform",
 	set_waveform_desc:
 		"Draws the shape of the recording next to the phonetics, so you can see which syllable carries the stress — not just how loud it is. Only words whose audio is already on disk get one; it never goes online just to draw a line, and the system voice fallback cannot be drawn at all.",
+	set_prefetch_name: "Fetch pronunciations as you hover",
+	set_prefetch_desc:
+		"Off by default. Normally a recording is downloaded the first time you press play, so words you have never played show a dotted placeholder instead of a waveform. Turn this on and the recording is fetched as soon as the tooltip opens, so the waveform is always there. The cost: every English word you hover sends that word to Youdao's public pronunciation endpoint — reading one article can be dozens of requests. Words with no recording are remembered and not asked for again.",
 	set_normalize_name: "Even out the volume",
 	set_normalize_desc:
 		"Recorded pronunciations arrive at wildly different levels — measured across 81 cached files, the quietest and loudest were 11.6 dB apart, roughly four times the loudness. This matches them on playback so you are not reaching for the volume key every other word.",
@@ -601,6 +604,9 @@ const ZH: Dict = {
 	set_waveform_name: "顯示波形",
 	set_waveform_desc:
 		"在音標旁邊畫出這段錄音的形狀,**看得到重音落在哪一個音節**,而不只是多大聲。只有音檔已經在磁碟上的字才畫,不會為了畫一條線而額外連網;退回系統語音的字沒有波形可畫。",
+	set_prefetch_name: "滑過去就先抓發音",
+	set_prefetch_desc:
+		"**預設關閉。** 平常是按下播放時才下載錄音,所以沒播過的字看到的是一排淡點而不是波形。打開這個之後,浮窗一跳出來就去抓,波形就會一直都在。代價是:**你滑過的每一個英文字都會把那個字送到有道的公開發音端點**,讀一篇文章可能就是幾十個請求。查不到錄音的字會被記住,不會重複問。",
 	set_normalize_name: "拉齊音量",
 	set_normalize_desc:
 		"真人錄音的音量很不一致——實測 81 個快取檔,最小聲與最大聲差了 11.6 dB,大約四倍響度。開啟後播放時會自動拉齊,不用每隔幾個字就去動音量鍵。",

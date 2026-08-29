@@ -69,6 +69,14 @@ export interface WordFolioSettings {
 	 * 大約四倍響度。有的字要湊近喇叭、有的嚇一跳。
 	 */
 	normalizeVolume: boolean;
+	/**
+	 * 浮窗一開就先去抓發音,好讓波形一直都在。
+	 *
+	 * **預設關閉,而且要一直是關的。** hover 是不自覺的高頻動作——讀一篇文章滑過
+	 * 幾十個字就是幾十個請求送到有道,那是把使用者查的字送出電腦,而他只是把
+	 * 滑鼠移過去而已。想要「波形永遠都在」的人自己開。
+	 */
+	prefetchAudio: boolean;
 
 	// --- 生詞本 ---
 	// vault 相對路徑;外掛只碰這個資料夾。
@@ -118,6 +126,7 @@ export const DEFAULT_SETTINGS: WordFolioSettings = {
 	accent: "both",
 	showWaveform: true,
 	normalizeVolume: true,
+	prefetchAudio: false,
 	vocabFolder: "英文生詞本",
 	captureSentence: true,
 	ankiDeck: "WordFolio",
