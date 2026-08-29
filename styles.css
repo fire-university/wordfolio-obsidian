@@ -1442,3 +1442,77 @@
 	background: var(--background-modifier-hover);
 	color: var(--text-normal);
 }
+
+/* --- 手機的拼寫練習:一個輸入框整個字打完 --- */
+.is-mobile-spelling {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.6em;
+	margin: 1em 0;
+}
+
+/* 形狀提示。等寬字型才對得齊,不然底線長度看起來忽長忽短。 */
+.wf-spell-shape {
+	font-family: var(--font-monospace);
+	font-size: 1.2em;
+	letter-spacing: 0.15em;
+	color: var(--text-muted);
+}
+
+.wf-spell-input {
+	width: min(20ch, 90%);
+	padding: 0.55em 0.7em;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: 1.15em;
+	text-align: center;
+}
+
+.wf-spell-input:focus {
+	border-color: var(--interactive-accent);
+	outline: none;
+}
+
+.is-mobile-spelling.is-correct .wf-spell-input {
+	border-color: var(--text-success);
+	color: var(--text-success);
+}
+
+/* --- 手機的生詞清單 --- */
+/*
+ * 六欄的表格在 390px 寬的螢幕上擠不下。**藏掉三欄而不是讓它橫向捲**——
+ * 要左右滑才看得到的欄位等於沒有,而複習次數／忘記次數在清單裡本來就只是參考,
+ * 真正要決定「該練哪個字」看狀態與到期日就夠了。
+ *
+ * 單字與釋義維持顯示:那是這張清單存在的理由。
+ */
+.is-mobile .wf-col-reps,
+.is-mobile .wf-col-lapses,
+.is-mobile .wf-col-num {
+	display: none;
+}
+
+.is-mobile .wf-vocab-table {
+	font-size: 0.9em;
+}
+
+.is-mobile .wf-col-meaning {
+	/* 釋義常常很長,限高之後每一列高度一致,掃起來快得多。 */
+	max-width: 45vw;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* 清單頂端的統計格與操作鍵在窄螢幕上要換行,不要擠成一條。 */
+.is-mobile .wf-vocab-header {
+	flex-wrap: wrap;
+	gap: 0.5em;
+}
+
+.is-mobile .wf-vocab-actions button {
+	min-height: 44px;
+}

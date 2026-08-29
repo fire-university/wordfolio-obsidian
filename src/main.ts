@@ -486,6 +486,7 @@ export default class WordFolioPlugin extends Plugin {
 			speakFront: () => this.settings.reviewSpeakFront,
 			accent: () => this.settings.accent,
 			spellingHint: () => this.settings.spellingHint,
+			mobile: () => Platform.isMobile,
 			fallbackExample: (word) => this.dictExample(word),
 			cachedWaveform: (word, accent) =>
 				this.settings.showWaveform ? this.audio.cachedWaveform(word, accent) : null,

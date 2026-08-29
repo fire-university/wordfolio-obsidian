@@ -21,6 +21,7 @@ import {
 	clozeSentence,
 	focusSentence,
 	letterSlots,
+	type LetterSlot,
 	type SpellingHint,
 	slotsFilled,
 	spellingAttempt,
@@ -56,6 +57,8 @@ export interface ReviewHooks {
 	accent?: () => AccentPref;
 	/** 拼寫練習先給哪幾個字母。 */
 	spellingHint?: () => SpellingHint;
+	/** 是不是手機／平板。影響拼寫練習與版面。 */
+	mobile?: () => boolean;
 	/** 筆記裡沒有出處例句時,從詞庫撈一句來墊。 */
 	fallbackExample?: (word: string) => string | null;
 	/** 開啟這張卡的筆記(複習到一半想改釋義)。 */
@@ -403,6 +406,12 @@ export class ReviewModal extends Modal {
 	): void {
 		const slots = letterSlots(word, this.hooks.spellingHint?.() ?? "both");
 		if (!slots.length) return;
+		if (!slots.some((x) => x.editable)) return;
+
+		if (this.hooks.mobile?.()) {
+			this.renderSpellingMobile(parent, word, slots, onDone);
+			return;
+		}
 
 		const row = parent.createDiv({ cls: "wordfolio-review-spelling" });
 		const inputs: HTMLInputElement[] = [];
@@ -504,6 +513,73 @@ export class ReviewModal extends Modal {
 
 		// 打開就可以直接開始打,不用先點一下。
 		window.setTimeout(() => inputs[0].focus(), 0);
+	}
+
+	/**
+	 * 手機版的拼寫練習:**一個輸入框整個字打完**,不是一格一個字母。
+	 *
+	 * 桌面那排格子在觸控上是最糟的一塊:`campaigner` 有八格,就是八次焦點切換,
+	 * 而 iOS 每次換焦點都可能把虛擬鍵盤收起再彈出。那不是排版問題,是互動模型
+	 * 本身不適合觸控——桌面上打八個字母是一氣呵成的,手機上是八次中斷。
+	 *
+	 * 提示(首尾字母)改成上方一行唯讀的形狀 `c________r`,輸入框則要求打**整個字**。
+	 * 「只打中間那幾個字母」在手機上更難:看不到自己打到哪一格。
+	 *
+	 * 刻意不自動 focus:一進複習卡就彈鍵盤會把畫面吃掉一半,而他可能只是想先
+	 * 看題目、按「顯示答案」。要打字的人自己點一下就好。
+	 */
+	private renderSpellingMobile(
+		parent: HTMLElement,
+		word: string,
+		slots: LetterSlot[],
+		onDone: (correct: boolean) => void
+	): void {
+		const box = parent.createDiv({ cls: "wordfolio-review-spelling is-mobile-spelling" });
+
+		// 形狀提示:給出來的字母照給,要填的用底線。跟桌面那排格子是同一份資料,
+		// 所以「先給幾個字母」那個設定在兩邊一致。
+		box.createDiv({
+			cls: "wf-spell-shape",
+			text: slots.map((x) => (x.editable ? "_" : x.char)).join(" "),
+		});
+
+		const input = box.createEl("input", {
+			cls: "wf-spell-input",
+			attr: {
+				type: "text",
+				inputmode: "text",
+				enterkeyhint: "done",
+				// 拼字練習不需要這些幫忙,不然鍵盤會直接把答案補上。
+				autocomplete: "off",
+				autocapitalize: "off",
+				autocorrect: "off",
+				spellcheck: "false",
+				placeholder: t("review_spell_placeholder"),
+				"aria-label": t("review_spell_slot"),
+			},
+		});
+
+		const check = () => {
+			const typed = input.value.replace(/[^A-Za-z'’-]/g, "");
+			if (input.value !== typed) input.value = typed;
+			// 翻面之後畫面會重建,所以每次輸入就把作答存起來,翻面時才訂正得出來。
+			this.attempt = typed ? typed : null;
+			const done = typed.toLowerCase() === word.toLowerCase();
+			box.toggleClass("is-correct", done);
+			onDone(done);
+		};
+
+		input.oninput = check;
+		input.onfocus = () => this.contentEl.addClass("wf-typing");
+		input.onblur = () => this.contentEl.removeClass("wf-typing");
+		input.onkeydown = (e) => {
+			// Enter 直接翻面。手機鍵盤右下角那顆就是它,不用再去找「顯示答案」。
+			if (e.key === "Enter") {
+				e.preventDefault();
+				input.blur();
+				this.flip();
+			}
+		};
 	}
 
 	/** 答案面:一塊一塊畫,不再把 markdown 洗成一團純文字。 */
