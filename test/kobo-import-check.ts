@@ -38,7 +38,22 @@ check(
 	String(real.items[0].source)
 );
 check("釋義留空給離線詞庫補", real.items[0].definition === undefined);
-check("Kobo 沒有原句,例句欄一定是空的", real.items.every((i) => !i.sentence));
+check("這批樣本沒有原句欄,例句就是空的", real.items.every((i) => !i.sentence));
+
+const withSentence = fromKoboFile(
+	JSON.stringify({
+		words: [
+			{ text: "marble", book: "A", sentence: "He bought a marble countertop." },
+			{ text: "horsepower", book: "A", sentence: "   " },
+		],
+	})
+);
+check(
+	"PaperFolio 撈到的原句會帶進來",
+	withSentence.items[0].sentence === "He bought a marble countertop.",
+	String(withSentence.items[0].sentence)
+);
+check("只有空白的原句當成沒有", withSentence.items[1].sentence === undefined);
 
 console.log("\n該擋的");
 const mixed = fromKoboFile(

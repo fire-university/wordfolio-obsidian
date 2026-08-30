@@ -6,9 +6,10 @@
 // 字怎麼來的:PaperFolio 同步時把 Kobo 的 WordList 寫成一份 JSON 交接檔。
 // (Kobo 上要先打開 My Words:更多 > Beta 功能 > My Words,否則那張表是空的。)
 //
-// 跟 Anki 那條路的差別,只有一個但很重要:**Kobo 不存原句**。WordList 只有
-// 單字、來源書、時間。所以這裡來的字沒有例句,複習卡會比從浮窗加入的弱一階
-// ——釋義與音標仍由離線詞庫補齊,詞形還原也照走。
+// 跟 Anki 那條路的差別:**Kobo 自己不存原句**,WordList 只有單字、來源書、時間。
+// PaperFolio 會在插著 USB(或有 Kobo Desktop 書檔)時回頭到書裡把那一句撈出來,
+// 撈得到就在 `sentence` 欄;純無線同步、或加密的商店書就沒有,那時筆記的
+// 「我遇到它的地方」會是空的,等下次插線同步再補。
 
 import { isSingleWord, type ImportedWord } from "./anki-import";
 
@@ -33,6 +34,8 @@ export interface KoboWordEntry {
 	book?: string;
 	dict?: string;
 	date?: string;
+	/** 書裡包含這個字的那一句(PaperFolio 撈得到才有) */
+	sentence?: string;
 }
 
 export interface KoboParseResult {
@@ -67,12 +70,12 @@ export function fromKoboFile(text: string): KoboParseResult {
 			continue;
 		}
 		const book = (w.book ?? "").trim();
+		const sentence = typeof w.sentence === "string" ? w.sentence.trim() : "";
 		items.push({
 			word: word.toLowerCase(),
 			// 釋義留空:交給離線詞庫補繁體釋義與音標,不要用 Kobo 字典的內容。
 			definition: undefined,
-			// Kobo 的 WordList 沒有原句,這裡永遠是空的。
-			sentence: undefined,
+			sentence: sentence || undefined,
 			source: book ? `Kobo — ${book}` : "Kobo",
 		});
 	}
