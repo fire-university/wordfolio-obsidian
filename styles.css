@@ -1675,3 +1675,18 @@
 	width: 100%;
 	max-width: 100%;
 }
+
+/* 浮窗內文裡的英文字:平常看起來就是內文,滑過去才顯示可以點。
+   釋義與例句每個字都可點(沙拉查詞的行為),所以不能像同義詞那樣整片染色——
+   那會讓一段話變成一片藍,反而看不出重點在哪。 */
+.wordfolio-inline-link {
+	color: inherit;
+	cursor: pointer;
+	text-decoration: none;
+	border-bottom: 1px dotted transparent;
+}
+
+.wordfolio-inline-link:hover {
+	color: var(--text-accent);
+	border-bottom-color: var(--text-accent);
+}

@@ -435,11 +435,19 @@ const AI_DWELL_MS = 700;
  */
 const CAMBRIDGE_DWELL_MS = 250;
 
+/**
+ * 浮窗內文的英文字要幾個字母以上才做成可點的連結。
+ * a／of／to 查了沒有意義,全做成連結只會讓整段變成一片藍。
+ */
+const MIN_LINK_LEN = 3;
+
 export class WordTooltip {
 	private el: HTMLDivElement;
 	private visible = false;
 	/** 重畫世代,用來丟掉晚到的 AI 結果 */
 	private renderGen = 0;
+	/** 目前顯示的是哪個字。內文做連結時要把它自己排除掉。 */
+	private word = "";
 	/**
 	 * 還在跑的 AI 請求。換字或關掉浮窗時要真的中止——只是「忽略結果」不夠,
 	 * 模型還是會在背景跑完,滑過一排字就等於排隊一排推理。
@@ -501,6 +509,7 @@ export class WordTooltip {
 		this.renderGen++;
 		this.abortInflight();
 		this.el.empty();
+		this.word = lookup.entry.w;
 		this.render(lookup, hit, view);
 		this.el.style.display = "";
 		this.visible = true;
@@ -611,7 +620,8 @@ export class WordTooltip {
 				if (!entry.def) return;
 				const box = this.el.createDiv({ cls: "wordfolio-definition" });
 				for (const line of entry.def.split("\\n")) {
-					if (line.trim()) box.createDiv({ text: line.trim() });
+					if (!line.trim()) continue;
+					this.linkedText(box.createDiv(), line.trim(), entry.w);
 				}
 				return;
 			}
@@ -667,7 +677,7 @@ export class WordTooltip {
 				if (!entry.ex?.length) return;
 				const box = this.el.createDiv({ cls: "wordfolio-examples" });
 				for (const ex of entry.ex) {
-					box.createDiv({ cls: "wordfolio-example", text: ex });
+					this.linkedText(box.createDiv({ cls: "wordfolio-example" }), ex, entry.w);
 				}
 				return;
 			}
@@ -731,12 +741,49 @@ export class WordTooltip {
 	 * 可點的單字(同義詞、反義詞…)。點了在浮窗內跳去查那個字。
 	 * 沒有 onNavigate 就退回純文字,不給假的可點外觀。
 	 */
-	private wordLink(parent: HTMLElement, word: string): void {
+	/**
+	 * 把一段文字鋪進 parent,**其中每個英文字都做成可以再點的**(沙拉查詞的行為)。
+	 *
+	 * 為什麼需要:釋義與例句本身就是英文,讀到裡面又有不會的字是常態
+	 * ——`a notice of someone\'s death; usually includes a short biography`
+	 * 裡的 `biography` 不能點的話,他得關掉浮窗、回到筆記、找到那個字再滑過去。
+	 *
+	 * 幾個刻意的選擇:
+	 * - **當下這個字不做連結**(點了等於原地踏步),看起來也比較不吵。
+	 * - 太短的字(a、of、to)不做連結:查了沒有意義,而且會讓整段變成一片藍。
+	 * - 標點與空白原樣保留,只有字母序列變成連結。
+	 */
+	private linkedText(parent: HTMLElement, text: string, current?: string): void {
+		if (!this.cb.onNavigate) {
+			parent.appendText(text);
+			return;
+		}
+		const cur = (current ?? "").toLowerCase();
+		// 連字號與撇號算在字裡:well-known、someone\'s 要當一個字。
+		for (const piece of text.split(/([A-Za-z][A-Za-z'\u2019-]*)/g)) {
+			if (!piece) continue;
+			const word = piece.replace(/^[\u2019'-]+|[\u2019'-]+$/g, "");
+			if (
+				!/^[A-Za-z]/.test(piece) ||
+				word.length < MIN_LINK_LEN ||
+				word.toLowerCase() === cur
+			) {
+				parent.appendText(piece);
+				continue;
+			}
+			this.wordLink(parent, piece, "wordfolio-inline-link");
+		}
+	}
+
+	private wordLink(parent: HTMLElement, word: string, cls?: string): void {
 		if (!this.cb.onNavigate) {
 			parent.createSpan({ text: word });
 			return;
 		}
-		const a = parent.createEl("a", { cls: "wordfolio-word-link", text: word });
+		const a = parent.createEl("a", {
+			cls: cls ?? "wordfolio-word-link",
+			text: word,
+		});
 		// mousedown 擋掉,不然點下去會清掉頁面上的選取。
 		a.onmousedown = (e) => {
 			e.preventDefault();
@@ -745,7 +792,11 @@ export class WordTooltip {
 		a.onclick = (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			this.cb.onNavigate!(word);
+			// 正在選字時不要跳走:浮窗裡的釋義是會被拿去複製的,
+			// 一放開滑鼠就換一個字等於選不起來。
+			const sel = window.getSelection()?.toString() ?? "";
+			if (sel.trim().length > 1) return;
+			this.cb.onNavigate!(word.replace(/^[\u2019'-]+|[\u2019'-]+$/g, ""));
 		};
 	}
 
@@ -796,7 +847,7 @@ export class WordTooltip {
 
 		// 字源那種散文式的內容:直接一段文字,沒有義項。
 		if (data.text) {
-			box.createDiv({ cls: "wf-camb-ety", text: data.text });
+			this.linkedText(box.createDiv({ cls: "wf-camb-ety" }), data.text, this.word);
 			return;
 		}
 
@@ -811,13 +862,13 @@ export class WordTooltip {
 				if (sense.pos) head.createSpan({ cls: "wf-camb-pos", text: sense.pos });
 			}
 
-			el.createDiv({ cls: "wf-camb-def", text: sense.def });
+			this.linkedText(el.createDiv({ cls: "wf-camb-def" }), sense.def, this.word);
 			if (sense.zh) el.createDiv({ cls: "wf-camb-zh", text: sense.zh });
 
 			// 每個義項留兩句就好,不然多義字會排到看不完。
 			for (const eg of sense.examples.slice(0, 2)) {
 				const e = el.createDiv({ cls: "wf-camb-eg" });
-				e.createDiv({ cls: "wf-camb-eg-en", text: eg.en });
+				this.linkedText(e.createDiv({ cls: "wf-camb-eg-en" }), eg.en, this.word);
 				if (eg.zh) e.createDiv({ cls: "wf-camb-eg-zh", text: eg.zh });
 			}
 		}
