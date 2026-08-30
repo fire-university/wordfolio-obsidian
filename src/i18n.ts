@@ -207,6 +207,23 @@ const EN: Dict = {
 		"Brings words you saved in the browser (Language Reactor, Saladict) into your notebook as notes, filling in phonetics and definitions from the offline dictionary. Anki must be running with AnkiConnect. Read-only as far as Anki is concerned — nothing there is changed or deleted, and review scheduling stays with this plugin.",
 	set_import_anki_button: "Import",
 
+	// Kobo 匯入
+	kobo_no_file:
+		"WordFolio: no Kobo word list at \"{path}\".\nSync with PaperFolio first, with \"Sync looked-up words\" turned on in its settings.",
+	kobo_nothing:
+		"WordFolio: the Kobo word list has no English words in it yet. Look words up while reading, with My Words turned on (More > Beta Features > My Words).",
+	kobo_confirm_title: "Import words from Kobo",
+	kobo_confirm_body:
+		"{count} words looked up on your Kobo.\nThey will be written to {folder}/ — one note per word, with phonetics and definitions from the offline dictionary.\nSkipping {ignored} entries that are not English words.\nKobo does not save the sentence a word came from, so these notes have no example sentence.",
+	set_import_kobo_name: "Import from Kobo",
+	set_import_kobo_desc:
+		"Brings words you looked up with your Kobo\'s built-in dictionary into your notebook. PaperFolio writes them to \"{path}\" when you sync; this reads that file. Nothing on the Kobo is changed, and words already in your notebook keep their review progress.",
+	set_import_kobo_button: "Import",
+	set_kobo_path_name: "Kobo word list file",
+	set_kobo_path_desc:
+		"Where PaperFolio writes the word list. Leave empty to detect it from PaperFolio\'s own settings; currently \"{path}\".",
+	command_import_kobo: "Import words from Kobo",
+
 	// 設定
 	set_language_name: "Language",
 	set_language_desc: "Interface language. Auto follows Obsidian.",
@@ -542,6 +559,23 @@ const ZH: Dict = {
 	set_import_anki_desc:
 		"把你在瀏覽器裡存進 Anki 的字（Language Reactor、Saladict）接成生詞筆記，音標與釋義用離線詞庫補齊。要先開著 Anki 並裝有 AnkiConnect。對 Anki 而言是唯讀的：不會改動也不會刪掉那邊的任何東西，複習排程仍然只有這個外掛在管。",
 	set_import_anki_button: "匯入",
+
+	// Kobo 匯入
+	kobo_no_file:
+		"WordFolio：「{path}」還沒有 Kobo 生詞檔。\n先用 PaperFolio 同步一次，並在它的設定裡打開「同步查過的單字」。",
+	kobo_nothing:
+		"WordFolio：Kobo 生詞檔裡還沒有英文單字。讀書時長按查字才會記錄（要先打開 My Words：更多 > Beta 功能 > My Words）。",
+	kobo_confirm_title: "從 Kobo 匯入生詞",
+	kobo_confirm_body:
+		"在 Kobo 上查過 {count} 個字。\n會寫進 {folder}/，一個字一篇筆記，音標與釋義用離線詞庫補齊。\n另有 {ignored} 筆不是英文單字，跳過。\nKobo 不會存下查這個字時的那一句，所以這批筆記沒有例句。",
+	set_import_kobo_name: "從 Kobo 匯入生詞",
+	set_import_kobo_desc:
+		"把你用 Kobo 內建字典查過的字接成生詞筆記。PaperFolio 同步時會把那些字寫進「{path}」，這裡讀的就是那個檔。不會動到 Kobo 上的任何東西；已經在生詞本裡的字保留原本的複習進度。",
+	set_import_kobo_button: "匯入",
+	set_kobo_path_name: "Kobo 生詞檔位置",
+	set_kobo_path_desc:
+		"PaperFolio 把單字寫到哪。留空 = 自動從 PaperFolio 的設定找出來；目前是「{path}」。",
+	command_import_kobo: "從 Kobo 匯入生詞",
 
 	// 設定
 	set_language_name: "語言",

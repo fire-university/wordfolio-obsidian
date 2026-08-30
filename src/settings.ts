@@ -109,6 +109,9 @@ export interface WordFolioSettings {
 	captureSentence: boolean;
 	// 推進 Anki 時用哪個牌組(不存在會自動建)。
 	ankiDeck: string;
+	// Kobo 生詞交接檔(PaperFolio 寫的)在 vault 裡的位置。
+	// 留空 = 自動去問 PaperFolio 的設定,問不到才用預設路徑。
+	koboWordsPath: string;
 	// 每次複習最多放幾個沒看過的新字進來。0 = 這陣子只複習舊字。
 	// 從 Anki 匯入之後生詞本會一次多兩百多個新字,不限量的話打開複習就是
 	// 兩百多張等著——那不會被複習完,只會被關掉。
@@ -164,6 +167,7 @@ export const DEFAULT_SETTINGS: WordFolioSettings = {
 	vocabFolder: "英文生詞本",
 	captureSentence: true,
 	ankiDeck: "WordFolio",
+	koboWordsPath: "",
 	// 跟 Anki 的預設一樣。兩百多個字大約兩週消化完。
 	newPerDay: 20,
 	reviewAutoSpeak: true,

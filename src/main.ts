@@ -11,6 +11,7 @@ import {
 	PluginSettingTab,
 	Setting,
 	TFile,
+	normalizePath,
 	requestUrl,
 } from "obsidian";
 import {
@@ -51,6 +52,12 @@ import {
 	IMPORT_MODELS,
 	type ImportedWord,
 } from "./anki-import";
+import {
+	fromKoboFile,
+	pathFromPaperFolioData,
+	DEFAULT_KOBO_WORDS_PATH,
+	PAPERFOLIO_DATA_PATH,
+} from "./kobo-import";
 import { LocalLLM } from "./llm";
 import { WebSource, type SourceStore } from "./sources";
 import { CAMBRIDGE, LONGMAN, OXFORD, WIKTIONARY } from "./source-defs";
@@ -99,6 +106,8 @@ export default class WordFolioPlugin extends Plugin {
 	/** 設定頁要在下載進行中重畫狀態列,靠這個回呼。 */
 	private onDictChange: (() => void) | null = null;
 	private anki = new Anki();
+	/** Kobo 生詞交接檔的實際位置。設定頁顯示用;解析要讀檔,所以先算好放這。 */
+	private koboWordsPath = DEFAULT_KOBO_WORDS_PATH;
 	private log!: ReviewLog;
 
 	async onload(): Promise<void> {
@@ -123,6 +132,7 @@ export default class WordFolioPlugin extends Plugin {
 			this.contentLang()
 		);
 		this.log = new ReviewLog(this.app, () => this.settings.vocabFolder, () => this.contentLang());
+		void this.resolveKoboWordsPath();
 
 		// 線上詞典查過的字寫進外掛資料夾,離線與重開之後都還在。
 		const store: SourceStore = {
@@ -242,6 +252,12 @@ export default class WordFolioPlugin extends Plugin {
 			id: "import-from-anki",
 			name: t("command_import_anki"),
 			callback: () => void this.importFromAnki(),
+		});
+
+		this.addCommand({
+			id: "import-from-kobo",
+			name: t("command_import_kobo"),
+			callback: () => void this.importFromKobo(),
 		});
 
 		// ribbon 改成開清單視圖,不是直接進複習 Modal。
@@ -590,6 +606,67 @@ export default class WordFolioPlugin extends Plugin {
 		).open();
 	}
 
+	/**
+	 * 交接檔在哪:設定填了就用設定的,沒填就去問 PaperFolio 自己的設定。
+	 *
+	 * 兩個外掛裝在同一個 vault,路徑讓使用者在兩邊各填一次只會填錯。
+	 * 問不到(沒裝 PaperFolio、或它還沒設定過)就退回預設路徑。
+	 */
+	private async resolveKoboWordsPath(): Promise<string> {
+		const set = this.settings.koboWordsPath.trim();
+		if (set) {
+			this.koboWordsPath = normalizePath(set);
+			return this.koboWordsPath;
+		}
+		let found: string | null = null;
+		try {
+			if (await this.app.vault.adapter.exists(PAPERFOLIO_DATA_PATH)) {
+				found = pathFromPaperFolioData(
+					await this.app.vault.adapter.read(PAPERFOLIO_DATA_PATH)
+				);
+			}
+		} catch (e) {
+			console.warn("WordFolio: could not read PaperFolio settings", e);
+		}
+		this.koboWordsPath = normalizePath(found ?? DEFAULT_KOBO_WORDS_PATH);
+		return this.koboWordsPath;
+	}
+
+	/**
+	 * 把 Kobo 上查過的字接進生詞本。
+	 *
+	 * 跟 Anki 那條路共用同一段落檔邏輯(runImport):一樣走離線詞庫查釋義、
+	 * 一樣做詞形還原、已經在生詞本裡的字一樣保留複習進度。差別只有來源
+	 * ——**Kobo 不存原句**,所以這批筆記沒有例句。
+	 */
+	private async importFromKobo(): Promise<void> {
+		const path = await this.resolveKoboWordsPath();
+		if (!(await this.app.vault.adapter.exists(path))) {
+			new Notice(t("kobo_no_file", { path }), 12000);
+			return;
+		}
+
+		const { items, ignored } = fromKoboFile(
+			await this.app.vault.adapter.read(path)
+		);
+		if (!items.length) {
+			new Notice(t("kobo_nothing"), 10000);
+			return;
+		}
+
+		new ConfirmModal(
+			this.app,
+			t("kobo_confirm_title"),
+			t("kobo_confirm_body", {
+				count: items.length,
+				folder: this.settings.vocabFolder,
+				ignored,
+			}),
+			t("import_confirm_ok"),
+			() => void this.runImport(items, ignored)
+		).open();
+	}
+
 	private async runImport(items: ImportedWord[], ignored: number): Promise<void> {
 		new Notice(t("import_working", { count: items.length }));
 
@@ -789,6 +866,20 @@ export default class WordFolioPlugin extends Plugin {
 	/** 設定頁的按鈕用。 */
 	importFromAnkiFromSettings(): Promise<void> {
 		return this.importFromAnki();
+	}
+
+	importFromKoboFromSettings(): Promise<void> {
+		return this.importFromKobo();
+	}
+
+	/** 使用者改了路徑設定之後重算一次(設定頁顯示與匯入都吃這個值)。 */
+	async refreshKoboWordsPath(): Promise<void> {
+		await this.resolveKoboWordsPath();
+	}
+
+	/** 設定頁顯示用:目前解析出來的交接檔位置。 */
+	koboWordsPathForDisplay(): string {
+		return this.koboWordsPath;
 	}
 
 	/** 設定頁用:列出本地已安裝的模型。 */
@@ -1377,6 +1468,32 @@ class WordFolioSettingTab extends PluginSettingTab {
 					void this.plugin.importFromAnkiFromSettings();
 				})
 			);
+
+		{
+			const shown = this.plugin.koboWordsPathForDisplay();
+			new Setting(containerEl)
+				.setName(t("set_import_kobo_name"))
+				.setDesc(t("set_import_kobo_desc", { path: shown }))
+				.addButton((b) =>
+					b.setButtonText(t("set_import_kobo_button")).onClick(() => {
+						void this.plugin.importFromKoboFromSettings();
+					})
+				);
+
+			new Setting(containerEl)
+				.setName(t("set_kobo_path_name"))
+				.setDesc(t("set_kobo_path_desc", { path: shown }))
+				.addText((txt) =>
+					txt
+						.setPlaceholder(shown)
+						.setValue(s.koboWordsPath)
+						.onChange(async (v) => {
+							s.koboWordsPath = v.trim();
+							await this.plugin.saveSettings();
+							await this.plugin.refreshKoboWordsPath();
+						})
+				);
+		}
 
 		new Setting(containerEl)
 			.setName(t("set_anki_deck_name"))
