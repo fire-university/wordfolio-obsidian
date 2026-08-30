@@ -167,6 +167,27 @@ async function main() {
 		);
 	}
 
+	// --- 英英釋義的詞性代號 ---
+	{
+		const { defLines } = await import("../src/lemma");
+		// WordNet 的 s(形容詞衛星義項)對讀的人沒有意義,看起來像句子被切掉第一個字。
+		// 道哥 2026-08-30 回報「解釋很薄弱」,predominant 那篇兩行都是 s 開頭。
+		const pre = await dict.lookup("predominant");
+		const lines = defLines(pre?.entry.def);
+		check("predominant 有英英釋義", lines.length === 2, String(lines.length));
+		check(
+			"s 換成 adj.",
+			lines.every((l) => l.startsWith("adj. ")),
+			lines.join(" / ")
+		);
+		check("n. 原樣保留", defLines("n. a notice of death")[0] === "n. a notice of death");
+		check("v(沒有點)也換得到", defLines("v express admiration")[0] === "v. express admiration");
+		check("a → adj.", defLines("a of or relating to")[0] === "adj. of or relating to");
+		check("r → adv.", defLines("r. having the wind against")[0] === "adv. having the wind against");
+		check("不是詞性代號開頭的整行不動", defLines("Ethiopic churches")[0] === "Ethiopic churches");
+		check("沒有 def 不會爆", defLines(undefined).length === 0);
+	}
+
 	// --- 片語 ---
 	console.log("\n片語查詢");
 	const phrases: [string, string][] = [

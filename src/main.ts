@@ -57,6 +57,7 @@ import {
 	pathFromPaperFolioData,
 	DEFAULT_KOBO_WORDS_PATH,
 	PAPERFOLIO_DATA_PATH,
+	PAPERFOLIO_SYNC_EVENT,
 } from "./kobo-import";
 import { LocalLLM } from "./llm";
 import { WebSource, type SourceStore } from "./sources";
@@ -133,6 +134,18 @@ export default class WordFolioPlugin extends Plugin {
 		);
 		this.log = new ReviewLog(this.app, () => this.settings.vocabFolder, () => this.contentLang());
 		void this.resolveKoboWordsPath();
+
+		// PaperFolio 同步完會發這個事件。**這是「Kobo 上按一顆按鈕,字就進生詞本」
+		// 的最後一段**:Kobo → 無線推送 → PaperFolio 寫交接檔 → 這裡接手。
+		// 沒開自動匯入就只是忽略它(自動在 vault 裡建檔應該是使用者自己開的)。
+		this.registerEvent(
+			this.app.workspace.on(
+				PAPERFOLIO_SYNC_EVENT as "quick-preview",
+				(() => {
+					if (this.settings.koboAutoImport) void this.importFromKobo(true);
+				}) as never
+			)
+		);
 
 		// 線上詞典查過的字寫進外掛資料夾,離線與重開之後都還在。
 		const store: SourceStore = {
@@ -239,6 +252,7 @@ export default class WordFolioPlugin extends Plugin {
 			data: () => this.viewData(),
 			startReview: () => void this.startReview(),
 			importFromAnki: () => this.importFromAnki(),
+			importFromKobo: () => this.importFromKobo(),
 			openNote: (path) => void this.app.workspace.openLinkText(path, "", true),
 		}));
 
@@ -639,10 +653,10 @@ export default class WordFolioPlugin extends Plugin {
 	 * 一樣做詞形還原、已經在生詞本裡的字一樣保留複習進度。差別只有來源
 	 * ——**Kobo 不存原句**,所以這批筆記沒有例句。
 	 */
-	private async importFromKobo(): Promise<void> {
+	private async importFromKobo(silent = false): Promise<void> {
 		const path = await this.resolveKoboWordsPath();
 		if (!(await this.app.vault.adapter.exists(path))) {
-			new Notice(t("kobo_no_file", { path }), 12000);
+			if (!silent) new Notice(t("kobo_no_file", { path }), 12000);
 			return;
 		}
 
@@ -650,7 +664,15 @@ export default class WordFolioPlugin extends Plugin {
 			await this.app.vault.adapter.read(path)
 		);
 		if (!items.length) {
-			new Notice(t("kobo_nothing"), 10000);
+			if (!silent) new Notice(t("kobo_nothing"), 10000);
+			return;
+		}
+
+		// 自動匯入不跳確認視窗,也不為「一個新字都沒有」發通知——它是跟著別人的
+		// 同步跑的,吵一次就會被關掉。真的有字進來才出一則。
+		if (silent) {
+			const created = await this.runImport(items, ignored, true);
+			if (created) new Notice(t("kobo_auto_done", { created }), 8000);
 			return;
 		}
 
@@ -667,8 +689,12 @@ export default class WordFolioPlugin extends Plugin {
 		).open();
 	}
 
-	private async runImport(items: ImportedWord[], ignored: number): Promise<void> {
-		new Notice(t("import_working", { count: items.length }));
+	private async runImport(
+		items: ImportedWord[],
+		ignored: number,
+		silent = false
+	): Promise<number> {
+		if (!silent) new Notice(t("import_working", { count: items.length }));
 
 		let created = 0;
 		let existed = 0;
@@ -696,7 +722,13 @@ export default class WordFolioPlugin extends Plugin {
 		await this.vocab.refresh();
 		await this.refreshBadge();
 		await this.refreshViews();
-		new Notice(t("import_done", { created, existed, skipped, ignored, backfilled }), 12000);
+		if (!silent) {
+			new Notice(
+				t("import_done", { created, existed, skipped, ignored, backfilled }),
+				12000
+			);
+		}
+		return created;
 	}
 
 	/** 命令面板／快捷鍵的入口:對選取的字(沒選取就用游標位置)查詢。 */
@@ -914,7 +946,13 @@ export default class WordFolioPlugin extends Plugin {
 	 */
 	contentLang(): NoteLang {
 		if (this.settings.contentLang !== "auto") return this.settings.contentLang;
-		return currentLang();
+		// auto = 跟**生詞本裡既有的筆記**走,不是跟介面語言走。
+		//
+		// 介面語言是隨手就切的(道哥的 Obsidian 介面是英文,釋義要繁中),而筆記
+		// 格式一旦混到兩種,清單、複習卡、Anki 匯出全部得同時認兩套。2026-08-30
+		// 就是這樣出事的:他 245 篇是繁中格式,當天匯進來的 5 篇卻是英文格式,
+		// 畫面上不會有任何錯誤,只是那幾篇「解釋很薄弱」。
+		return this.vocab?.detectedLang() ?? currentLang();
 	}
 
 	applyLang(): void {
@@ -1477,6 +1515,16 @@ class WordFolioSettingTab extends PluginSettingTab {
 				.addButton((b) =>
 					b.setButtonText(t("set_import_kobo_button")).onClick(() => {
 						void this.plugin.importFromKoboFromSettings();
+					})
+				);
+
+			new Setting(containerEl)
+				.setName(t("set_kobo_auto_name"))
+				.setDesc(t("set_kobo_auto_desc"))
+				.addToggle((tg) =>
+					tg.setValue(s.koboAutoImport).onChange(async (v) => {
+						s.koboAutoImport = v;
+						await this.plugin.saveSettings();
 					})
 				);
 

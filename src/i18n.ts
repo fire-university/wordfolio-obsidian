@@ -145,6 +145,7 @@ const EN: Dict = {
 	list_title: "Vocabulary",
 	list_import_desktop_only: "Importing from Anki works on the desktop app only — AnkiConnect is a desktop Anki add-on. Import there and your notes sync over.",
 	list_import: "Import from Anki",
+	list_import_kobo: "Import from Kobo",
 	list_refresh: "Reload",
 	list_review_n: "Review {n}",
 	list_review_none: "Nothing due",
@@ -223,6 +224,10 @@ const EN: Dict = {
 	set_kobo_path_desc:
 		"Where PaperFolio writes the word list. Leave empty to detect it from PaperFolio\'s own settings; currently \"{path}\".",
 	command_import_kobo: "Import words from Kobo",
+	kobo_auto_done: "WordFolio: {created} new words came in from your Kobo.",
+	set_kobo_auto_name: "Import automatically after a Kobo sync",
+	set_kobo_auto_desc:
+		"When PaperFolio finishes a sync, bring any new words straight into your notebook without asking. The Kobo\'s own sync button then goes all the way: press it while reading, and the words are waiting for you in Obsidian.",
 
 	// 設定
 	set_language_name: "Language",
@@ -498,6 +503,7 @@ const ZH: Dict = {
 	list_title: "生詞本",
 	list_import_desktop_only: "從 Anki 匯入只能在電腦上做——AnkiConnect 是 Anki 桌面版的外掛,手機上不存在。在電腦匯入之後,筆記會自己同步過來。",
 	list_import: "從 Anki 匯入",
+	list_import_kobo: "從 Kobo 匯入",
 	list_refresh: "重新整理",
 	list_review_n: "開始複習（{n}）",
 	list_review_none: "今天沒有要複習的",
@@ -576,6 +582,10 @@ const ZH: Dict = {
 	set_kobo_path_desc:
 		"PaperFolio 把單字寫到哪。留空 = 自動從 PaperFolio 的設定找出來；目前是「{path}」。",
 	command_import_kobo: "從 Kobo 匯入生詞",
+	kobo_auto_done: "WordFolio：從 Kobo 收到 {created} 個新字。",
+	set_kobo_auto_name: "同步後自動匯入",
+	set_kobo_auto_desc:
+		"PaperFolio 同步完成時，直接把新的字匯進生詞本，不再問一次。這樣 Kobo 機身上那顆同步按鈕就一路到底：讀書時按一下，字就已經在 Obsidian 等你了。",
 
 	// 設定
 	set_language_name: "語言",

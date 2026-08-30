@@ -9,11 +9,11 @@
 // 追加到「我遇到它的地方」底下。
 
 import { App, TFile, normalizePath } from "obsidian";
-import { formsFor, meaningfulLines } from "./lemma";
+import { defLines, formsFor, meaningfulLines } from "./lemma";
 import { meaningOf, type VocabRow } from "./vocab-list";
 import { yamlString } from "./frontmatter";
 import { TRANSLATION_MARK, parseNote } from "./note-parse";
-import { schemaFor, HEADING_ALIASES, type NoteLang } from "./note-schema";
+import { schemaFor, langOfType, HEADING_ALIASES, type NoteLang } from "./note-schema";
 import type { ImportedWord } from "./anki-import";
 import type { DictEntry, Lookup, VocabCard } from "./types";
 
@@ -46,6 +46,13 @@ function findSentenceHeading(text: string): { heading: string; idx: number } | n
 	return null;
 }
 
+/** 筆記裡最多寫幾句詞庫例句、幾個近義詞。多了會把釋義擠到看不見。 */
+const MAX_EXAMPLES = 3;
+const MAX_SYNONYMS = 8;
+
+/** 判斷資料夾語言時抽樣幾篇。全掃兩百多篇太貴,而這只需要「多數是哪一種」。 */
+const SAMPLE_SIZE = 25;
+
 /** 檔名安全化。英文字本來就安全,但 ' 與 - 在某些檔案系統上要留意。 */
 function fileNameFor(word: string): string {
 	return word.toLowerCase().replace(/[\\/:*?"<>|]/g, "-");
@@ -54,6 +61,8 @@ function fileNameFor(word: string): string {
 export class VocabStore {
 	/** 資料夾裡已有哪些字。浮窗每次都要問「這個字存過沒」,不能每次都打檔案系統。 */
 	private index = new Set<string>();
+	/** 資料夾裡既有筆記用的語言(抽樣看 frontmatter 的 type);空資料夾為 null。 */
+	private folderLang: NoteLang | null = null;
 
 	constructor(
 		private app: App,
@@ -76,6 +85,34 @@ export class VocabStore {
 			if (name.startsWith("_")) continue;
 			this.index.add(name.toLowerCase());
 		}
+		await this.detectFolderLang(listing.files);
+	}
+
+	/** 抽樣讀前幾篇筆記的 `type`,看資料夾既有的是哪一種格式。 */
+	private async detectFolderLang(files: string[]): Promise<void> {
+		this.folderLang = null;
+		const notes = files
+			.filter((p) => p.endsWith(".md") && !p.split("/").pop()!.startsWith("_"))
+			.slice(0, SAMPLE_SIZE);
+		const votes: Record<string, number> = {};
+		for (const p of notes) {
+			const f = this.app.vault.getAbstractFileByPath(p);
+			if (!(f instanceof TFile)) continue;
+			const type = this.app.metadataCache.getFileCache(f)?.frontmatter?.type;
+			const lang = typeof type === "string" ? langOfType(type) : null;
+			if (lang) votes[lang] = (votes[lang] ?? 0) + 1;
+		}
+		const best = Object.entries(votes).sort((a, b) => b[1] - a[1])[0];
+		if (best) this.folderLang = best[0] as NoteLang;
+	}
+
+	/**
+	 * 既有筆記是用哪種語言寫的。`釋義語言 = 自動` 時由它決定,而不是跟介面語言走。
+	 *
+	 * 抽樣而不是全掃:兩百多篇每次啟動都讀一遍太貴,而這個判斷只要「多數是哪一種」。
+	 */
+	detectedLang(): NoteLang | null {
+		return this.folderLang;
 	}
 
 	has(word: string): boolean {
@@ -244,31 +281,41 @@ export class VocabStore {
 			""
 		);
 
-		const defLines = (entry.def ?? "")
-			.split("\\n")
-			.map((l) => l.trim())
-			.filter(Boolean);
+		const defs = defLines(entry.def);
 
 		const body: string[] = [`# ${entry.w}`, ""];
 
 		if (english) {
 			// 英英釋義當主體。80.9% 的詞條有;沒有的字退回中文那行也沒意義,
 			// 就讓主體空著,由音標、變化形與例句撐住這篇筆記。
-			for (const line of defLines) body.push(`- ${line}`);
-			if (defLines.length) body.push("");
+			for (const line of defs) body.push(`- ${line}`);
+			if (defs.length) body.push("");
 		} else {
 			for (const line of meaningfulLines(entry.tr)) {
 				body.push(line, "");
 			}
-			if (defLines.length) {
+			if (defs.length) {
 				body.push(`## ${sc.englishHeading}`, "");
-				for (const line of defLines) body.push(`- ${line}`);
+				for (const line of defs) body.push(`- ${line}`);
 				body.push("");
 			}
 		}
 
 		const forms = formsFor(entry.exch);
 		if (forms.length) body.push(`**${sc.formsLabel}**${sc.colon}${forms.join(" / ")}`, "");
+
+		// 詞庫自帶的例句與近義詞。**浮窗一直看得到,筆記卻沒寫進去**——從 Kobo
+		// 或 Anki 匯進來的字沒有原句,少了這兩段,那篇筆記就只剩幾行釋義。
+		const examples = (entry.ex ?? []).filter(Boolean).slice(0, MAX_EXAMPLES);
+		if (examples.length) {
+			body.push(`## ${sc.examplesHeading}`, "");
+			for (const ex of examples) body.push(`- ${ex}`);
+			body.push("");
+		}
+		const syn = (entry.syn ?? []).filter(Boolean).slice(0, MAX_SYNONYMS);
+		if (syn.length) {
+			body.push(`## ${sc.synonymsHeading}`, "", syn.join(english ? ", " : "、"), "");
+		}
 
 		// 匯入來源自己標的詞義。放在詞庫釋義後面當對照,不覆蓋。
 		if (sourceMeaning) {

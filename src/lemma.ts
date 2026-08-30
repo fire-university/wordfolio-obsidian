@@ -75,6 +75,35 @@ export function meaningfulLines(tr: string): string[] {
 }
 
 /**
+ * ECDICT 的英英釋義用 WordNet 的詞性代號開頭,而那組代號是給機器看的:
+ * `s most frequent or common` 的 `s` 是「形容詞衛星義項」,對讀的人沒有意義,
+ * 看起來只像句子被切掉了第一個字(道哥 2026-08-30 回報「解釋很薄弱」,
+ * predominant 那篇兩行都是 `s ` 開頭)。
+ *
+ * 對照(實測 a/b/c/p 四個 shard 共 24,000 多行):n/v/a/s/r,有的帶點有的不帶。
+ * a 與 s 都是形容詞(satellite 只是 WordNet 內部的關係分類),對使用者一律寫 adj.。
+ */
+const POS_LABEL: Record<string, string> = {
+	n: "n.",
+	v: "v.",
+	a: "adj.",
+	s: "adj.",
+	r: "adv.",
+};
+
+/** 英英釋義切行,並把 WordNet 的詞性代號換成看得懂的縮寫。 */
+export function defLines(def: string | undefined): string[] {
+	return (def ?? "")
+		.split("\\n")
+		.map((l) => l.trim())
+		.filter(Boolean)
+		.map((l) => {
+			const m = /^([nvasr])\.?\s+(.+)$/.exec(l);
+			return m ? `${POS_LABEL[m[1]]} ${m[2]}` : l;
+		});
+}
+
+/**
  * Markdown 的標記字元。
  *
  * 這些**不算單字的一部分,但也不該擋住查詢**:編輯模式下看到的是原始文字,

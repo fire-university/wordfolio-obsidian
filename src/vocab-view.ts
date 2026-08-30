@@ -33,6 +33,7 @@ export interface VocabViewDeps {
 	}>;
 	startReview: () => void;
 	importFromAnki: () => Promise<void>;
+	importFromKobo: () => Promise<void>;
 	openNote: (path: string) => void;
 }
 
@@ -138,6 +139,11 @@ export class VocabView extends ItemView {
 			const importBtn = actions.createEl("button", { text: t("list_import") });
 			importBtn.onclick = () => void this.deps.importFromAnki();
 		}
+
+		// **這顆手機上要留著。** 它讀的是 vault 裡的一個檔(PaperFolio 同步時寫的),
+		// 不像 Anki 那顆得連 localhost:8765,所以手機上按了是會成功的。
+		const koboBtn = actions.createEl("button", { text: t("list_import_kobo") });
+		koboBtn.onclick = () => void this.deps.importFromKobo();
 
 		const reload = actions.createEl("button", { cls: "wf-icon-btn" });
 		setIcon(reload, "refresh-cw");
@@ -261,6 +267,8 @@ export class VocabView extends ItemView {
 				const b = empty.createEl("button", { cls: "mod-cta", text: t("list_import") });
 				b.onclick = () => void this.deps.importFromAnki();
 			}
+			const kb = empty.createEl("button", { text: t("list_import_kobo") });
+			kb.onclick = () => void this.deps.importFromKobo();
 			return;
 		}
 		if (!rows.length) {

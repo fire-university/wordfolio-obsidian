@@ -87,5 +87,14 @@ check("沒有 settings 就回 null(呼叫端退回預設)", pathFromPaperFolioDa
 check("壞掉的 JSON 回 null", pathFromPaperFolioData("nope") === null);
 check("預設路徑指向 PaperFolio 的預設資料夾", DEFAULT_KOBO_WORDS_PATH === "PaperFolio/.kobo-words.json");
 
+console.log("\n筆記格式跟著資料夾走");
+{
+	const { langOfType } = require("../src/note-schema") as typeof import("../src/note-schema");
+	check("繁中筆記的 type", langOfType("生詞") === "zh-TW");
+	check("英文筆記的 type", langOfType("vocabulary") === "en");
+	check("前後空白不影響", langOfType(" 生詞 ") === "zh-TW");
+	check("認不得的 type 回 null(交給呼叫端退回介面語言)", langOfType("note") === null);
+}
+
 console.log(failures ? `\n${failures} 項失敗` : "\n全部通過");
 process.exit(failures ? 1 : 0);

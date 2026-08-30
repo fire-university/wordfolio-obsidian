@@ -18,6 +18,14 @@ export const DEFAULT_KOBO_WORDS_PATH = "PaperFolio/.kobo-words.json";
 export const PAPERFOLIO_DATA_PATH =
 	".obsidian/plugins/paperfolio-kobo/data.json";
 const WORDLIST_FILENAME = ".kobo-words.json";
+/**
+ * PaperFolio 同步完成、交接檔有新字時發的事件名。
+ *
+ * Obsidian 沒有官方的跨外掛事件匯流排,但 `workspace` 本身就是一個 Events,
+ * 兩邊約好同一個字串就能通。收不到也不會壞:使用者仍然可以自己按匯入
+ * (PaperFolio 版本比較舊的人就是這個情況)。
+ */
+export const PAPERFOLIO_SYNC_EVENT = "paperfolio:words-synced";
 
 /** 交接檔裡的一筆。除了 text 以外都可能沒有。 */
 export interface KoboWordEntry {

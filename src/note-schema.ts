@@ -31,6 +31,10 @@ export interface NoteSchema {
 	tags: string[];
 	/** 本文區塊標題(不含 `## `) */
 	englishHeading: string;
+	/** 詞庫自帶的例句 */
+	examplesHeading: string;
+	/** 詞庫自帶的同義詞 */
+	synonymsHeading: string;
 	usageHeading: string;
 	detailHeading: string;
 	sentenceHeading: string;
@@ -56,6 +60,8 @@ export const NOTE_SCHEMA: Record<NoteLang, NoteSchema> = {
 		sourceUrlKey: "來源連結",
 		tags: ["英文", "生詞"],
 		englishHeading: "英英釋義",
+		examplesHeading: "例句",
+		synonymsHeading: "近義詞",
 		usageHeading: "例句與用法",
 		detailHeading: "字詞詳解",
 		sentenceHeading: "我遇到它的地方",
@@ -75,6 +81,8 @@ export const NOTE_SCHEMA: Record<NoteLang, NoteSchema> = {
 		sourceUrlKey: "source_url",
 		tags: ["english", "vocabulary"],
 		englishHeading: "Definitions",
+		examplesHeading: "Examples",
+		synonymsHeading: "Synonyms",
 		usageHeading: "Usage",
 		detailHeading: "Word details",
 		sentenceHeading: "Where I met it",
@@ -87,6 +95,19 @@ export const NOTE_SCHEMA: Record<NoteLang, NoteSchema> = {
 
 export function schemaFor(lang: NoteLang): NoteSchema {
 	return NOTE_SCHEMA[lang];
+}
+
+/**
+ * 從 frontmatter 的 `type` 反推這篇筆記是用哪種語言寫的。
+ *
+ * 用途:`釋義語言 = 自動` 時,要跟**資料夾裡已經有的筆記**走,而不是跟介面
+ * 語言走。介面語言是可以隨手切的,而筆記格式一旦混到兩種,清單、複習卡、
+ * Anki 匯出全部都要同時認兩套——那是使用者永遠不會發現自己按到的坑。
+ */
+export function langOfType(type: string): NoteLang | null {
+	const t = type.trim();
+	for (const l of LANGS) if (NOTE_SCHEMA[l].type === t) return l;
+	return null;
 }
 
 const LANGS: NoteLang[] = ["zh-TW", "en"];
@@ -108,6 +129,8 @@ export const FRONTMATTER_ALIASES = {
 
 export const HEADING_ALIASES = {
 	english: aliases((s) => s.englishHeading),
+	examples: aliases((s) => s.examplesHeading),
+	synonyms: aliases((s) => s.synonymsHeading),
 	usage: aliases((s) => s.usageHeading),
 	detail: aliases((s) => s.detailHeading),
 	sentence: aliases((s) => s.sentenceHeading),
