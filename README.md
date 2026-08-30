@@ -130,6 +130,21 @@ plugin.
 Sending the other way (**Send vocabulary to Anki**) is also supported. It is
 one-way; pick one of the two as your main review system rather than running both.
 
+### From a Kobo eReader
+
+Words you look up with the Kobo\'s built-in dictionary can come in as well
+(**Import from Kobo**). [PaperFolio](https://github.com/fire-university/paperfolio-obsidian)
+writes them into your vault when it syncs; this reads that file, so the path
+usually needs no setting up. Turn on **Import automatically after a Kobo sync**
+and the sync button on the eReader goes all the way: press it while reading and
+the words are waiting for you in Obsidian.
+
+**On the Kobo: look the word up first, then highlight the sentence.** Once text
+is selected you can no longer long-press to look a word up, so the order is
+long-press → read → close → highlight. It matters because the eReader saves the
+word but not the sentence it came from — PaperFolio recovers the sentence from
+your highlight of that passage.
+
 ## Privacy
 
 Looking up a word touches the network only if you have switched on one of the
