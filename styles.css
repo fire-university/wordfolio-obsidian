@@ -1690,3 +1690,10 @@
 	color: var(--text-accent);
 	border-bottom-color: var(--text-accent);
 }
+
+/* 詞庫裡沒有這個字:點下去要看得出來為什麼沒動作，不能靜靜地什麼都不發生。 */
+.wordfolio-inline-link.is-missing,
+.wordfolio-word-link.is-missing {
+	color: var(--text-faint);
+	text-decoration: line-through;
+}

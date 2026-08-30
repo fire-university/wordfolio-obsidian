@@ -405,7 +405,8 @@ export interface TooltipCallbacks {
 	/** 這個字是不是已經在生詞本裡了 */
 	isSaved: (word: string) => boolean;
 	/** 點了同義詞/詞形等可點的字:跳去查那個字(浮窗內導覽) */
-	onNavigate?: (word: string) => void;
+	/** 跳去查另一個字。回 false 代表詞庫裡沒有這個字(呼叫端要讓使用者看得出來)。 */
+	onNavigate?: (word: string) => Promise<boolean>;
 	/** 按返回:回上一個查過的字 */
 	onBack?: () => void;
 	/** 還有沒有上一頁可回 */
@@ -794,9 +795,26 @@ export class WordTooltip {
 			e.stopPropagation();
 			// 正在選字時不要跳走:浮窗裡的釋義是會被拿去複製的,
 			// 一放開滑鼠就換一個字等於選不起來。
-			const sel = window.getSelection()?.toString() ?? "";
-			if (sel.trim().length > 1) return;
-			this.cb.onNavigate!(word.replace(/^[\u2019'-]+|[\u2019'-]+$/g, ""));
+			//
+			// **只認浮窗內部的選取。** 第一版拿 window.getSelection() 一律擋,
+			// 結果在「選字查詢」模式下每一個連結都是死的——那個模式下畫面上
+			// 永遠有一段被選起來的文字(就是他查的那個字),於是每次點擊都被
+			// 這道防呆吃掉。道哥 2026-08-30 回報「感覺可以點,但點下去沒反應」。
+			const sel = window.getSelection();
+			const insideTooltip =
+				!!sel &&
+				!sel.isCollapsed &&
+				(this.el.contains(sel.anchorNode) || this.el.contains(sel.focusNode));
+			if (insideTooltip && (sel?.toString().trim().length ?? 0) > 1) return;
+			// 詞庫裡沒有的字要**看得出來**。不給回饋的話,使用者只會覺得
+			// 「這個連結壞了」——那正是道哥回報的那句「點下去沒反應」。
+			void this.cb.onNavigate!(word.replace(/^[\u2019'-]+|[\u2019'-]+$/g, "")).then(
+				(ok) => {
+					if (ok) return;
+					a.addClass("is-missing");
+					window.setTimeout(() => a.removeClass("is-missing"), 1200);
+				}
+			);
 		};
 	}
 

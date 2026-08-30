@@ -402,7 +402,8 @@ export class HoverController {
 	 * 點同義詞:跳去查那個字。把目前這頁推進歷史,浮窗位置沿用——
 	 * 導覽時浮窗釘在原地不動,只有內容換,這樣視線不會被拉走。
 	 */
-	async navigateTo(word: string): Promise<void> {
+	/** 跳去查另一個字。回 false 代表詞庫裡查不到,浮窗維持原狀。 */
+	async navigateTo(word: string): Promise<boolean> {
 		const current = this.shown;
 		this.opening = true;
 		let result;
@@ -411,7 +412,7 @@ export class HoverController {
 		} finally {
 			this.opening = false;
 		}
-		if (!result) return;
+		if (!result) return false;
 		if (current) this.history.push(current);
 		// 導覽出來的浮窗一律 sticky:使用者正在深入看,不該被滑鼠移開就關掉。
 		this.sticky = true;
@@ -419,6 +420,7 @@ export class HoverController {
 		const hit = current?.hit ?? { word, sentence: word, rect: new DOMRect() };
 		this.shown = { lookup: result, hit };
 		this.opts.tooltip.show(result, hit, this.opts.view());
+		return true;
 	}
 
 	/** 返回上一個查過的字。 */
