@@ -101,14 +101,49 @@ export class ReviewModal extends Modal {
 
 	onOpen(): void {
 		this.modalEl.addClass("wordfolio-review-modal");
+		window.visualViewport?.addEventListener("resize", this.onViewportChange);
+		window.visualViewport?.addEventListener("scroll", this.onViewportChange);
+		this.onViewportChange();
 		this.next();
 	}
 
 	onClose(): void {
 		this.clearKeys();
+		window.visualViewport?.removeEventListener("resize", this.onViewportChange);
+		window.visualViewport?.removeEventListener("scroll", this.onViewportChange);
+		this.modalEl.style.transform = "";
+		this.modalEl.style.removeProperty("--wf-vv-h");
 		this.contentEl.empty();
 		this.hooks.onClose?.();
 	}
+
+	/**
+	 * 虛擬鍵盤彈出時把視窗縮到看得見的那一塊,並往上挪。
+	 *
+	 * **`vh` 不會因為鍵盤而變小。** `max-height: 78vh` 算的一直是整個螢幕的 78%,
+	 * 所以鍵盤一上來,視窗下半截(拼寫格就在那裡)就被蓋住,而且因為它沒有超出
+	 * 容器,連捲都捲不動。道哥的回報就是這個:「在作答的時候,鍵盤會擋住我要
+	 * 輸入的字。」
+	 *
+	 * 浮窗那邊早就踩過同一個坑(見 tooltip.ts 的 position(),那裡寫著「一定要用
+	 * visualViewport,不能用 innerHeight」),只是當時沒有套到複習視窗。
+	 *
+	 * 兩件事一起做才夠:
+	 *
+	 *   1. `--wf-vv-h` 讓 max-height 跟著可見高度縮,內容因此變成可捲動的。
+	 *   2. 往上挪半個鍵盤的高度——Obsidian 的 modal 是相對**整個**視窗置中的,
+	 *      只縮高度的話它仍然騎在鍵盤上,下緣一樣看不到。
+	 *
+	 * 120px 的門檻是為了不去理會網址列那種幾十像素的高度變化。
+	 */
+	private onViewportChange = (): void => {
+		const vv = window.visualViewport;
+		if (!vv) return;
+		const keyboard = Math.max(0, window.innerHeight - vv.height);
+		this.modalEl.style.setProperty("--wf-vv-h", `${Math.round(vv.height)}px`);
+		this.modalEl.style.transform =
+			keyboard > 120 ? `translateY(-${Math.round(keyboard / 2)}px)` : "";
+	};
 
 	private next(): void {
 		this.current = this.queue.shift() ?? null;
@@ -612,6 +647,11 @@ export class ReviewModal extends Modal {
 		input.onfocus = () => {
 			this.contentEl.addClass("wf-typing");
 			paint();
+			// 鍵盤是動畫上來的,`visualViewport` 要等它停了才是最終高度;馬上捲會
+			// 捲到舊的位置。350ms 是量出來的保守值(iOS 的鍵盤動畫約 250–300ms)。
+			window.setTimeout(() => {
+				if (box.isConnected) box.scrollIntoView({ block: "center" });
+			}, 350);
 		};
 		input.onblur = () => this.contentEl.removeClass("wf-typing");
 		input.onkeydown = (e) => {

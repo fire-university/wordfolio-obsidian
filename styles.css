@@ -519,7 +519,10 @@
 	align-items: center;
 	gap: 1em;
 	min-height: 14em;
-	max-height: 78vh;
+	/* `vh` 不會因為虛擬鍵盤而變小,所以鍵盤一上來,視窗下半截(拼寫格在那裡)
+	   就被蓋住而且捲不動。`--wf-vv-h` 由 review.ts 依 visualViewport.height 寫入。
+	   桌面上 visualViewport 約等於整個視窗,min() 會選到 78vh,行為不變。 */
+	max-height: min(78vh, calc(var(--wf-vv-h, 100vh) - 3em));
 	overflow-y: auto;
 	padding: 1.5em 1em;
 	text-align: center;
