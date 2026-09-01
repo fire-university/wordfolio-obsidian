@@ -1,6 +1,23 @@
 /* WordFolio hover 浮窗。
    全部用 Obsidian 的 CSS 變數,跟著使用者的佈景與明暗主題走。 */
 
+/* 浮窗的顯示/隱藏走 class,不直接寫 element.style.display。
+   官方社群目錄的自動審查會擋靜態的 style 指定(obsidianmd/no-static-styles-assignment),
+   2026-09-01 第一次送審就是被這條擋下來的。
+
+   **程式那邊用 `classList.add/remove`,不要用 Obsidian 的 `addClass/removeClass`。**
+   tooltip.ts 會在 JSDOM 測試裡跑,Obsidian 的 DOM 擴充在那裡不存在——第一版用了
+   addClass,測試立刻炸(`this.el.addClass is not a function`)。這個專案在同一個坑裡
+   摔過好幾次了。
+
+   **兩個元素都要列**:浮窗是 `.wordfolio-tooltip`(div),選字圖示是
+   `.wordfolio-select-icon`(button),它們共用這個 class。第一版只寫了浮窗,
+   會讓選字圖示永遠不隱藏。 */
+.wordfolio-tooltip.is-hidden,
+.wordfolio-select-icon.is-hidden {
+	display: none;
+}
+
 .wordfolio-tooltip {
 	position: fixed;
 	z-index: var(--layer-tooltip, 60);

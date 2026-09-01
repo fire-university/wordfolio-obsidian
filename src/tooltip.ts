@@ -333,7 +333,7 @@ export class SelectionIcon {
 		});
 		this.el.addEventListener("mouseleave", () => this.clearDwell());
 
-		this.el.style.display = "none";
+		this.el.classList.add("is-hidden");
 		document.body.appendChild(this.el);
 	}
 
@@ -346,7 +346,7 @@ export class SelectionIcon {
 	}
 
 	show(anchor: DOMRect): void {
-		this.el.style.display = "";
+		this.el.classList.remove("is-hidden");
 		this.visible = true;
 		const gap = 4;
 		const b = this.el.getBoundingClientRect();
@@ -362,7 +362,7 @@ export class SelectionIcon {
 		this.clearDwell();
 		if (!this.visible) return;
 		this.visible = false;
-		this.el.style.display = "none";
+		this.el.classList.add("is-hidden");
 	}
 
 	private clearDwell(): void {
@@ -458,7 +458,7 @@ export class WordTooltip {
 	constructor(private cb: TooltipCallbacks) {
 		this.el = document.createElement("div");
 		this.el.className = "wordfolio-tooltip";
-		this.el.style.display = "none";
+		this.el.classList.add("is-hidden");
 		document.body.appendChild(this.el);
 		window.visualViewport?.addEventListener("resize", this.onViewportChange);
 		window.visualViewport?.addEventListener("scroll", this.onViewportChange);
@@ -501,7 +501,7 @@ export class WordTooltip {
 		this.abortInflight();
 		if (!this.visible) return;
 		this.visible = false;
-		this.el.style.display = "none";
+		this.el.classList.add("is-hidden");
 		this.el.empty();
 	}
 
@@ -512,7 +512,7 @@ export class WordTooltip {
 		this.el.empty();
 		this.word = lookup.entry.w;
 		this.render(lookup, hit, view);
-		this.el.style.display = "";
+		this.el.classList.remove("is-hidden");
 		this.visible = true;
 		this.position(hit.rect);
 	}
@@ -1033,7 +1033,7 @@ export class WordTooltip {
 		const vh = window.innerHeight;
 
 		// 高度先解除限制才量得到真實內容高度。
-		this.el.style.maxHeight = "";
+		this.el.style.removeProperty("max-height");
 		const box = this.el.getBoundingClientRect();
 
 		// 手機:置中,不貼著那個字。

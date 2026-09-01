@@ -1,6 +1,6 @@
 {
 	"name": "wordfolio-obsidian",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"description": "Offline English–Traditional Chinese dictionary for Obsidian, with hover tooltips and FSRS spaced repetition.",
 	"main": "main.js",
 	"scripts": {
@@ -10,7 +10,8 @@
 		"release:dict": "node tools/release-dict.mjs",
 		"deploy": "npm run build && node tools/deploy.mjs",
 		"fetch:sources": "node tools/fetch-sources.mjs",
-		"test": "tsx test/dict-check.ts && tsx test/dict-download-check.ts && tsx test/waveform-check.ts && tsx test/schedule-check.ts && tsx test/skip-check.ts && tsx test/sections-check.ts && tsx test/cambridge-check.ts && tsx test/sources-check.ts && tsx test/anki-check.ts && tsx test/hover-check.ts && tsx test/stats-check.ts && tsx test/vocab-list-check.ts && tsx test/anki-import-check.ts && tsx test/kobo-import-check.ts && tsx test/note-parse-check.ts && tsx test/frontmatter-check.ts && tsx test/i18n-check.ts && tsx test/styles-check.ts"
+		"test": "tsx test/dict-check.ts && tsx test/dict-download-check.ts && tsx test/waveform-check.ts && tsx test/schedule-check.ts && tsx test/skip-check.ts && tsx test/sections-check.ts && tsx test/cambridge-check.ts && tsx test/sources-check.ts && tsx test/anki-check.ts && tsx test/hover-check.ts && tsx test/stats-check.ts && tsx test/vocab-list-check.ts && tsx test/anki-import-check.ts && tsx test/kobo-import-check.ts && tsx test/note-parse-check.ts && tsx test/frontmatter-check.ts && tsx test/i18n-check.ts && tsx test/styles-check.ts",
+		"lint": "eslint src"
 	},
 	"keywords": [
 		"obsidian",
@@ -25,12 +26,15 @@
 		"@types/jsdom": "^30.0.0",
 		"@types/node": "^20.11.0",
 		"esbuild": "^0.20.2",
+		"eslint": "^10.9.1",
+		"eslint-plugin-obsidianmd": "^0.4.2",
 		"jsdom": "^30.0.1",
 		"obsidian": "latest",
 		"opencc-js": "^1.4.1",
 		"tslib": "^2.6.2",
 		"tsx": "^4.23.1",
-		"typescript": "^5.4.5"
+		"typescript": "^5.4.5",
+		"typescript-eslint": "^8.69.0"
 	},
 	"dependencies": {
 		"ts-fsrs": "^4.7.1"

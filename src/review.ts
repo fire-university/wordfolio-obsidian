@@ -111,7 +111,7 @@ export class ReviewModal extends Modal {
 		this.clearKeys();
 		window.visualViewport?.removeEventListener("resize", this.onViewportChange);
 		window.visualViewport?.removeEventListener("scroll", this.onViewportChange);
-		this.modalEl.style.transform = "";
+		this.modalEl.style.removeProperty("transform");
 		this.modalEl.style.removeProperty("--wf-vv-h");
 		this.contentEl.empty();
 		this.hooks.onClose?.();
