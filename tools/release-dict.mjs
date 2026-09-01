@@ -76,7 +76,13 @@ if (!VERIFY_ONLY) {
 		exists = false;
 	}
 
-	const assets = [...files.map((f) => path.join(DICT, f)), path.join(ROOT, "NOTICE.md")];
+	// meta.json 不在 `meta.shards` 裡(它就是那份清單本身),所以要另外列進來。
+	// 漏掉它 = 外掛第一步就抓不到清單,整份詞庫下載直接失敗——2026-09-01 踩過。
+	const assets = [
+		path.join(DICT, "meta.json"),
+		...files.map((f) => path.join(DICT, f)),
+		path.join(ROOT, "NOTICE.md"),
+	];
 
 	if (!exists) {
 		console.log(`建立 release ${tag} …`);
