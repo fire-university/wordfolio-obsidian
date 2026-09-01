@@ -13,6 +13,8 @@ server, no telemetry.
 > Works on desktop and mobile. The dictionary is a one-time 38.5 MB download;
 > after that WordFolio never needs the network to look a word up.
 
+![Hovering the word "rigorously": UK and US phonetics with playable waveforms, an offline definition, and Cambridge senses with Traditional Chinese translations and examples.](docs/screenshots/hover-tooltip.jpg)
+
 ## Why another dictionary plugin
 
 The hover dictionaries all query an online translation service, so they stop
@@ -91,6 +93,8 @@ order you want. Turn off what you do not read.
 
 ## Vocabulary notebook
 
+![The vocabulary list: counts for new, learning and due words, review statistics, a "hardest to remember" row, and a filterable table of every saved word.](docs/screenshots/vocabulary-list.jpg)
+
 Press the **+** in the tooltip and the word becomes a Markdown note: phonetics
 and frequency in the frontmatter, the definition in the body, and the sentence
 you met it in quoted underneath. One word, one file, in your vault — greppable,
@@ -108,6 +112,11 @@ have.
 WordFolio schedules with [FSRS](https://github.com/open-spaced-repetition/ts-fsrs),
 the same algorithm modern Anki uses, and stores the scheduling state in each
 note's frontmatter.
+
+<p align="center">
+  <img src="docs/screenshots/review-spelling.jpg" alt="A review card: the definitions are shown, the example sentence has the word blanked out, and empty boxes wait for the spelling." width="49%">
+  <img src="docs/screenshots/review-answer.jpg" alt="The same card after answering: the word revealed with phonetics, the letters typed wrong marked in red, and the FSRS grading buttons." width="49%">
+</p>
 
 - A full-page **vocabulary list**: every word, its state, next due date, review
   and lapse counts — sortable, filterable, searchable.
