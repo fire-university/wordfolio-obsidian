@@ -1,7 +1,7 @@
 {
 	"id": "wordfolio",
 	"name": "WordFolio",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"minAppVersion": "1.4.0",
 	"description": "Hover any English word for an offline dictionary: definitions, UK and US phonetics, and pronunciation. Traditional Chinese or English definitions, a Markdown vocabulary notebook, and FSRS spaced repetition.",
 	"author": "Doug (fire-university)",

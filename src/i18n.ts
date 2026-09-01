@@ -330,7 +330,7 @@ const EN: Dict = {
 	wave_not_downloaded: "No recording saved yet — press play once and the waveform appears.",
 	set_waveform_name: "Show a waveform",
 	set_waveform_desc:
-		"Draws the shape of the recording next to the phonetics, so you can see which syllable carries the stress — not just how loud it is. Only words whose audio is already on disk get one; it never goes online just to draw a line, and the system voice fallback cannot be drawn at all.",
+		"Draws the shape of the recording next to the phonetics, so you can see which syllable carries the stress — not just how loud it is. Hovering never goes online just to draw a line; pressing play is what fetches the recording, and it is fetched for the waveform even when the system voice is what you hear.",
 	set_prefetch_name: "Fetch pronunciations as you hover",
 	set_prefetch_desc:
 		"Off by default. Normally a recording is downloaded the first time you press play, so words you have never played show a dotted placeholder instead of a waveform. Turn this on and the recording is fetched as soon as the tooltip opens, so the waveform is always there. The cost: every English word you hover sends that word to Youdao's public pronunciation endpoint — reading one article can be dozens of requests. Words with no recording are remembered and not asked for again.",
@@ -375,7 +375,7 @@ const EN: Dict = {
 		"Plays the word as soon as a question card opens. Good for listening practice — but note it also tells you the pronunciation before you try to recall the word, which makes the question easier. Only plays the first time you see a card, not when you press Again.",
 	set_audio_source_name: "Audio source",
 	set_audio_source_why:
-		"\"Recorded, then system voice\" never leaves you without sound: if you are offline, or the word has no recording, it falls back to the system voice automatically — and words you have played before are cached, so those stay as real recordings offline. Kept separately for each kind of device, because on iOS the silent switch mutes recorded audio — apps like YouTube declare themselves as media playback and ignore that switch, and a plugin running inside Obsidian cannot. If your phone lives on silent, give it the system voice: it is heard either way, at the cost of a synthetic voice and no waveform. Your computer has no such problem, so it can keep the recordings.",
+		"\"Recorded, then system voice\" never leaves you without sound: if you are offline, or the word has no recording, it falls back to the system voice automatically — and words you have played before are cached, so those stay as real recordings offline. Kept separately for each kind of device, because on iOS the silent switch mutes recorded audio — apps like YouTube declare themselves as media playback and ignore that switch, and a plugin running inside Obsidian cannot. If your phone lives on silent, give it the system voice: it is heard either way, at the cost of a synthetic voice. You still get the waveform, because pressing play fetches the recording to draw it even when the system voice is what you hear. Your computer has no such problem, so it can keep the recordings.",
 	set_audio_source_desktop: "On this computer",
 	set_audio_source_mobile: "On phones and tablets",
 	set_audio_source_this_device: "The device you are on now.",
@@ -685,7 +685,7 @@ const ZH: Dict = {
 	wave_not_downloaded: "這個口音的發音還沒下載過——按一次播放就會出現波形。",
 	set_waveform_name: "顯示波形",
 	set_waveform_desc:
-		"在音標旁邊畫出這段錄音的形狀,**看得到重音落在哪一個音節**,而不只是多大聲。只有音檔已經在磁碟上的字才畫,不會為了畫一條線而額外連網;退回系統語音的字沒有波形可畫。",
+		"在音標旁邊畫出這段錄音的形狀,**看得到重音落在哪一個音節**,而不只是多大聲。滑過去不會為了畫一條線就連網,**按下播放才會抓**——即使發聲用的是系統語音,那個錄音一樣會被抓下來畫成波形。",
 	set_prefetch_name: "滑過去就先抓發音",
 	set_prefetch_desc:
 		"**預設關閉。** 平常是按下播放時才下載錄音,所以沒播過的字看到的是一排淡點而不是波形。打開這個之後,浮窗一跳出來就去抓,波形就會一直都在。代價是:**你滑過的每一個英文字都會把那個字送到有道的公開發音端點**,讀一篇文章可能就是幾十個請求。查不到錄音的字會被記住,不會重複問。",
@@ -730,7 +730,7 @@ const ZH: Dict = {
 		"問題卡一打開就把那個字念出來。練聽力有幫助，但要知道它也等於在你回想之前先把讀音告訴你，題目會變簡單。只在第一次看到那張卡時念，按「重來」重問同一個字時不會再念。",
 	set_audio_source_name: "發音來源",
 	set_audio_source_why:
-		"選「真人錄音」不會讓你在離線時沒聲音:**抓不到就自動改用系統語音**(離線、或有道沒有那個字都算),而且聽過的字已經快取在本機,離線時那些仍然是真人錄音。兩種裝置各存一份,因為 iOS 的**靜音開關會切掉真人錄音**——YouTube 那類 App 把自己宣告成媒體播放所以無視靜音開關,而跑在 Obsidian 裡的外掛做不到。手機長年靜音的話就給它系統語音:靜音下也聽得到,代價是機器音、而且沒有波形。電腦沒有這個問題,可以留著真人錄音。",
+		"選「真人錄音」不會讓你在離線時沒聲音:**抓不到就自動改用系統語音**(離線、或有道沒有那個字都算),而且聽過的字已經快取在本機,離線時那些仍然是真人錄音。兩種裝置各存一份,因為 iOS 的**靜音開關會切掉真人錄音**——YouTube 那類 App 把自己宣告成媒體播放所以無視靜音開關,而跑在 Obsidian 裡的外掛做不到。手機長年靜音的話就給它系統語音:靜音下也聽得到,代價是機器音。**波形還是有**——按下播放時照樣會把錄音抓下來畫,只是發聲用系統語音。電腦沒有這個問題,可以留著真人錄音。",
 	set_audio_source_desktop: "在這台電腦上",
 	set_audio_source_mobile: "在手機與平板上",
 	set_audio_source_this_device: "你現在用的就是這一台。",

@@ -126,7 +126,8 @@ export default class WordFolioPlugin extends Plugin {
 			this.app.vault,
 			`${base}/audio`,
 			() => this.effectiveAudioSource() === "online_first",
-			() => this.settings.normalizeVolume
+			() => this.settings.normalizeVolume,
+			() => this.settings.showWaveform
 		);
 
 		this.vocab = new VocabStore(this.app, () => this.settings.vocabFolder, () =>

@@ -71,7 +71,14 @@ export class Audio {
 		private cacheDir: string,
 		private onlineAllowed: () => boolean,
 		/** 要不要把各個字的音量拉齊。設定頁可關。 */
-		private normalize: () => boolean = () => true
+		private normalize: () => boolean = () => true,
+		/**
+		 * 使用者要不要看波形。
+		 *
+		 * 系統語音模式下用來決定「要不要為了畫波形去抓錄音」——把波形關掉的人
+		 * 不該為了一條他不看的線被扣流量。
+		 */
+		private waveformWanted: () => boolean = () => true
 	) {}
 
 	/** 這個字這個口音確定抓不到,不要再問了。 */
@@ -95,8 +102,11 @@ export class Audio {
 	 * 念出這個字。
 	 *
 	 * `onProgress` 是給波形用的:播放過程中一直回報 0–1,結束或被打斷時回報 null。
-	 * **走系統語音時完全不會呼叫它**——speechSynthesis 的輸出不經過 Web Audio,
+	 * **走系統語音時只會收到那個 null**——speechSynthesis 的輸出不經過 Web Audio,
 	 * 拿不到時間軸,硬做只能用「猜一個秒數」的假動畫,那比沒有更糟。
+	 *
+	 * 但波形本身照樣會出現:系統語音模式下也會把錄音抓下來解碼,只是不用它發聲。
+	 * 那個 null 就是浮窗回頭撿波形的時機。
 	 */
 	async speak(word: string, accent: Accent, onProgress?: ProgressFn): Promise<void> {
 		// **一定要在這裡、而且在任何 await 之前解鎖。** iOS 只允許在使用者手勢的
@@ -105,14 +115,37 @@ export class Audio {
 		// 波形照跑、就是沒有聲音**。實機在 iPhone 上就是這個症狀。
 		this.unlock();
 
+		const key = this.cacheKey(word, accent);
+
 		if (this.onlineAllowed()) {
-			const key = this.cacheKey(word, accent);
 			const buf = this.decoded.get(key) ?? (await this.load(word, accent));
 			const wave = this.waves.get(key);
 			if (buf) {
 				await this.play(buf, wave, onProgress);
 				return;
 			}
+		} else if (this.waveformWanted() && !this.waves.has(key) && !this.missing.has(key)) {
+			// 系統語音模式,但**波形只需要那個檔案,不需要這條播放路徑**。
+			//
+			// iOS 的靜音開關切得掉 Web Audio、切不掉 speechSynthesis,所以靜音的
+			// 手機只能選系統語音——但那不該連波形一起賠掉。一個設定同時決定
+			// 「用什麼發聲」和「能不能有波形」,是把兩件無關的事綁在一起。
+			//
+			// 這裡連網不違反 waveform() 那條「不為了畫波形而連網」:那條擋的是
+			// **滑過就抓**,而按下播放鍵是使用者明確要這個字,本來就是既有邏輯
+			// 認可可以連網的時機。流量只花在他真的想聽的字上。
+			//
+			// **先出聲,再抓波形。** 不能 await 完才唸——系統語音本來是按下去就
+			// 出聲的,插一個網路請求在前面等於為了一條線把發音延遲好幾秒,那是
+			// 拿主要功能去換次要功能。抓完再戳一次 onProgress,浮窗那時才撿得到
+			// 波形(它是在進度回報裡回頭撿的,見 tooltip.ts 的 speak.onclick)。
+			onProgress?.(null);
+			this.systemVoice(word, accent);
+			void this.load(word, accent).then((buf) => {
+				if (!buf) this.markMissing(key);
+				onProgress?.(null);
+			});
+			return;
 		}
 		onProgress?.(null);
 		this.systemVoice(word, accent);
