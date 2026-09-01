@@ -513,6 +513,16 @@
 }
 
 /* --- 複習 Modal --- */
+
+/* **外層也要限制高度,不能只限制 .modal-content。**
+   只綁內層的話,.modal 本身照樣往下長到鍵盤底下:內容沒有「溢出」容器,
+   `overflow-y: auto` 就沒有東西可捲,於是卡片下半截看得到卻捲不到。
+   道哥:「這個學習卡應該要可以讓我捲動,即使鍵盤浮現出來,我還是可以看到
+   它的最底端。」 */
+.wordfolio-review-modal {
+	max-height: calc(var(--wf-vv-h, 100vh) - 2em);
+}
+
 .wordfolio-review-modal .modal-content {
 	display: flex;
 	flex-direction: column;
@@ -1301,6 +1311,16 @@
 .wordfolio-review-modal .modal-content.wf-typing .wordfolio-review-hints .wf-key,
 .wordfolio-review-modal .modal-content.wf-typing .wordfolio-review-show .wf-key {
 	opacity: 0.2;
+}
+
+/* 打字時在底部留一段空白,讓最後一個元素**捲得上來**。
+   這一條是最後的保險:上面那兩個 max-height 都依賴 `visualViewport` 量到的
+   鍵盤高度,而那個值在某些 WebView 裡不一定準。這裡不量任何東西——只要
+   底下有足夠的空白,卡片的最底端就一定能被捲到鍵盤上方。
+   只在 wf-typing(焦點在輸入框、也就是鍵盤在的時候)加,平常不會多出一塊空白。 */
+.wordfolio-review-modal .modal-content.wf-typing {
+	padding-bottom: 60vh;
+	scroll-padding-bottom: 1em;
 }
 
 .wordfolio-review-buttons button:hover .wf-key {
