@@ -1,6 +1,6 @@
 {
 	"name": "wordfolio-obsidian",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "Offline English–Traditional Chinese dictionary for Obsidian, with hover tooltips and FSRS spaced repetition.",
 	"main": "main.js",
 	"scripts": {
