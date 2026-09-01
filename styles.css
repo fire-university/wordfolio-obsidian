@@ -1327,15 +1327,26 @@
    空間可捲,最底端就一定能被推到鍵盤上方。
 
    只在 wf-typing(焦點在輸入框,也就是鍵盤在的時候)出現。 */
-.wordfolio-review-modal .modal-content.wf-typing::after {
+.is-mobile .wordfolio-review-modal .modal-content.wf-typing::after {
 	content: "";
 	display: block;
 	flex: 0 0 auto;
 	width: 100%;
-	/* 只要蓋過鍵盤就夠,多的每一分都是使用者要多滑的距離。
-	   2026-09-01 從實機截圖量:iPhone 的鍵盤(含上方工具列)約佔螢幕 35%,
-	   38vh 留一點餘裕。第一版用 60vh,道哥:「也太大的空白了吧,也捲太多了。」 */
-	height: 38vh;
+	/* 高度由 review.ts 在 focus 當下算出來寫進 `--wf-kb-gap`:
+	   「容器底部到鍵盤上緣」有多少距離,就墊多少,不多不少——捲到底時最後一個
+	   按鈕的下緣剛好落在鍵盤上。
+
+	   **不用固定的 vh。** 固定值對長卡片剛好,對短卡片就多出一大塊:modal 是
+	   置中的,卡片短的時候容器底部本來就比較高,要墊的自然比較少。道哥:
+	   「我覺得最後的底線應該要放在 Show answer 那個按鈕的下邊線。」
+
+	   fallback 的 0px 是安全的:算不出來就等於沒有這塊,回到原本的行為。
+
+	   **限定 `.is-mobile`。** `wf-typing` 桌面版也會加(焦點在輸入框時用來淡化
+	   鍵帽),而桌面沒有虛擬鍵盤,那塊墊高 100% 是浪費——道哥:「電腦版也出現
+	   空白太多的問題。」變數的 fallback 本來就會讓桌面算出 0,這裡再明確限定
+	   一次,因為這個坑已經踩過。 */
+	height: var(--wf-kb-gap, 0px);
 }
 
 .wordfolio-review-buttons button:hover .wf-key {

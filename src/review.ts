@@ -136,6 +136,40 @@ export class ReviewModal extends Modal {
 	 *
 	 * 120px 的門檻是為了不去理會網址列那種幾十像素的高度變化。
 	 */
+	/**
+	 * 鍵盤佔螢幕的比例。
+	 *
+	 * **只有這一個數字是估的。** Obsidian 的 iOS WebView 不透過 `visualViewport`
+	 * 回報鍵盤(2026-09-01 實機量到 innerHeight 852 / visualViewport 852 / 差 0),
+	 * 所以沒有任何 API 問得到鍵盤多高。0.35 是從實機截圖量出來的(含上方工具列)。
+	 *
+	 * 估錯的後果是溫和的:高估→底下多一點空白,低估→最後一顆按鈕差一點點被蓋到,
+	 * 兩者都不會讓功能壞掉。
+	 */
+	private static readonly KEYBOARD_FRACTION = 0.35;
+
+	/**
+	 * 算出「容器底部到鍵盤上緣」的距離,寫進 `--wf-kb-gap` 當作底部墊高。
+	 *
+	 * 捲到底時,最後一個元素的下緣就會剛好落在鍵盤上——道哥要的是這個,不是
+	 * 一塊固定大小的空白。**固定 vh 不行**:modal 是置中的,卡片短的時候容器
+	 * 底部比較高、要墊的比較少,同一個數字對長卡片剛好就會對短卡片多出一截。
+	 *
+	 * 量兩次:墊高會讓內容溢出,短卡片的 modal 因此可能長高(最多到 max-height),
+	 * 容器底部跟著往下,第一次算的差距就不夠了。第二次在下一個 frame 補正,
+	 * 而 modal 有 max-height 上限,所以一定收斂。
+	 */
+	private fitKeyboardGap(pass = 0): void {
+		const keyboardTop = window.innerHeight * (1 - ReviewModal.KEYBOARD_FRACTION);
+		const gap = Math.max(0, Math.round(this.contentEl.getBoundingClientRect().bottom - keyboardTop));
+		this.contentEl.style.setProperty("--wf-kb-gap", `${gap}px`);
+		if (pass < 1) requestAnimationFrame(() => this.fitKeyboardGap(pass + 1));
+	}
+
+	private clearKeyboardGap(): void {
+		this.contentEl.style.removeProperty("--wf-kb-gap");
+	}
+
 	private onViewportChange = (): void => {
 		const vv = window.visualViewport;
 		if (!vv) return;
@@ -146,6 +180,7 @@ export class ReviewModal extends Modal {
 	};
 
 	private next(): void {
+		this.clearKeyboardGap();
 		this.current = this.queue.shift() ?? null;
 		this.answered = false;
 		this.note = null;
@@ -647,12 +682,14 @@ export class ReviewModal extends Modal {
 		input.onfocus = () => {
 			this.contentEl.addClass("wf-typing");
 			paint();
-			// 鍵盤是動畫上來的,`visualViewport` 要等它停了才是最終高度;馬上捲會
-			// 捲到舊的位置。350ms 是量出來的保守值(iOS 的鍵盤動畫約 250–300ms)。
+			// 鍵盤是動畫上來的,等它停了再量再捲。350ms 是保守值(iOS 約 250–300ms)。
 			window.setTimeout(() => {
-				if (box.isConnected) box.scrollIntoView({ block: "center" });
+				if (!box.isConnected) return;
+				this.fitKeyboardGap();
+				box.scrollIntoView({ block: "center" });
 			}, 350);
 		};
+		input.addEventListener("blur", () => this.clearKeyboardGap());
 		input.onblur = () => this.contentEl.removeClass("wf-typing");
 		input.onkeydown = (e) => {
 			// Enter 直接翻面。手機鍵盤右下角那顆就是它,不用再去找「顯示答案」。
