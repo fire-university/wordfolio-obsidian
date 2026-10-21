@@ -126,6 +126,10 @@ npm run deploy          # 建置並複製進 vault
 
 WordFolio 是免費的開源外掛。如果它幫你省下了時間，[請我喝杯咖啡](https://buymeacoffee.com/firetw)。
 
+## 作者
+
+由 [FIRE人生大學](https://firetw.com/) 的道哥製作，我做的其他 App 與工具在 [firetw.com/apps](https://firetw.com/apps/)。
+
 ## 授權
 
 MIT，見 [LICENSE](LICENSE)。

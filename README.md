@@ -192,6 +192,10 @@ the four online dictionaries are in [NOTICE.md](NOTICE.md).
 WordFolio is free and open source. If it saves you time,
 [buy me a coffee](https://buymeacoffee.com/firetw).
 
+## Author
+
+Made by Doug of [FIRE University](https://firetw.com/en/) — more of my apps and tools at [firetw.com/en/apps](https://firetw.com/en/apps/).
+
 ## Licence
 
 MIT — see [LICENSE](LICENSE).
