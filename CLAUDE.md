@@ -48,3 +48,19 @@ The five canonical triage roles, each label string equal to its name (`needs-tri
 ### Domain docs
 
 Single-context: `CONTEXT.md` and `docs/adr/` at the repo root, created lazily by `/domain-modeling`. See `docs/agents/domain.md`.
+
+## Handoff between Claude Code and Codex
+
+Doug works on this repo from both Claude Code and Codex. Progress lives in his Obsidian vault, not in this repo:
+`30. 專案/App 開發/WordFolio/WordFolio - 規劃.md` (vault root is listed in your global rules file).
+
+- **Start**: read the handoff section (接手點) of that note first, then check reality with `git status`, `git branch`, `gh pr list`.
+- **Stop, or when your quota is running out**: update the handoff section — one line per task: who (Claude/Codex), branch, PR, how far, next step, caveats. Edit only your own line; delete it once merged into main. Write it in Traditional Chinese.
+
+## Handoff between Claude Code and Codex
+
+Doug works on this repo from both Claude Code and Codex. Progress lives in his Obsidian vault, not in this repo:
+`30. 專案/App 開發/WordFolio/WordFolio - 規劃.md` (vault root is listed in your global rules file).
+
+- **Start**: read the handoff section (接手點) of that note first, then check reality with `git status`, `git branch`, `gh pr list`.
+- **Stop, or when your quota is running out**: update the handoff section — one line per task: who (Claude/Codex), branch, PR, how far, next step, caveats. Edit only your own line; delete it once merged into main. Write it in Traditional Chinese.
